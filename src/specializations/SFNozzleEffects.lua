@@ -4,10 +4,10 @@
 -- its threshold 1m ahead. Mirrors PF's ExtendedSprayerEffects pattern.
 -- No PF dependency - ever.
 
-SFNozzleEffects = {}
+SFNozzleEffects = SFNozzleEffects or {}
 -- Derive the spec table name from the actual mod environment so the spec keeps
 -- working regardless of the mod folder/zip name (REFINED rename safety).
-SFNozzleEffects.SPEC_TABLE_NAME = "spec_" .. (g_currentModName or "FS25_SoilFertilizer_Refined") .. ".sfNozzleEffects"
+SFNozzleEffects.SPEC_TABLE_NAME = "spec_" .. ((SoilFertilizerModName or g_currentModName) or "FS25_SoilFertilizer_Refined") .. ".sfNozzleEffects"
 
 -- Fade direction vectors (mirrors PF ESE constants)
 SFNozzleEffects.FADE_DIR_OFF   = {0,  0}
@@ -118,14 +118,14 @@ function SFNozzleEffects.registerGlobally()
     SFNozzleEffects._didRegisterGlobally = true
 
     local shortName = "sfNozzleEffects"
-    local fullName  = (g_currentModName or "FS25_SoilFertilizer") .. "." .. shortName
+    local fullName  = ((SoilFertilizerModName or g_currentModName) or "FS25_SoilFertilizer") .. "." .. shortName
 
     -- The spec is normally registered via modDesc <specialization>; register it here as
     -- a fallback only if that did not happen (never double-register - that errors).
     if g_specializationManager and
        g_specializationManager:getSpecializationByName(fullName) == nil then
         local filename = Utils.getFilename(
-            "src/specializations/SFNozzleEffects.lua", g_currentModDirectory)
+            "src/specializations/SFNozzleEffects.lua", (SoilFertilizerModDirectory or g_currentModDirectory))
         g_specializationManager:addSpecialization(fullName, "SFNozzleEffects", filename, nil)
     end
 
@@ -325,6 +325,15 @@ function SFNozzleEffects:onPostLoad(savegame)
     if spec_vww == nil or spec_vww.sections == nil or #spec_vww.sections == 0 then
         spec.pendingNozzles = nil
         return
+    end
+
+    -- Real index of the centre VWW section. Nozzles remap the centre to sentinel
+    -- sectionIndex 0 (so it skips the section.isActive gate), but deposition gating needs
+    -- the centre's TRUE section index so getIsWorkAreaActive can suppress it too when See &
+    -- Spray finds no target - otherwise the centre leaks product while the boom holds.
+    spec.centerSectionIndex = nil
+    for _, section in ipairs(spec_vww.sections) do
+        if section.isCenter then spec.centerSectionIndex = section.index; break end
     end
 
     local minWidth = 1
@@ -545,17 +554,23 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     -- Aggregate the per-nozzle See & Spray decision into a per-section flag so
     -- getIsWorkAreaActive can gate the ACTUAL ground deposition per section (not just the
     -- fluid usage). A section is suppressed when it has nozzles and none are active (no
-    -- target confirmed / crossed the field boundary). Sections with no nozzle - e.g. the
-    -- centre always-on zone (sectionIndex 0) - get no entry and keep spraying.
+    -- target confirmed / crossed the field boundary). The centre nozzle (sentinel
+    -- sectionIndex 0) is tracked separately as centerActive so its See & Spray decision
+    -- gates the centre work area too, instead of the centre always leaking product.
     local sectionActive = {}
+    local centerActive  = nil
     for _, ed in ipairs(spec.sprayerEffects) do
         local idx = ed.sectionIndex
         if idx ~= nil and idx ~= 0 then
             if sectionActive[idx] == nil then sectionActive[idx] = false end
             if ed.isActive then sectionActive[idx] = true end
+        elseif idx == 0 then
+            if centerActive == nil then centerActive = false end
+            if ed.isActive then centerActive = true end
         end
     end
     spec.sectionActive = sectionActive
+    spec.centerActive  = centerActive
 
     -- Animate shader fade transitions for any nozzle with an effect node.
     for _, effectData in ipairs(spec.sprayerEffects) do
@@ -583,16 +598,46 @@ end
 
 -- ── Nozzle state functions ────────────────────────────────────────────────────
 
--- Batch update: sets isActive on each effectData and fires fade transitions.
+--- [SF-73 truthful UI (b)] Whether product is actually going down on this pass, for the
+--- spray VISUAL only. The engine's own test, read through its own definition
+--- (Sprayer:getAreEffectsVisible, Sprayer.lua:466-468: lastSprayTime + 100 > g_time, and
+--- lastSprayTime is set only when processSprayerArea paints, :335), so a pass the engine did
+--- not paint (an SF-73 refused cycle, an overlap-gate refusal) shows no spray. A client runs
+--- its own processSprayerArea while SF-73's enforcement is server-only, so a client also goes
+--- off on a received, current target result that plans nothing (a refusal or a zero plan).
+---@return boolean
+function SFNozzleEffects.isApplying(vehicle)
+    if type(vehicle) ~= "table" or vehicle.spec_sprayer == nil then return true end
+    if Sprayer ~= nil and type(Sprayer.getAreEffectsVisible) == "function" then
+        local ok, painted = pcall(Sprayer.getAreEffectsVisible, vehicle)
+        if ok and painted ~= true then return false end
+    end
+    if g_server == nil then
+        local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        if ss ~= nil and type(ss.getApplicationTargetResult) == "function" then
+            local r = ss:getApplicationTargetResult(vehicle)
+            if r ~= nil and r.active == true and (tonumber(r.plannedLitres) or 0) <= 0 then return false end
+        end
+    end
+    return true
+end
+
+-- Batch update: sets isActive on each effectData (the See & Spray decision the section
+-- gate and the usage scale read) and fires the fade transitions from isShown, which is
+-- isActive AND the engine actually applying (SF-73 truthful UI (b)). The two are kept apart
+-- on purpose: the section gate must not wait for paint, since paint needs the section open.
 function SFNozzleEffects:sfUpdateNozzleEffectsState(sprayerEffects, dt, isTurnedOn, lastSpeed)
+    local applying = SFNozzleEffects.isApplying(self)
     for _, effectData in ipairs(sprayerEffects) do
         local isActive, _ = self:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, lastSpeed)
+        effectData.isActive = isActive
 
-        if isActive ~= effectData.isActive then
-            effectData.isActive = isActive
+        local isShown = isActive and applying
+        if isShown ~= (effectData.isShown == true) then
+            effectData.isShown = isShown
 
             if effectData.effectNode then
-                if isActive then
+                if isShown then
                     if effectData.state == STATE_OFF or effectData.state == STATE_TURNING_OFF then
                         effectData.state   = STATE_TURNING_ON
                         effectData.fadeDir = SFNozzleEffects.FADE_DIR_START
@@ -830,7 +875,16 @@ function SFNozzleEffects:getIsWorkAreaActive(superFunc, workArea)
     if not hasAny then return true end
 
     local idx = workArea.sectionIndex
-    if idx ~= nil and spec.sectionActive ~= nil and spec.sectionActive[idx] == false then
+    if idx ~= nil and spec.sectionActive ~= nil and spec.sectionActive[idx] ~= nil then
+        -- A tracked outer boom section: honour its aggregated See & Spray decision.
+        if spec.sectionActive[idx] == false then return false end
+        return true
+    end
+    -- The centre spray area (its real section index, or an undivided / no-section work
+    -- area): honour the centre nozzle's See & Spray decision so the centre stops depositing
+    -- on a no-target cell instead of leaking product while the outer boom holds. Safe
+    -- default (spray) when there is no centre nozzle to consult (centerActive == nil).
+    if spec.centerActive == false and (idx == nil or idx == spec.centerSectionIndex) then
         return false
     end
     return true

@@ -1,0 +1,949 @@
+-- ============================================================
+-- PositionalPH.lua  (SF-79)
+--
+-- POSITIONAL, CHEMICAL PH FOR SPRAYED-AREA LIME AND PH.
+--
+-- The existing `sfSoilMap_PH.grle` layer is the chemical-soil
+-- authority; the field number is a REPORT derived from the written
+-- pixels over the complete cultivated parcel domain. A report never
+-- paints chemical pH. Native LIME_LEVEL remains a separate local
+-- result of the same physical pass.
+--
+-- This module owns the private writer/cache routines the brief names
+-- (`_applyPHFootprint`, `_ensurePHReport`) and hangs them on the
+-- existing `SoilFertilitySystem` so the source-order witness in the
+-- SF-79 bar can reach them. It adds no new grid, map, product, rate
+-- curve, clock, app or automatic repeat-job policy.
+--
+-- The pure kernel (raw cohorts, normalization cohorts, raw-delta
+-- quantization) is a static surface so the offline bar guards the
+-- shipped arithmetic, not a private copy. Native density-map
+-- execution, savegame IO, rendering and real multiplayer transport
+-- remain in-game proof (release LOCKED).
+-- ============================================================
+
+PositionalPH = PositionalPH or {}
+local PositionalPH_mt = Class(PositionalPH)
+
+-- Writer result statuses (brief 3.A).
+PositionalPH.STATUS_APPLIED       = 'APPLIED'
+PositionalPH.STATUS_NO_CHANGE     = 'NO_CHANGE'
+PositionalPH.STATUS_INVALID       = 'INVALID'
+PositionalPH.STATUS_UNAVAILABLE   = 'UNAVAILABLE'
+PositionalPH.STATUS_ERROR_PARTIAL = 'ERROR_PARTIAL'
+
+-- Operations and scopes (brief 3.A).
+PositionalPH.OP_DELTA     = 'DELTA'
+PositionalPH.OP_SET       = 'SET'
+PositionalPH.OP_NORMALIZE = 'NORMALIZE'
+
+PositionalPH.SCOPE_POINT   = 'POINT'
+PositionalPH.SCOPE_STRIP   = 'STRIP'
+PositionalPH.SCOPE_POLYGON = 'POLYGON'
+PositionalPH.SCOPE_FIELD   = 'FIELD'
+
+-- Derived-report statuses (brief 3.B).
+PositionalPH.REPORT_CURRENT     = 'CURRENT'
+PositionalPH.REPORT_EMPTY       = 'EMPTY'
+PositionalPH.REPORT_UNAVAILABLE = 'UNAVAILABLE'
+
+-- Read-contract statuses (brief 3.D).
+PositionalPH.READ_LOCAL       = 'LOCAL'
+PositionalPH.READ_FIELD       = 'FIELD_REPORT'
+PositionalPH.READ_APPROXIMATE = 'APPROXIMATE'
+PositionalPH.READ_STALE       = 'STALE'
+PositionalPH.READ_UNAVAILABLE = 'UNAVAILABLE'
+
+PositionalPH.PH_LAYER = 'pH'
+
+-- ============================================================
+-- PURE KERNEL (driven directly by the bar).
+-- ============================================================
+
+--- Semantic pH units represented by one raw step, matching the
+--- SoilValueMaps quantizer for the pH def.
+--- @return number
+function PositionalPH.unitsPerRaw()
+    local limits = SoilConstants and SoilConstants.NUTRIENT_LIMITS
+    if limits == nil then return 0 end
+    local span = SoilValueMaps.RAW_MAX - SoilValueMaps.RAW_MIN
+    if span <= 0 then return 0 end
+    return (limits.PH_MAX - limits.PH_MIN) / span
+end
+
+--- A banked remainder is usable only with its cause, its kind and its domain all
+--- known (brief 3.B: remainders stay separate per cause/kind/domain) and its amount
+--- below one raw step: a whole step is applied, never banked, so a larger entry is
+--- not a remainder. An entry missing any of these could only ever be applied as
+--- some other operation's amount, which is the mixing MAINTENANCE row 72 records.
+--- The domain may be the empty string (a field with no geometry banks under '').
+function PositionalPH.isValidPending(p)
+    if type(p) ~= 'table' then return false end
+    if type(p.cause) ~= 'string' or p.cause == '' then return false end
+    if p.kind ~= PositionalPH.OP_DELTA and p.kind ~= PositionalPH.OP_NORMALIZE then return false end
+    local a = p.amount
+    if type(a) ~= 'number' or a ~= a or a == math.huge or a == -math.huge then return false end
+    local upr = PositionalPH.unitsPerRaw()
+    if upr > 0 and math.abs(a) >= upr then return false end
+    if type(p.domainKey) ~= 'string' then return false end
+    return true
+end
+
+--- The raw step count for a semantic pH delta, TRUNCATED TOWARD ZERO to
+--- match the current quantizer. Zero means a sub-step change.
+--- @return number
+function PositionalPH.rawDeltaFor(delta)
+    local upr = PositionalPH.unitsPerRaw()
+    if upr <= 0 or type(delta) ~= 'number' then return 0 end
+    if delta >= 0 then return math.floor(delta / upr) end
+    return -math.floor(-delta / upr)
+end
+
+--- Apply a raw cohort delta to an array of raw values in place (index 1..n).
+--- The saturation cohort is established BEFORE the interior add so a pixel the
+--- add would carry past the ceiling lands AT the ceiling, never one step short
+--- and never wrapped into the raw-0 sentinel. Mirrors the reference model the
+--- bar drives.
+--- @param values number[] raw values, mutated
+--- @param delta number raw steps
+function PositionalPH.rawCohortDelta(values, delta)
+    if type(values) ~= 'table' or type(delta) ~= 'number' or delta == 0 then return end
+    local RMIN, RMAX = SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX
+    local span = RMAX - RMIN
+
+    local function runBand(lo, hi, add, target)
+        if lo > hi then return end
+        for i = 1, #values do
+            local raw = values[i]
+            if type(raw) == 'number' and raw >= lo and raw <= hi then
+                values[i] = target or (raw + add)
+            end
+        end
+    end
+
+    if delta >= span then runBand(RMIN, RMAX, 0, RMAX); return end
+    if delta <= -span then runBand(RMIN, RMAX, 0, RMIN); return end
+    if delta > 0 then
+        runBand(RMAX - delta + 1, RMAX - 1, 0, RMAX)
+        runBand(RMIN, RMAX - delta, delta, nil)
+    else
+        local mag = -delta
+        runBand(RMIN + 1, RMIN + mag - 1, 0, RMIN)
+        runBand(RMIN + mag, RMAX, delta, nil)
+    end
+end
+
+--- Move an array of raw values toward the neutral band [lowRaw, highRaw] by
+--- `step` raw units per pass. In-band pixels are untouched; a pixel within one
+--- step of the band lands exactly on the bound. Mirrors the reference model.
+--- @param values number[] raw values, mutated
+--- @param step number positive raw steps
+--- @param lowRaw number
+--- @param highRaw number
+function PositionalPH.normalizeRawCohorts(values, step, lowRaw, highRaw)
+    if type(values) ~= 'table' or type(step) ~= 'number' or step <= 0 then return end
+    local RMIN, RMAX = SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX
+    local lo = math.max(RMIN, math.floor(lowRaw or RMIN))
+    local hi = math.min(RMAX, math.floor(highRaw or RMAX))
+
+    local function runBand(from, to, add, target)
+        if from > to then return end
+        for i = 1, #values do
+            local raw = values[i]
+            if type(raw) == 'number' and raw >= from and raw <= to then
+                values[i] = target or (raw + add)
+            end
+        end
+    end
+
+    runBand(math.max(RMIN, lo - step + 1), lo - 1, 0, lo)
+    runBand(RMIN, lo - step, step, nil)
+    runBand(hi + 1, math.min(RMAX, hi + step - 1), 0, hi)
+    runBand(hi + step, RMAX, -step, nil)
+end
+
+-- ============================================================
+-- RAW / DOMAIN HELPERS
+-- ============================================================
+
+--- The pH layer definition from SoilValueMaps, or nil.
+function PositionalPH.phDef()
+    for _, def in ipairs(SoilValueMaps.LAYER_DEFS or {}) do
+        if def.key == PositionalPH.PH_LAYER then return def end
+    end
+    return nil
+end
+
+--- Encode a semantic pH value to a raw step using the pH def.
+--- @return number
+function PositionalPH.phRaw(value, def)
+    def = def or PositionalPH.phDef()
+    if def == nil then return SoilValueMaps.RAW_MIN end
+    local RMIN, RMAX = SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX
+    local span = RMAX - RMIN
+    local clamped = math.max(def.minVal, math.min(def.maxVal, value or def.minVal))
+    local raw = RMIN + math.floor((clamped - def.minVal) / (def.maxVal - def.minVal) * span + 0.5)
+    if raw < RMIN then raw = RMIN end
+    if raw > RMAX then raw = RMAX end
+    return raw
+end
+
+--- Decode a raw step to a semantic pH value.
+--- @return number|nil
+function PositionalPH.phValue(raw, def)
+    if type(raw) ~= 'number' or raw <= 0 then return nil end
+    def = def or PositionalPH.phDef()
+    if def == nil then return nil end
+    local RMIN, RMAX = SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX
+    return def.minVal + ((raw - RMIN) / (RMAX - RMIN)) * (def.maxVal - def.minVal)
+end
+
+--- The pH carrier grain in metres (terrainSize / PH width), or nil. The PH
+--- carrier shares the store resolution, so this is the store grain.
+--- @return number|nil
+function SoilFertilitySystem:_phGrainMetres()
+    local vm = self.valueMaps
+    if vm == nil or not vm.available then return nil end
+    return vm:getGrainMetres()
+end
+
+--- The complete cultivated parcel domain for a farmland as an array of vertex
+--- arrays, or nil. Gaps are excluded and overlapping polygons are returned
+--- separately (the engine applies overlap once per executeSet).
+--- @return table|nil
+function SoilFertilitySystem:_phFieldPolygons(fieldId)
+    if type(self._getFarmlandPolygons) ~= 'function' then return nil end
+    return self:_getFarmlandPolygons(fieldId)
+end
+
+--- Canonical domain key for a farmland (brief 3.B): parcel id, terrain size,
+--- PH width and the canonical polygon coordinates. Used to restore a small
+--- finite FIELD remainder only onto a matching domain.
+--- @return string
+function SoilFertilitySystem:_phDomainKey(fieldId)
+    local polys = self:_phFieldPolygons(fieldId)
+    if polys == nil then return '' end
+    local vm = self.valueMaps
+    local terrain = (vm and vm.terrainSize) or 0
+    local width = (vm and vm.resolution) or 0
+    local parts = { tostring(fieldId), tostring(terrain), tostring(width) }
+    for _, verts in ipairs(polys) do
+        local coords = {}
+        for _, v in ipairs(verts) do
+            coords[#coords + 1] = string.format("%.17g,%.17g", v.x + 0.0, v.z + 0.0)
+        end
+        parts[#parts + 1] = table.concat(coords, ';')
+    end
+    return table.concat(parts, '|')
+end
+
+--- The geometric bounds of a polygon list, or nil.
+local function polygonBounds(polys)
+    local minX, maxX, minZ, maxZ
+    for _, verts in ipairs(polys or {}) do
+        for _, v in ipairs(verts) do
+            if minX == nil or v.x < minX then minX = v.x end
+            if maxX == nil or v.x > maxX then maxX = v.x end
+            if minZ == nil or v.z < minZ then minZ = v.z end
+            if maxZ == nil or v.z > maxZ then maxZ = v.z end
+        end
+    end
+    if minX == nil then return nil end
+    return { minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ }
+end
+
+--- Resolve a request's geometry to a list of polygons plus bounds, or nil when
+--- the geometry is malformed for the scope.
+local function resolveGeometry(self, fieldId, request)
+    local scope = request.scope
+    if scope == PositionalPH.SCOPE_FIELD then
+        local polys = self:_phFieldPolygons(fieldId)
+        if polys == nil or #polys == 0 then return nil end
+        return polys, polygonBounds(polys)
+    elseif scope == PositionalPH.SCOPE_POLYGON then
+        local verts = request.verts
+        if type(verts) ~= 'table' or #verts < 3 then return nil end
+        for _, v in ipairs(verts) do
+            if type(v) ~= 'table' or type(v.x) ~= 'number' or type(v.z) ~= 'number' then return nil end
+        end
+        return { verts }, polygonBounds({ verts })
+    elseif scope == PositionalPH.SCOPE_STRIP then
+        local sx, sz, wx, wz, hx, hz = request.sx, request.sz, request.wx, request.wz, request.hx, request.hz
+        if type(sx) ~= 'number' or type(sz) ~= 'number' or type(wx) ~= 'number'
+            or type(wz) ~= 'number' or type(hx) ~= 'number' or type(hz) ~= 'number' then return nil end
+        local verts = {
+            { x = sx, z = sz }, { x = wx, z = wz }, { x = hx, z = hz },
+            { x = wx + hx - sx, z = wz + hz - sz },
+        }
+        return { verts }, polygonBounds({ verts })
+    elseif scope == PositionalPH.SCOPE_POINT then
+        local x, z, r = request.x, request.z, request.radius
+        if type(x) ~= 'number' or type(z) ~= 'number' then return nil end
+        r = (type(r) == 'number' and r > 0) and r or (self:_phGrainMetres() or 1.5) * 0.5
+        local verts = {
+            { x = x - r, z = z - r }, { x = x + r, z = z - r },
+            { x = x + r, z = z + r }, { x = x - r, z = z + r },
+        }
+        return { verts }, polygonBounds({ verts })
+    end
+    return nil
+end
+
+-- ============================================================
+-- THE WRITER
+-- ============================================================
+
+--- Apply one pH footprint request. Returns
+--- { status, mapRevision, reportDirty, bounds, reason }.
+--- request.isTrueLime (brief 3.A) is the application callers' diagnostic
+--- classification: whether the pass is also a vanilla LIME spray type. This
+--- writer deliberately never reads it; it is not permission, and nothing here
+--- grants or fabricates native lime credit.
+---@param fieldId number
+---@param request table
+function SoilFertilitySystem:_applyPHFootprint(fieldId, request)
+    local result = {
+        status = PositionalPH.STATUS_INVALID,
+        mapRevision = self._phMapRevision or 0,
+        reportDirty = false,
+        bounds = nil,
+        reason = nil,
+    }
+    if g_server == nil then
+        result.status = PositionalPH.STATUS_UNAVAILABLE
+        result.reason = 'not-server'
+        return result
+    end
+    if type(fieldId) ~= 'number' or type(request) ~= 'table' then
+        result.reason = 'bad-request'
+        return result
+    end
+    local vm = self.valueMaps
+    if vm == nil or not vm.available then
+        result.status = PositionalPH.STATUS_UNAVAILABLE
+        result.reason = 'no-maps'
+        return result
+    end
+    local entry = vm:getLayerEntry(PositionalPH.PH_LAYER)
+    local def = entry and entry.def
+    if def == nil then
+        result.status = PositionalPH.STATUS_UNAVAILABLE
+        result.reason = 'no-ph-layer'
+        return result
+    end
+
+    local op = request.operation
+    if op ~= PositionalPH.OP_DELTA and op ~= PositionalPH.OP_SET and op ~= PositionalPH.OP_NORMALIZE then
+        result.reason = 'bad-operation'
+        return result
+    end
+
+    local polys, bounds = resolveGeometry(self, fieldId, request)
+    if polys == nil then
+        result.reason = 'bad-geometry'
+        return result
+    end
+    result.bounds = bounds
+
+    -- Growth-domain attribution so a pH write never advances the growth read-set
+    -- (pH is not a growth key) but is still attributed where a caller proves it.
+    local growthDomain = request.growthDomain
+
+    local RMIN, RMAX = SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX
+    local span = RMAX - RMIN
+    local applied = false
+    local refused = false
+    local changed = false
+
+    local function runSet(verts, rawValue, bandLow, bandHigh)
+        local ok = vm:setPolygonWhere(PositionalPH.PH_LAYER, verts, rawValue, bandLow, bandHigh, growthDomain)
+        if ok == false then refused = true else applied = true end
+    end
+    local function runDelta(verts, rawDelta, bandLow, bandHigh)
+        local r = vm:applyRawDeltaToPolygonBand(PositionalPH.PH_LAYER, verts, rawDelta, bandLow, bandHigh, {}, growthDomain)
+        if r == nil then refused = true else applied = true end
+    end
+
+    if op == PositionalPH.OP_DELTA then
+        local rawDelta = PositionalPH.rawDeltaFor(request.value)
+        if rawDelta == 0 then
+            result.status = PositionalPH.STATUS_NO_CHANGE
+            result.reason = 'sub-step'
+            return result
+        end
+        changed = true
+        for _, verts in ipairs(polys) do
+            if rawDelta >= span then
+                runSet(verts, RMAX, RMIN, RMAX)
+            elseif rawDelta <= -span then
+                runSet(verts, RMIN, RMIN, RMAX)
+            elseif rawDelta > 0 then
+                -- Saturation cohort FIRST, then the interior add.
+                runSet(verts, RMAX, RMAX - rawDelta + 1, RMAX - 1)
+                runDelta(verts, rawDelta, RMIN, RMAX - rawDelta)
+            else
+                local mag = -rawDelta
+                runSet(verts, RMIN, RMIN + 1, RMIN + mag - 1)
+                runDelta(verts, rawDelta, RMIN + mag, RMAX)
+            end
+        end
+    elseif op == PositionalPH.OP_SET then
+        local rawValue = PositionalPH.phRaw(request.value, def)
+        changed = true
+        for _, verts in ipairs(polys) do
+            runSet(verts, rawValue, 0, RMAX)
+        end
+    else -- NORMALIZE
+        local lowRaw = PositionalPH.phRaw(request.targetLow, def)
+        local highRaw = PositionalPH.phRaw(request.targetHigh, def)
+        if lowRaw > highRaw then lowRaw, highRaw = highRaw, lowRaw end
+        local step = PositionalPH.rawDeltaFor(math.abs(request.value or 0))
+        if step <= 0 then
+            result.status = PositionalPH.STATUS_NO_CHANGE
+            result.reason = 'sub-step'
+            return result
+        end
+        changed = true
+        for _, verts in ipairs(polys) do
+            -- Near-target SET before farther ADD, so no pixel is processed twice.
+            runSet(verts, lowRaw, math.max(RMIN, lowRaw - step + 1), lowRaw - 1)
+            runDelta(verts, step, RMIN, lowRaw - step)
+            runSet(verts, highRaw, highRaw + 1, math.min(RMAX, highRaw + step - 1))
+            runDelta(verts, -step, highRaw + step, RMAX)
+        end
+    end
+
+    if refused and applied then
+        result.status = PositionalPH.STATUS_ERROR_PARTIAL
+        result.reason = 'partial-native-refusal'
+    elseif refused then
+        result.status = PositionalPH.STATUS_UNAVAILABLE
+        result.reason = 'native-refused'
+    elseif not changed then
+        result.status = PositionalPH.STATUS_NO_CHANGE
+    else
+        result.status = PositionalPH.STATUS_APPLIED
+        self._phMapRevision = (self._phMapRevision or 0) + 1
+        result.mapRevision = self._phMapRevision
+        result.reportDirty = true
+    end
+    return result
+end
+
+-- ============================================================
+-- WRITER ADAPTERS FOR THE EXISTING CALLERS (brief 3.C)
+-- ============================================================
+
+--- Refresh a field's cached pH scalar from the derived report. The map is the
+--- authority; the scalar is only the last published report value. A field whose
+--- map carries no written pixel keeps its previous scalar (the frozen seed).
+function SoilFertilitySystem:_phRefreshScalar(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return end
+    if type(self._ensurePHReport) ~= 'function' then return end
+    local rep = self:_ensurePHReport(fieldId)
+    if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
+        field.pH = rep.value
+    end
+end
+
+--- Apply one whole-field pH operation through the writer, then republish the
+--- derived scalar. Used by the daily normalization, leach, burn and scorch
+--- consequences, which are physical whole-field effects.
+---
+--- DELTA and NORMALIZE are ACCUMULATIVE: a per-tick amount far below one raw step
+--- is banked as a domain-scoped remainder (brief 3.B) and applied once the running
+--- total reaches a whole step, so a slow drift is never lost to quantisation and
+--- never leaks into a field-wide scalar bank.
+function SoilFertilitySystem:_phApplyField(fieldId, operation, value, targetLow, targetHigh, source)
+    if type(self._applyPHFootprint) ~= 'function' then return nil end
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return nil end
+
+    if operation == PositionalPH.OP_DELTA or operation == PositionalPH.OP_NORMALIZE then
+        local domainKey = self:_phDomainKey(fieldId)
+        -- Only this cause's remainders of this kind on this domain join this write:
+        -- a plow NORMALIZE remainder never rides a rain DELTA (MAINTENANCE row 72).
+        local pending = self:_phTakePending(fieldId, domainKey, source, operation)
+        local total = value or 0
+        for _, p in ipairs(pending) do total = total + (p.amount or 0) end
+
+        local upr = PositionalPH.unitsPerRaw()
+        local rawDelta = PositionalPH.rawDeltaFor(total)
+        if rawDelta == 0 then
+            self:_phAddPending(fieldId, source, operation, total, domainKey)
+            return { status = PositionalPH.STATUS_NO_CHANGE, reason = 'sub-step',
+                     mapRevision = self._phMapRevision or 0, reportDirty = false }
+        end
+
+        local appliedSemantic = rawDelta * upr
+        local residual = total - appliedSemantic
+        local result = self:_applyPHFootprint(fieldId, {
+            operation = operation,
+            scope = PositionalPH.SCOPE_FIELD,
+            value = appliedSemantic,
+            targetLow = targetLow,
+            targetHigh = targetHigh,
+            source = source,
+        })
+        if residual ~= 0 then
+            self:_phAddPending(fieldId, source, operation, residual, domainKey)
+        end
+        self:_phRefreshScalar(fieldId)
+        return result
+    end
+
+    local result = self:_applyPHFootprint(fieldId, {
+        operation = operation,
+        scope = PositionalPH.SCOPE_FIELD,
+        value = value,
+        targetLow = targetLow,
+        targetHigh = targetHigh,
+        source = source,
+    })
+    self:_phRefreshScalar(fieldId)
+    return result
+end
+
+--- Seed raw-zero supported ground from a frozen scalar (brief 3.B). Only pixels
+--- with no record are touched (band [0,0]), so a valid pixel is preserved.
+--- @return number seeded
+function SoilFertilitySystem:_seedPHFootprint(fieldId, scalar)
+    local vm = self.valueMaps
+    if vm == nil or not vm.available or g_server == nil then return 0 end
+    local def = PositionalPH.phDef()
+    local polys = self:_phFieldPolygons(fieldId)
+    if def == nil or polys == nil then return 0 end
+    local raw = PositionalPH.phRaw(scalar, def)
+    local seeded = 0
+    for _, verts in ipairs(polys) do
+        local ok = vm:setPolygonWhere(PositionalPH.PH_LAYER, verts, raw, 0, 0)
+        if ok then seeded = seeded + 1 end
+    end
+    -- A seed that changed the map is a map change: the cached report is stale and
+    -- getFieldInfo's pHRevision (published from _phMapRevision) must move, or a
+    -- reader keeps serving the pre-seed report as current.
+    if seeded > 0 then
+        self:_phInvalidateReport(fieldId)
+        self._phMapRevision = (self._phMapRevision or 0) + 1
+    end
+    return seeded
+end
+
+-- ============================================================
+-- DERIVED REPORT AND RECOVERY (brief 3.B)
+-- ============================================================
+
+--- Mark a field's derived pH report stale. The domain revision advances so a
+--- cached report can never be served as CURRENT after a geometry change; the
+--- next _ensurePHReport recomputes from the map.
+function SoilFertilitySystem:_phInvalidateReport(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return end
+    field._phDomainRevision = (field._phDomainRevision or 0) + 1
+    if field._phReport ~= nil then field._phReport.dirty = true end
+end
+
+--- True when the cached report matches the current map and domain revisions.
+function SoilFertilitySystem:_phReportIsCurrent(field, rep)
+    return rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT
+        and rep.mapRevision == (self._phMapRevision or 0)
+        and rep.domainRevision == (field._phDomainRevision or 0)
+        and rep.dirty ~= true
+end
+
+--- Refresh and return the derived field report (brief 3.B). The value is the
+--- area-weighted mean over the written pixels of the complete cultivated parcel
+--- domain, via equal-grain affine decode. CURRENT/EMPTY/UNAVAILABLE are distinct;
+--- dirty is never CURRENT. Repeated reads of an unchanged revision reuse the cache.
+--- @return table
+function SoilFertilitySystem:_ensurePHReport(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return nil end
+    local rep = field._phReport
+    if self:_phReportIsCurrent(field, rep) then return rep end
+
+    local out = {
+        mapRevision = self._phMapRevision or 0,
+        domainRevision = field._phDomainRevision or 0,
+        dirty = false,
+        value = nil,
+        writtenPixels = 0,
+        status = PositionalPH.REPORT_UNAVAILABLE,
+    }
+    field._phReport = out
+
+    local vm = self.valueMaps
+    local def = PositionalPH.phDef()
+    local polys = self:_phFieldPolygons(fieldId)
+    if vm == nil or not vm.available or def == nil or polys == nil or #polys == 0 then
+        return out
+    end
+
+    local sumRaw, pixels = 0, 0
+    for _, verts in ipairs(polys) do
+        local rawAvg, n = vm:readAverageRawInBand(
+            PositionalPH.PH_LAYER, verts, SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX)
+        if type(rawAvg) == 'number' and type(n) == 'number' and n > 0 then
+            sumRaw = sumRaw + rawAvg * n
+            pixels = pixels + n
+        end
+    end
+    out.writtenPixels = pixels
+    if pixels <= 0 then
+        out.status = PositionalPH.REPORT_EMPTY
+    else
+        out.value = PositionalPH.phValue(sumRaw / pixels, def)
+        out.status = PositionalPH.REPORT_CURRENT
+    end
+    return out
+end
+
+--- The report read contract for a field request (brief 3.D): FIELD_REPORT when a
+--- current report exists, otherwise a typed unavailable state. A healthy report
+--- never fills a missing local sample.
+--- @return number|nil value
+--- @return string status
+function SoilFertilitySystem:_phReportRead(fieldId)
+    local rep = self:_ensurePHReport(fieldId)
+    if rep == nil then return nil, PositionalPH.READ_UNAVAILABLE end
+    if rep.status == PositionalPH.REPORT_CURRENT then
+        return rep.value, PositionalPH.READ_FIELD
+    end
+    return nil, PositionalPH.READ_UNAVAILABLE
+end
+
+--- One-time, preservation-first migration (brief 3.B). Valid map pixels are
+--- preserved; only raw-zero supported ground is seeded from the frozen scalar
+--- clamped to carrier bounds. A schema marker never suppresses missing-carrier
+--- recovery, so this re-seeds raw-zero ground even on an already-marked save.
+---
+--- THE SEED, in the brief's order: the frozen pre-migration scalar when the load
+--- froze one (#982: only an UNMARKED save proves its scalar predates the
+--- contract), else "the existing genesis rule", _computeInitialSoil, which is
+--- deterministic by fieldId and farmland centre. NEVER field.pH: on a marked
+--- save with no seed (every dev and tester save since 71c9bcf2) field.pH is the
+--- later report republished by _phRefreshScalar, and 3.B forbids seeding from it.
+--- Whichever value is used is then FROZEN into field._phSeedScalar, so
+--- #sf79PHSeed persists and a later tuning change cannot move it.
+---
+--- Called from seedValueMaps for every field on every load, BEFORE the
+--- all-layers-restored early return: a restored pH layer only has its holes
+--- filled (band [0,0]), and a missing layer is recovered whole. Server only.
+--- @return number seeded  polygons written
+--- @return string|nil source  'seed', 'genesis', or nil when nothing was written
+function SoilFertilitySystem:_migratePH(fieldId)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return 0, nil end
+    local vm = self.valueMaps
+    if vm == nil or not vm.available or g_server == nil then return 0, nil end
+    local def = PositionalPH.phDef()
+    local polys = self:_phFieldPolygons(fieldId)
+    if def == nil or polys == nil or #polys == 0 then return 0, nil end
+
+    local limits = SoilConstants.NUTRIENT_LIMITS
+    local seed, source = field._phSeedScalar, 'seed'
+    if type(seed) ~= 'number' then
+        local genesis = self:_computeInitialSoil(fieldId)
+        seed = genesis and genesis.pH or SoilConstants.FIELD_DEFAULTS.pH
+        source = 'genesis'
+    end
+    seed = math.max(limits.PH_MIN, math.min(limits.PH_MAX, seed))
+    field._phSeedScalar = seed
+    local raw = PositionalPH.phRaw(seed, def)
+
+    local writes = 0
+    for _, verts in ipairs(polys) do
+        -- Band [0,0] touches only unwritten ground; a valid pixel is outside it.
+        local ok = vm:setPolygonWhere(PositionalPH.PH_LAYER, verts, raw, 0, 0)
+        if ok then writes = writes + 1 end
+    end
+    if writes > 0 then
+        field._phSeeded = true
+        self:_phInvalidateReport(fieldId)
+        self._phMapRevision = (self._phMapRevision or 0) + 1
+        return writes, source
+    end
+    return 0, nil
+end
+
+-- ============================================================
+-- SUB-STEP SCHEDULED FIELD REMAINDERS (brief 3.B)
+-- ============================================================
+-- A FIELD normalization that cannot finish in one pass keeps its remainder per
+-- cause/kind/domain. A remainder is taken back only by the same cause's write of
+-- the same kind on a matching domain key (a NORMALIZE magnitude means "toward the
+-- target", a DELTA is a signed change; the two are never summed), and it is never
+-- put into a field-wide scalar bank.
+
+function SoilFertilitySystem:_phAddPending(fieldId, cause, kind, amount, domainKey)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil then return false end
+    local entry = { cause = cause, kind = kind, amount = amount, domainKey = domainKey }
+    if not PositionalPH.isValidPending(entry) then
+        -- Nothing can ever take such an entry back under its own operation, or it
+        -- is a whole step that should have been applied; not banked, said once,
+        -- since a caller that produces one is a code defect.
+        if not PositionalPH._pendingRefusedLogged and SoilLogger ~= nil and type(SoilLogger.warning) == 'function' then
+            PositionalPH._pendingRefusedLogged = true
+            SoilLogger.warning("[SF-79] pH bank: a remainder with no cause or kind, or not below one raw step, was not banked (field %s, cause %s, kind %s, amount %s)",
+                tostring(fieldId), tostring(cause), tostring(kind), tostring(amount))
+        end
+        return false
+    end
+    if amount == 0 then return false end
+    field._phPending = field._phPending or {}
+    field._phPending[#field._phPending + 1] = entry
+    return true
+end
+
+--- Take the pending remainders of one cause and kind on a domain key, leaving the
+--- rest banked for their own operations.
+--- @return table
+function SoilFertilitySystem:_phTakePending(fieldId, domainKey, cause, kind)
+    local field = self.fieldData and self.fieldData[fieldId]
+    if field == nil or field._phPending == nil then return {} end
+    local keep, take = {}, {}
+    for _, p in ipairs(field._phPending) do
+        if p.domainKey == domainKey and p.cause == cause and p.kind == kind then
+            take[#take + 1] = p
+        else
+            keep[#keep + 1] = p
+        end
+    end
+    field._phPending = keep
+    return take
+end
+
+--- Restore a field's banked remainders from a save (XML or the StateLedger mirror),
+--- keeping only usable entries: a cause, a kind, a domain and an amount below one raw
+--- step (isValidPending). An older save wrote a remainder without a cause or kind
+--- (the XML defaulted both to ''); such an entry could only be applied as some other
+--- operation's amount, so it is dropped and said once per field per load.
+--- @return number kept
+--- @return number dropped
+function SoilFertilitySystem:_phRestorePending(fieldId, field, list, origin)
+    field._phPending = {}
+    if type(list) ~= 'table' then return 0, 0 end
+    local kept, dropped = 0, 0
+    for _, p in ipairs(list) do
+        if PositionalPH.isValidPending(p) then
+            field._phPending[#field._phPending + 1] = {
+                cause = p.cause, kind = p.kind, amount = p.amount, domainKey = p.domainKey,
+            }
+            kept = kept + 1
+        else
+            dropped = dropped + 1
+        end
+    end
+    if dropped > 0 and SoilLogger ~= nil and type(SoilLogger.warning) == 'function' then
+        SoilLogger.warning("[SF-79] pH bank: field %s, %d banked remainder(s) in the %s save were dropped: a usable remainder names its cause and kind and is below one raw step (%.4f pH), and these did not (an older save)",
+            tostring(fieldId), dropped, tostring(origin), PositionalPH.unitsPerRaw())
+    end
+    return kept, dropped
+end
+
+-- ============================================================
+-- EXISTING SOIL XML PERSISTENCE (brief 3.B)
+-- ============================================================
+
+--- Persist the SF-79 field metadata (seed + pending remainders) into the existing
+--- soilData field record. The dense pH truth is the pH GRLE file; the report is
+--- never persisted (it is re-derived from the map on load).
+function SoilFertilitySystem:_phSaveFieldXML(xmlFile, fieldKey, field)
+    if xmlFile == nil or fieldKey == nil or field == nil then return end
+    local seed = field._phSeedScalar
+    if type(seed) == 'number' then
+        setXMLFloat(xmlFile, fieldKey .. "#sf79PHSeed", seed)
+    end
+    local idx = 0
+    for _, p in ipairs(field._phPending or {}) do
+        local pk = string.format("%s.sf79PHPending(%d)", fieldKey, idx)
+        setXMLString(xmlFile, pk .. "#cause", p.cause or '')
+        setXMLString(xmlFile, pk .. "#kind", p.kind or '')
+        setXMLFloat(xmlFile, pk .. "#amount", p.amount or 0)
+        setXMLString(xmlFile, pk .. "#domainKey", p.domainKey or '')
+        idx = idx + 1
+    end
+    setXMLInt(xmlFile, fieldKey .. "#sf79PHPendingCount", idx)
+end
+
+--- Freeze the pre-migration pH scalar ONCE, from a save that provably predates the
+--- positional contract (brief 3.B: "seed only raw-zero supported ground from a
+--- frozen pre-migration scalar clamped to carrier bounds"). This is the one
+--- legitimate reader of the root `#sf79PHSchema` marker.
+---
+--- WHY THE MARKER DECIDES. `field.pH` is republished from the derived report by
+--- `_phRefreshScalar` after every positional write, so on a save written by a
+--- build with the contract the loaded scalar may already be "the later report",
+--- which 3.B forbids as a seed. Only an UNMARKED save proves its scalar came
+--- before SF-79. A marked save with no seed is left nil on purpose; the brief's
+--- named alternative, the existing genesis rule, belongs to the seeding item.
+---
+--- The marker gates ONLY this freeze. It never gates seeding or missing-carrier
+--- recovery: a schema marker never proves the carrier exists (see _migratePH).
+--- Same helper on both loaders (XML and the StateLedger table), so they cannot
+--- drift. Clamped to the carrier bounds, because the load clamps pH to 8.5.
+---@param field table the loaded field record
+---@param schemaMarked boolean true when the save carried #sf79PHSchema
+---@return boolean frozen true only when this call set the seed
+function SoilFertilitySystem:_phFreezeSeedFromLoad(field, schemaMarked)
+    if type(field) ~= 'table' or schemaMarked == true then return false end
+    if type(field._phSeedScalar) == 'number' then return false end
+    local pH = field.pH
+    if type(pH) ~= 'number' then return false end
+    local limits = SoilConstants and SoilConstants.NUTRIENT_LIMITS
+    if limits == nil then return false end
+    field._phSeedScalar = math.max(limits.PH_MIN, math.min(limits.PH_MAX, pH))
+    return true
+end
+
+--- Restore the SF-79 field metadata. The report stays absent until re-derived, so
+--- persisted placeholders can never present as current local soil.
+function SoilFertilitySystem:_phLoadFieldXML(xmlFile, fieldKey, field)
+    if xmlFile == nil or fieldKey == nil or field == nil then return end
+    local seed = getXMLFloat(xmlFile, fieldKey .. "#sf79PHSeed")
+    if type(seed) == 'number' then field._phSeedScalar = seed end
+    local list = {}
+    local count = getXMLInt(xmlFile, fieldKey .. "#sf79PHPendingCount") or 0
+    for i = 0, count - 1 do
+        local pk = string.format("%s.sf79PHPending(%d)", fieldKey, i)
+        local domainKey = getXMLString(xmlFile, pk .. "#domainKey")
+        if domainKey ~= nil then
+            list[#list + 1] = {
+                cause = getXMLString(xmlFile, pk .. "#cause") or '',
+                kind = getXMLString(xmlFile, pk .. "#kind") or '',
+                amount = getXMLFloat(xmlFile, pk .. "#amount") or 0,
+                domainKey = domainKey,
+            }
+        end
+    end
+    self:_phRestorePending(field.id or fieldKey, field, list, 'xml')
+    field._phReport = nil
+end
+
+-- ============================================================
+-- AUTO RATE (brief 3.D)
+-- ============================================================
+-- Server-side, before the root-vehicle usage multiplier. Reads the LOCAL pH at
+-- the applicator and returns a bounded whole-rate factor for a pH-active product
+-- under AUTO: boost while the local ground is below the neutral band, reduce once
+-- it is above it. In-band or unknown ground is neutral. Cached on the existing
+-- five-second cadence per working vehicle; no global vehicle scan, no new
+-- subscription. The hook applies the returned factor once.
+
+--- [SF-79 D] The local pH under the CURRENT work areas: the mean, over each
+--- active, non-auxiliary area, of the map value at the area's centre. The engine's
+--- work area is the parallelogram start / width / height (WorkArea.lua:289-291),
+--- whose centre is the midpoint of the width and height nodes, read through
+--- getWorldTranslation NOW, not remembered from an earlier tick. nil when no area
+--- yields a numeric sample; the caller then retains the selected rate.
+---@param soilSys table
+---@param vehicle table|nil  the sprayer, for getIsWorkAreaActive (Sprayer.lua:726)
+---@param workAreas table|nil the list the engine raised the start event with
+---@return number|nil
+function PositionalPH.sampleWorkAreasPH(soilSys, vehicle, workAreas)
+    if type(workAreas) ~= 'table' or soilSys == nil or soilSys.valueMaps == nil then return nil end
+    -- MAINTENANCE row 74: read the engine global BARE. The old `(WorkAreaType ~= nil)
+    -- and ... or nil` guard failed OPEN: with the global missing, aux was nil and
+    -- every auxiliary area was counted. WorkAreaType is an engine class present on
+    -- every peer at mission time; a bench that forgets it must fail loudly here,
+    -- not pass with auxiliary areas silently admitted.
+    local aux = WorkAreaType.AUXILIARY
+    local sum, n = 0, 0
+    for _, wa in ipairs(workAreas) do
+        local usable = type(wa) == 'table' and (aux == nil or wa.type ~= aux)
+        if usable and vehicle ~= nil and type(vehicle.getIsWorkAreaActive) == 'function' then
+            local ok, active = pcall(vehicle.getIsWorkAreaActive, vehicle, wa)
+            if ok and active == false then usable = false end
+        end
+        if usable and wa.width ~= nil and wa.height ~= nil then
+            local okW, wx, _, wz = pcall(getWorldTranslation, wa.width)
+            local okH, hx, _, hz = pcall(getWorldTranslation, wa.height)
+            if okW and okH and type(wx) == 'number' and type(hx) == 'number'
+               and type(wz) == 'number' and type(hz) == 'number' then
+                local ph = soilSys.valueMaps:readValueAtWorld(PositionalPH.PH_LAYER,
+                    (wx + hx) * 0.5, (wz + hz) * 0.5)
+                if type(ph) == 'number' then sum, n = sum + ph, n + 1 end
+            end
+        end
+    end
+    if n == 0 then return nil end
+    return sum / n
+end
+
+function SoilFertilitySystem:updatePHWorkAuto(sprayerSelf, _dt, workAreas)
+    if g_server == nil or self.settings == nil or not self.settings.enabled then return 1.0 end
+    if type(self._applyPHFootprint) ~= 'function' then return 1.0 end
+    local rm = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
+    if rm == nil or type(rm.getAutoMode) ~= 'function' then return 1.0 end
+
+    local root = sprayerSelf and sprayerSelf.rootVehicle
+    local vehId = (root and root ~= sprayerSelf) and (root.id or 0) or (sprayerSelf and sprayerSelf.id or 0)
+    if not rm:getAutoMode(vehId) then return 1.0 end
+
+    local now = (g_currentMission and g_currentMission.time) or 0
+    self._phAutoCache = self._phAutoCache or {}
+    local cached = self._phAutoCache[vehId]
+    if cached ~= nil and (now - cached.time) < 5000 then return cached.factor end
+
+    local function remember(factor)
+        self._phAutoCache[vehId] = { time = now, factor = factor }
+        return factor
+    end
+
+    -- [SF-79 D, defect 1] workAreaParameters.sprayFillType is a fill-type INDEX
+    -- (Sprayer.lua:926 assigns it from externalFillType; :316 and :922 compare it
+    -- to FillType.UNKNOWN), not a descriptor. Indexing it for a name raised inside
+    -- the caller's pcall, whose assignment happens only on success, so the factor
+    -- stayed at its initialised 1.0 on every path: AUTO had never changed a rate.
+    -- Resolve the descriptor through the manager, as every index consumer in
+    -- HookManager does.
+    local spec = sprayerSelf and sprayerSelf.spec_sprayer
+    local ftIdx = spec and spec.workAreaParameters and spec.workAreaParameters.sprayFillType
+    if type(ftIdx) ~= 'number' or ftIdx <= 0 or (FillType ~= nil and ftIdx == FillType.UNKNOWN) then
+        return remember(1.0)
+    end
+    local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ftIdx)
+    if fillType == nil or fillType.name == nil then return remember(1.0) end
+
+    local profiles = SoilConstants.FERTILIZER_PROFILES
+    local profile = profiles and profiles[(fillType.name or ""):upper()]
+    if profile == nil or profile.pH == nil or profile.pH == 0 then return remember(1.0) end
+
+    -- [SF-79 D, defect 2] "Use current nodes/section state, never the previous
+    -- interval's". The only coordinate this read ever had was _lastSprayX/Z,
+    -- written by the AREA hook, which runs AFTER this start hook in the same tick:
+    -- the previous tick's point, or nil on the first. The engine hands this
+    -- function the CURRENT work-area list (WorkArea.lua:126 raises the start event
+    -- with spec.workAreas; the caller passes it through), so the sample is the
+    -- local pH under those areas' nodes, read now. No area, no node or no numeric
+    -- sample retains the selected rate; nothing falls back to the stale point,
+    -- which this function no longer reads at all.
+    if not self:vmAvailable() then return remember(1.0) end
+    local ph = PositionalPH.sampleWorkAreasPH(self, sprayerSelf, workAreas)
+    if ph == nil then return remember(1.0) end
+
+    local limits = SoilConstants.NUTRIENT_LIMITS
+    local factor = 1.0
+    if type(ph) == 'number' then
+        if profile.pH > 0 then
+            if ph < limits.PH_NEUTRAL_LOW then
+                local deficit = (limits.PH_NEUTRAL_LOW - ph)
+                    / math.max(0.001, limits.PH_NEUTRAL_LOW - limits.PH_MIN)
+                factor = 1.0 + math.min(0.5, deficit)
+            else
+                factor = 0.5
+            end
+        else
+            if ph > limits.PH_NEUTRAL_HIGH then
+                local excess = (ph - limits.PH_NEUTRAL_HIGH)
+                    / math.max(0.001, limits.PH_MAX - limits.PH_NEUTRAL_HIGH)
+                factor = 1.0 + math.min(0.5, excess)
+            else
+                factor = 0.5
+            end
+        end
+    end
+    return remember(factor)
+end

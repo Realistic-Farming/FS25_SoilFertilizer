@@ -12,12 +12,11 @@
 -- =========================================================
 
 ---@class SoilTreatmentDialog
-SoilTreatmentDialog = {}
+SoilTreatmentDialog = SoilTreatmentDialog or {}
 local SoilTreatmentDialog_mt = Class(SoilTreatmentDialog, ScreenElement)
 
--- Capture mod name at source-time
-local SF_TREAT_MOD_NAME = g_currentModName
-local SF_TREAT_MOD_DIR  = g_currentModDirectory
+-- Capture mod directory at source-time
+local SF_TREAT_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 -- Singleton
 SoilTreatmentDialog.INSTANCE = nil
@@ -37,16 +36,37 @@ end
 
 -- ── i18n helper ───────────────────────────────────────────
 
+-- Resolve a locale key, falling back to the English sentence the caller supplies.
+--
+-- The gate is hasText, NOT a comparison against the returned string. getText never
+-- returns nil or "" for a missing key: I18N.lua:186 returns
+-- "Missing '<key>' in l10n<suffix>.xml". The old guard compared against
+-- ("$l10n_" .. key), which is the XML attribute prefix, not anything getText
+-- produces, so the comparison never matched and the fallback below was unreachable
+-- for EVERY key in this dialog. That is how a missing sf_treat_action_ph_unknown
+-- reached a player as the engine's error text instead of the sentence at the call.
+--
+-- The former g_modEnvironments lookup is gone rather than left dead, and the
+-- source-time mod-name local went with it as its only reader. That global does not
+-- exist in FS25 (I18N keeps modEnvironments as a private field), and the field it
+-- read was .i18n where mods.lua:453 sets .g_i18n. Inside a mod's own environment
+-- g_i18n IS that mod's I18N instance, whose texts table chains to the global one,
+-- so the plain read resolves mod keys and base-game keys both.
+--
+-- Mirrors DogEarlyWarning.formatWarning (RSF-F192), already covered by
+-- tools/test/lua/RSF-F192-dog_warning_l10n_test.lua.
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_TREAT_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
+    local out
+    pcall(function()
+        local i18n = g_i18n
+        if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+            return
         end
-    end
-    return fallback or key
+        if i18n:hasText(key) ~= true then return end
+        local text = i18n:getText(key)
+        if type(text) == "string" and text ~= "" then out = text end
+    end)
+    return out or fallback or key
 end
 
 -- ── Constructor ───────────────────────────────────────────
@@ -207,8 +227,10 @@ function SoilTreatmentDialog.buildPrescription(fieldId)
     local rx = { fieldId = fieldId }
 
     -- 1. pH Action
-    local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-    if ph < 6.5 then
+    local ph = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
+    if ph == nil then
+        rx.ph = _action(tr("sf_treat_action_ph_unknown", "pH unknown - no lime advice until a current reading exists."), COLOR_DIM)
+    elseif ph < 6.5 then
         rx.ph = _action(tr("sf_treat_action_lime", "Apply LIME or LIQUID LIME to raise pH."), COLOR_POOR)
     elseif ph > 7.5 then
         rx.ph = _action(tr("sf_treat_action_gypsum", "Apply GYPSUM to lower pH / improve structure."), COLOR_FAIR)

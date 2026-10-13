@@ -12,11 +12,10 @@
 -- =========================================================
 
 ---@class SoilGuideDialog
-SoilGuideDialog = {}
+SoilGuideDialog = SoilGuideDialog or {}
 local SoilGuideDialog_mt = Class(SoilGuideDialog, ScreenElement)
 
-local SF_GUIDE_MOD_NAME = g_currentModName
-local SF_GUIDE_MOD_DIR  = g_currentModDirectory
+local SF_GUIDE_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilGuideDialog.INSTANCE = nil
 
@@ -330,15 +329,20 @@ SoilGuideDialog.PAGE_CONTENT = {
 -- ── i18n helper ───────────────────────────────────────────
 
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_GUIDE_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 -- ── Constructor ───────────────────────────────────────────
@@ -452,7 +456,15 @@ function SoilGuideDialog:_buildContent(pageNum)
             if profile then
                 local el = TextElement.new()
                 el:loadProfile(profile, true)
-                el:setText(row.k and tr(row.k, row.v or "") or (row.v or ""))
+                -- [SF-66] Guide rows quote seven different default chords
+                -- (HUD drag, variable rate, scout, treatment, auto rate, map
+                -- layer, settings). Rewrite the resolved text, so a rebound
+                -- player reads their own keys on every page and locale.
+                local rowText = row.k and tr(row.k, row.v or "") or (row.v or "")
+                if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+                    rowText = SoilLiveHint.rewrite(rowText)
+                end
+                el:setText(rowText)
                 currentBox:addElement(el)
                 el:onGuiSetupFinished()
                 table.insert(self._contentLineEls, { box = currentBox, el = el })

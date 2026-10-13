@@ -76,7 +76,7 @@
         <multipleItemPurchaseAmountConfiguration name="5" price="7200"/>
         <multipleItemPurchaseAmountConfiguration name="6" price="9000"/>
         <multipleItemPurchaseAmountConfiguration name="7" price="10800"/>
-        <multipleItemPurchaseAmountConfiguration name="8" price="11800"/>
+        <multipleItemPurchaseAmountConfiguration name="8" price="12600"/>
     </multipleItemPurchaseAmountConfigurations>
 
 </vehicle>

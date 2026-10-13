@@ -15,7 +15,7 @@
 -- seasons-long consequence, inverting the entire design intent. That was a HARD build-order
 -- gate (Steward CD10-C1) and it cleared with b60677f8.
 
-HybridStrains = {}
+HybridStrains = HybridStrains or {}
 
 -- ── Eligibility (the threshold arithmetic) ────────────────────────────────────────────
 --

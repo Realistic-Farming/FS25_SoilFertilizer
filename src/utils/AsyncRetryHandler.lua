@@ -9,7 +9,7 @@
 -- Generic retry handler for async operations in FS25
 -- Works in Lua 5.1, no coroutines needed
 
-AsyncRetryHandler = {}
+AsyncRetryHandler = AsyncRetryHandler or {}
 local AsyncRetryHandler_mt = Class(AsyncRetryHandler)
 
 --- Create new retry handler for async operations

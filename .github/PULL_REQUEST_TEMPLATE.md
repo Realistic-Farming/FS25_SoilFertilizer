@@ -30,7 +30,7 @@
 - [ ] My change touches only what it needs to - no unrelated edits
 - [ ] If I added a setting: one entry in `SettingsSchema.lua` + `_short`/`_long` translations in `modDesc.xml` for all 10 languages
 - [ ] If I changed crop/fertilizer values: they're in `Constants.lua`, not hardcoded
-- [ ] If I changed behaviour: `CHANGELOG.md` has an entry under the correct version
+- [ ] If I changed behaviour: the changelog line is in this PR's description. I did not edit `CHANGELOG.md`; it is assembled at release
 - [ ] No `assert()` calls - errors are handled gracefully with `pcall()`
 - [ ] No Lua 5.2+ syntax (`goto`, `continue`, `os.time()`, etc.)
 

@@ -9,7 +9,7 @@
 -- F66 relief: CD-9 shipped 2026-07-29 with a build that counted every boom section as a
 -- full application. The meter landed 2026-08-01, but the damage is PERSISTED. Arissani
 -- ruled the player should not stay burned by a choice the bug made for him.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local R     = SoilConstants.RESISTANCE
 local BUILD = R.BUILD_PER_APPLICATION
@@ -185,4 +185,106 @@ do
   local sys = setmetatable({ fieldData = {}, lastUpdateDay = 7 }, { __index = SoilFertilitySystem })
   local out = sys:getSoilStateTable()
   T.eq("relief: the ledger snapshot carries the marker", out.f66ResistanceReset, 1)
+end
+
+-- ── RSF-F237: THE RELIEF ALSO DROPS THE SCOUT BIT ────────────────────────────────────
+--
+-- A revealed field with no score for a mode bands WORKING (ResistanceBands.computeBand),
+-- which is right for a field the farmer scouted and never burned. The relief manufactures
+-- exactly that pair on a field that WAS burned: gate open, scores empty. So the relief
+-- clears fieldEverScouted with the scores, and the field reads UNKNOWN until the next scout.
+
+local B = SoilConstants.RESISTANCE.BANDS
+
+-- The relieved field: scores gone, scout bit gone, disease identity untouched.
+do
+  local sys = loadSys()
+  sys:_beginF66ResistanceRelief(false)
+  local f = { resistance = { ["3"] = R.MAX_SYNTHETIC }, fieldEverScouted = true, diseaseDiscovered = true }
+  sys:_finalizeLoadedField(1, f)
+  T.ok("F237: relieved field has its resistance cleared", next(f.resistance) == nil)
+  T.eq("F237: relieved field drops fieldEverScouted", f.fieldEverScouted, false)
+  T.eq("F237: ...as an explicit false, never nil", type(f.fieldEverScouted), "boolean")
+  T.eq("F237: diseaseDiscovered is not touched", f.diseaseDiscovered, true)
+  T.eq("F237: the clear is counted once", sys._f66ReliefCleared, 1)
+  T.eq("F237: the classifier now says UNKNOWN for the zeroed mode",
+       ResistanceBands.computeBand(f, "3"), B.UNKNOWN)
+  T.eq("F237: ...and for a mode that never had a score", ResistanceBands.computeBand(f, "11"), B.UNKNOWN)
+  T.eq("F237: the wire carries an empty band list for it", #ResistanceBands.encodeFieldBands(f), 0)
+end
+
+-- A field the relief does not enter keeps its bit: empty scores in a pending relief,
+-- and any scores in a save that is already marked.
+do
+  local sys = loadSys()
+  sys:_beginF66ResistanceRelief(false)
+  local empty = { resistance = {}, fieldEverScouted = true, diseaseDiscovered = true }
+  sys:_finalizeLoadedField(1, empty)
+  T.eq("F237: an empty-resistance field keeps its scout bit", empty.fieldEverScouted, true)
+  T.eq("F237: ...and still bands WORKING for an unburned mode",
+       ResistanceBands.computeBand(empty, "3"), B.WORKING)
+
+  local marked = loadSys()
+  marked:_beginF66ResistanceRelief(true)
+  local kept = { resistance = { ["3"] = 2.5 }, fieldEverScouted = true }
+  marked:_finalizeLoadedField(1, kept)
+  T.eq("F237: a marked save keeps its scout bit", kept.fieldEverScouted, true)
+  T.eq("F237: ...and its scores", kept.resistance["3"], 2.5)
+end
+
+-- A never-scouted field stays never-scouted through the relief (false in, false out).
+do
+  local sys = loadSys()
+  sys:_beginF66ResistanceRelief(false)
+  local f = { resistance = { ["3"] = 1.0 }, fieldEverScouted = false }
+  sys:_finalizeLoadedField(1, f)
+  T.eq("F237: false stays false", f.fieldEverScouted, false)
+end
+
+-- The explicit false must SURVIVE a save: both writers write it out as false/0 rather than
+-- omitting it, because the loaders re-seed an ABSENT key from diseaseDiscovered.
+do
+  local sys = setmetatable({ fieldData = {}, lastUpdateDay = 7,
+                             herbicideAppliedDay = {}, insecticideAppliedDay = {}, fungicideAppliedDay = {} },
+                           { __index = SoilFertilitySystem })
+  sys.fieldData[1] = {
+    resistance = {}, fieldEverScouted = false, diseaseDiscovered = true,
+    fieldArea = 1, nutrientBuffer = {}, sessionCoverageCells = {},
+  }
+  local out = sys:getSoilStateTable()
+  local e = nil
+  if type(out.fields) == "table" then
+    for _, v in pairs(out.fields) do e = v; break end
+  end
+  T.ok("F237: the ledger snapshot carries the field", e ~= nil)
+  if e then
+    T.eq("F237: the ledger writes fieldEverScouted as an explicit false", e.fieldEverScouted, false)
+    T.eq("F237: ...next to a true diseaseDiscovered, which would otherwise re-seed it",
+         e.diseaseDiscovered, true)
+  end
+end
+
+-- Scouting again restores the bit through the server-only path, as today.
+do
+  -- Same shape as the CD-11 scout test: no activeDisease, so the report walk
+  -- needs no disease system; the flags are the subject.
+  local f = { resistance = { ["3"] = 1.0 }, fieldEverScouted = true, diseaseDiscovered = false }
+  local sys = setmetatable({ settings = { diseasePressure = true }, fieldData = { [1] = f } },
+                           { __index = SoilFertilitySystem })
+  sys:_beginF66ResistanceRelief(false)
+  sys:_finalizeLoadedField(1, f)
+  T.eq("F237: relief cleared the bit before the scout", f.fieldEverScouted, false)
+  local savedServer, savedMission = g_server, g_currentMission
+  local savedFarmland, savedFarms = g_farmlandManager, g_farmManager
+  g_server = {}
+  g_currentMission = { missionDynamicInfo = { isMultiplayer = false } }
+  -- [RSF-F231] the scout is made FOR farm 1, which owns farmland 1.
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
+  sys:scoutField(1, 1)
+  g_server, g_currentMission = savedServer, savedMission
+  g_farmlandManager, g_farmManager = savedFarmland, savedFarms
+  T.eq("F237: a server scout sets the bit true again", f.fieldEverScouted, true)
+  T.eq("F237: ...and the classifier is back to WORKING on the clean slate",
+       ResistanceBands.computeBand(f, "3"), B.WORKING)
 end

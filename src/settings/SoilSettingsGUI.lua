@@ -5,7 +5,7 @@
 -- =========================================================
 ---@class SoilSettingsGUI
 
-SoilSettingsGUI = {}
+SoilSettingsGUI = SoilSettingsGUI or {}
 local SoilSettingsGUI_mt = Class(SoilSettingsGUI)
 
 -- Route a setting change through the network layer so all MP clients are notified.
@@ -92,6 +92,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("SoilVmStats", "REFINED: show per-pixel value map status (resolution, layers)", "consoleCommandVmStats", self)
     addConsoleCommand("SoilMaterialBench", "SF-43/49 family gate: time ms per engine call for the ground-material passes: SoilMaterialBench [fieldId] [iterations]", "consoleCommandMaterialBench", self)
     addConsoleCommand("SoilRelease", "Release gate: show which systems are STABLE vs experimental-LOCKED", "consoleCommandRelease", self)
+    addConsoleCommand("SoilVersionShow", "Show the version / What's New dialog (preview the changelog UI)", "consoleCommandShowVersion", self)
     addConsoleCommand("SoilVmRead", "REFINED: read value map layers at a position: SoilVmRead [x z] (defaults to player/vehicle position)", "consoleCommandVmRead", self)
     addConsoleCommand("SoilVmPaint", "REFINED: paint a value at a position: SoilVmPaint <layer> <value> [radius] [x z] (layer: nitrogen|phosphorus|potassium|pH|organicMatter|compaction)", "consoleCommandVmPaint", self)
     addConsoleCommand("SoilVmReseed", "REFINED: force-reseed all fields into the value maps from field averages (+noise)", "consoleCommandVmReseed", self)
@@ -782,6 +783,18 @@ function SoilSettingsGUI:consoleCommandRelease()
     return ReleaseGate.status(optIn)
 end
 
+-- Force-show the version / What's New dialog (it otherwise only appears once per
+-- version on load), so the changelog UI can be previewed on demand.
+function SoilSettingsGUI:consoleCommandShowVersion()
+    if not (SoilVersionDialog and g_gui) then return "Version dialog not loaded" end
+    local mgr     = g_SoilFertilityManager
+    local modName = (mgr and mgr.modName) or SoilFertilizerModName
+    local modInfo = g_modManager and modName and g_modManager:getModByName(modName)
+    local version = (modInfo and modInfo.version) or "dev"
+    SoilVersionDialog.show(version)
+    return "Version dialog shown (v" .. version .. ")"
+end
+
 function SoilSettingsGUI:consoleCommandBlendCheck()
     local gate = releaseGateLockedMsg("SoilBlendCheck")
     if gate then return gate end
@@ -921,18 +934,33 @@ function SoilSettingsGUI:consoleCommandResistance(fieldId)
 
     local field = soilSys.fieldData and soilSys.fieldData[fid]
     if not field then return string.format("Field %d: no soil data", fid) end
+    -- [RSF-F231] The readout prints learned agronomy (scouted state, bands, scores),
+    -- the same information the scout write earns, so it gates on the same standing.
+    if not SoilFertilitySystem.isScoutAuthorized(SoilFertilitySystem.localScoutFarmId(), fid) then
+        return string.format("Field %d: no standing (this machine's farm neither owns nor contracts the land)", fid)
+    end
 
     local R = SoilConstants.RESISTANCE
     local lines = {}
-    lines[#lines+1] = string.format("=== Resistance (CD-9) -- Field %d ===", fid)
-    lines[#lines+1] = string.format("Scouted: %s%s",
-        field.diseaseDiscovered and "YES" or "NO",
-        field.diseaseDiscovered and "" or "  <- bands are gated; everything reads UNKNOWN until you SoilScout")
+    lines[#lines+1] = string.format("=== Resistance (CD-9 / CD-11) -- Field %d ===", fid)
+    -- CD-11: the reveal gate is the durable server bit, not the per-outbreak flag.
+    local everScouted = field.fieldEverScouted == true
+    lines[#lines+1] = string.format("Scouted: %s  (fieldEverScouted = %s, the durable bit the bands gate on)%s",
+        everScouted and "YES" or "NO", tostring(everScouted),
+        everScouted and "" or "  <- bands are gated; everything reads UNKNOWN until the server records a SoilScout")
+    lines[#lines+1] = string.format("Disease discovered: %s  (diseaseDiscovered, resets per outbreak; does not gate bands)",
+        field.diseaseDiscovered and "YES" or "NO")
     lines[#lines+1] = string.format("Field area: %.2f ha", field.fieldArea or 0)
-    lines[#lines+1] = string.format("Picture: %s",
-        ResistanceBands.hasServerPicture() and "server/SP (raw scores local)" or "client (bands synced from server)")
+    local serverPicture = ResistanceBands.hasServerPicture()
+    if serverPicture then
+        lines[#lines+1] = "Picture: server/SP (raw scores local)"
+    else
+        lines[#lines+1] = string.format("Picture: client (bands synced from server) -- bands %s",
+            field.resistanceBandsReceived == true
+                and "RECEIVED (a silent mode reads WORKING)"
+                or "WAITING (no field delivery yet; every mode reads UNKNOWN)")
+    end
     lines[#lines+1] = ""
-    lines[#lines+1] = "MODE  SCORE/MAX      RATIO   BAND       NEXT SPRAY   CHEMICALS"
 
     -- Walk the FRAC modes the mod actually knows about, so a clean mode still shows.
     local seen, modes = {}, {}
@@ -942,16 +970,29 @@ function SoilSettingsGUI:consoleCommandResistance(fieldId)
     end
     table.sort(modes)
 
-    for _, mode in ipairs(modes) do
-        local ceiling = ResistanceBands.ceilingForMode(mode)
-        local score   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
-        local ratio   = score / ceiling
-        local band    = soilSys:getResistanceBand(fid, mode)
-        -- The CD-9 penalty a spray of this mode would take right now.
-        local mult    = 1 - (score / ceiling)
-        lines[#lines+1] = string.format("%-5s %6.3f/%-6.1f %5.0f%%   %-9s x%.2f        %s",
-            mode, score, ceiling, ratio * 100,
-            RESISTANCE_BAND_NAMES[band] or "?", mult, chemicalsForMode(mode))
+    if serverPicture then
+        lines[#lines+1] = "MODE  SCORE/MAX      RATIO   BAND       NEXT SPRAY   CHEMICALS"
+        for _, mode in ipairs(modes) do
+            local ceiling = ResistanceBands.ceilingForMode(mode)
+            local score   = (type(field.resistance) == "table" and field.resistance[mode]) or 0
+            local ratio   = score / ceiling
+            local band    = soilSys:getResistanceBand(fid, mode)
+            -- The CD-9 penalty a spray of this mode would take right now.
+            local mult    = 1 - (score / ceiling)
+            lines[#lines+1] = string.format("%-5s %6.3f/%-6.1f %5.0f%%   %-9s x%.2f        %s",
+                mode, score, ceiling, ratio * 100,
+                RESISTANCE_BAND_NAMES[band] or "?", mult, chemicalsForMode(mode))
+        end
+    else
+        -- A pure client holds bands only. No score, ratio or next-spray column is invented
+        -- from a zero the server never sent; the public getter is the whole picture here.
+        lines[#lines+1] = "MODE  BAND       CHEMICALS"
+        for _, mode in ipairs(modes) do
+            local band = soilSys:getResistanceBand(fid, mode)
+            lines[#lines+1] = string.format("%-5s %-9s  %s",
+                mode, RESISTANCE_BAND_NAMES[band] or "?", chemicalsForMode(mode))
+        end
+        lines[#lines+1] = "(raw scores, ratios and next-spray multipliers stay on the server)"
     end
 
     lines[#lines+1] = ""
@@ -1088,7 +1129,12 @@ function SoilSettingsGUI:consoleCommandScout(fieldId)
 
     -- Scouting is the deliberate reveal: it flips the discovery gate so the report
     -- returns the full truth (and, in MP, tells the server to open the gate farm-wide).
-    local rep = sfm.soilSystem:scoutField(fid)
+    -- [RSF-F231] For this machine's own farm. A dedicated server's console has no
+    -- local farm, so it refuses: land standing has no admin override.
+    local rep, refused = sfm.soilSystem:scoutField(fid, SoilFertilitySystem.localScoutFarmId())
+    if refused ~= nil then
+        return string.format("Field %d: no standing (this machine's farm neither owns nor contracts the land); nothing scouted", fid)
+    end
     if not rep then return string.format("Field %d: no soil data", fid) end
     if rep.enabled == false then return "Disease system is disabled (enable Disease Pressure in settings)" end
 
@@ -1129,8 +1175,13 @@ function SoilSettingsGUI:consoleCommandTreat(chemical, fieldId)
     local fid = resolveDiseaseFieldId(fieldId)
     if not fid then return "Usage: SoilTreat <chemical> <fieldId>  (or stand on a field)" end
 
-    local ok, msgKey, detail = sfm.soilSystem:applyNamedFungicide(fid, chemId, { charge = true })
+    -- The console acts for THIS machine's farm (row 116; nil on a dedicated server's
+    -- console, which the writer refuses), as the scout doors do.
+    local ok, msgKey, detail = sfm.soilSystem:applyNamedFungicide(fid, chemId, { charge = true, farmId = SoilFertilitySystem.localScoutFarmId() })
     if not ok then
+        if msgKey == "sf_treat_no_standing" then
+            return string.format("Field %d: no standing (this machine's farm neither owns nor contracts the land); nothing treated", fid)
+        end
         return string.format("Treatment failed (%s) on field %d", tostring(msgKey), fid)
     end
     detail = detail or {}
@@ -1363,7 +1414,7 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
             local fInfo = string.format(
                 "=== Field %d Soil Information ===\n" ..
                 "Nitrogen: %d ppm (%s)\nPhosphorus: %d ppm (%s)\nPotassium: %d ppm (%s)\n" ..
-                "Organic Matter: %.1f%%\npH: %.1f\n" ..
+                "Organic Matter: %.1f%%\npH: %s\n" ..
                 "Last Crop: %s\nDays Since Harvest: %d\nFertilizer Applied: %.0fL\n" ..
                 "Needs Fertilization: %s\n" ..
                 "================================",
@@ -1372,7 +1423,7 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
                 math.floor(info.phosphorus.value * ppm.P + 0.5), info.phosphorus.status,
                 math.floor(info.potassium.value  * ppm.K + 0.5), info.potassium.status,
                 info.organicMatter,
-                info.pH,
+                tostring(info.pH),
                 info.lastCrop or "None",
                 info.daysSinceHarvest,
                 info.fertilizerApplied,
@@ -1406,7 +1457,7 @@ function SoilSettingsGUI.writeFieldDump(fid, info)
     xml:setInt  ("fieldDump.nutrients#potassium",     math.floor(info.potassium.value  * ppm.K + 0.5))
     xml:setString("fieldDump.nutrients#potassiumStatus", info.potassium.status)
     xml:setFloat("fieldDump.nutrients#organicMatter", info.organicMatter)
-    xml:setFloat("fieldDump.nutrients#pH",            info.pH)
+    if info.pH ~= nil then xml:setFloat("fieldDump.nutrients#pH", info.pH) end
     xml:setString("fieldDump.status#lastCrop",        info.lastCrop or "")
     xml:setInt  ("fieldDump.status#daysSinceHarvest", info.daysSinceHarvest)
     xml:setFloat("fieldDump.status#fertilizerApplied",info.fertilizerApplied)
@@ -1449,7 +1500,7 @@ function SoilSettingsGUI:consoleCommandFieldForecast(fieldId)
             if info.nitrogen.value   < thresh then table.insert(recs, "Apply Nitrogen")   end
             if info.phosphorus.value < thresh then table.insert(recs, "Apply Phosphorus") end
             if info.potassium.value  < thresh then table.insert(recs, "Apply Potassium")  end
-            if info.pH < 6.0                  then table.insert(recs, "Apply Lime")       end
+            if info.pH ~= nil and info.pH < 6.0 then table.insert(recs, "Apply Lime") end
             if (info.weedPressure or 0) > 20  then table.insert(recs, "Apply Herbicide") end
 
             local recStr = #recs > 0 and table.concat(recs, ", ") or "None required"
@@ -1541,7 +1592,10 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     local fm = g_fillTypeManager
     if not fm then return "Error: FillTypeManager not available" end
 
-    -- Build a set of custom fill type indices this mod manages
+    -- Build a set of custom fill type indices this mod manages: the legacy list first,
+    -- then (RSF-F196 R7) the twelve dry products from HookManager.DRY_PRODUCT_NAMES,
+    -- unioned in from the catalogue rather than a second hand-written list, so AN and
+    -- POLIFOSKA are drained the way UREA is and the two lists cannot drift apart.
     local customNames = {
         "UREA","AMS","MAP","DAP","POTASH","COMPOST","BIOSOLIDS",
         "CHICKEN_MANURE","PELLETIZED_MANURE","GYPSUM",
@@ -1549,24 +1603,47 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
         "INSECTICIDE","FUNGICIDE",
         "LIQUID_UREA","LIQUID_AMS","LIQUID_MAP","LIQUID_DAP","LIQUID_POTASH",
     }
+    if HookManager and type(HookManager.DRY_PRODUCT_NAMES) == "table" then
+        local seen = {}
+        for _, n in ipairs(customNames) do seen[n] = true end
+        for _, n in ipairs(HookManager.DRY_PRODUCT_NAMES) do
+            if not seen[n] then customNames[#customNames + 1] = n; seen[n] = true end
+        end
+    end
     local customSet = {}
     local priceTable = {}
-    -- Prices match FALLBACK_PRICES in installPurchaseRefillHook
-    local fallbackPrices = {
-        UREA=1.65, AMS=1.40, MAP=1.95, DAP=1.75, POTASH=1.80,
-        COMPOST=0.60, BIOSOLIDS=0.55, CHICKEN_MANURE=0.50,
-        PELLETIZED_MANURE=0.70, GYPSUM=0.80,
-        UAN32=1.60, UAN28=1.50, ANHYDROUS=1.85, STARTER=1.70,
-        LIQUIDLIME=1.20, INSECTICIDE=1.20, FUNGICIDE=1.30,
-        LIQUID_UREA=1.70, LIQUID_AMS=1.45, LIQUID_MAP=2.00,
-        LIQUID_DAP=1.80, LIQUID_POTASH=1.85,
-    }
+    -- The refund basis is the product's SHOP price: the fillTypes.xml economy price the
+    -- engine holds on the fill type (FillTypeDesc.pricePerLiter, read from
+    -- `.economy#pricePerLiter` at FillTypeDesc.lua:75, default 0 at :12 when a fill type
+    -- declares no economy). Read at call time through the manager, so a map or mod that
+    -- redefines a product is honoured and no second price copy can drift (the old
+    -- hand-written table here did). NOT EconomyManager:getPricePerLiter, which adds
+    -- the seasonal factor and the difficulty multipliers: the ruling (Tyson,
+    -- 2026-09-23) is the XML price at the existing 50%, and the XML price is
+    -- seasonal-invariant, so there is no buy-cheap, drain-dear timing. A product with
+    -- no usable shop price (nil, non-finite, negative or 0) refunds 0 and says so.
+    local function shopPricePerLiter(idx)
+        local desc = type(fm.getFillTypeByIndex) == "function" and fm:getFillTypeByIndex(idx) or nil
+        local price = desc ~= nil and tonumber(desc.pricePerLiter) or nil
+        if price == nil or price ~= price or price == math.huge or price < 0 then return 0 end
+        return price
+    end
     for _, name in ipairs(customNames) do
         local idx = fm:getFillTypeIndexByName(name)
         if idx then
             customSet[idx] = name
-            priceTable[idx] = fallbackPrices[name] or 1.0
+            priceTable[idx] = shopPricePerLiter(idx)
         end
+    end
+
+    -- RSF-F196 R7: the refusal table (R1a), reached the way the settings panel reaches
+    -- the hook manager. A refused product is one the helper may never buy again; when
+    -- its unit is verified empty below, the remembered intent is cleared too.
+    local hookMgr = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.hookManager
+    local function isRefused(idx)
+        return idx ~= nil and idx ~= FillType.UNKNOWN and hookMgr ~= nil
+            and type(hookMgr.isRefusedProduct) == "function" and hookMgr:isRefusedProduct(idx) == true
     end
 
     -- Find the controlled vehicle
@@ -1602,6 +1679,7 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
 
     local totalRefund  = 0
     local totalDrained = 0
+    local totalCleared = 0
     local report       = {}
 
     local isServer = g_currentMission:getIsServer()
@@ -1612,33 +1690,72 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
         if spec and spec.fillUnits then
             for fuIdx, fillUnit in ipairs(spec.fillUnits) do
                 local currentType = fillUnit.fillType
-                if currentType and customSet[currentType] then
-                    local level = fillUnit.fillLevel or 0
-                    if level > 0 then
-                        local typeName = customSet[currentType]
-                        local refund   = level * priceTable[currentType] * 0.5
+                local pre = fillUnit.fillLevel or 0
+                -- The remembered product (FillUnit.lua:699-706): set on every fill, kept
+                -- when the unit empties, and what the helper's next purchase is steered by.
+                local okLv, lastValid = pcall(function() return veh:getFillUnitLastValidFillType(fuIdx) end)
+                if not okLv then lastValid = nil end
 
-                        if isServer then
-                            pcall(function()
-                                veh:addFillUnitFillLevel(farmId, fuIdx, -level, currentType, ToolType.UNDEFINED, nil)
-                            end)
+                if currentType and customSet[currentType] and pre > 0 then
+                    local typeName = customSet[currentType]
+                    local drained, refund = 0, 0
+                    local cleared = false
+                    if isServer then
+                        pcall(function()
+                            veh:addFillUnitFillLevel(farmId, fuIdx, -pre, currentType, ToolType.UNDEFINED, nil)
+                        end)
+                        -- R7: refund what ACTUALLY left, read after the call. A drain that a
+                        -- wrapper swallowed (the untokened BUY intercept before V13) or that
+                        -- only partly landed refunds the drained amount, never the level.
+                        local post = fillUnit.fillLevel or 0
+                        drained = math.max(0, pre - post)
+                        refund  = drained * priceTable[currentType] * 0.5
+                        if refund > 0 then
                             pcall(function()
                                 g_currentMission:addMoney(refund, farmId, MoneyType.PURCHASE_FERTILIZER, true, true)
                             end)
                         end
-
-                        totalDrained = totalDrained + level
-                        totalRefund  = totalRefund  + refund
+                        -- R7 recovery: only a unit verified EMPTY, and only when the product it
+                        -- held or the product it remembers was refused. A partial drain, a
+                        -- valid product's natural empty and a remembered valid product are
+                        -- never cleared.
+                        if post <= 0 and (isRefused(currentType) or isRefused(lastValid)) then
+                            pcall(function() veh:setFillUnitLastValidFillType(fuIdx, FillType.UNKNOWN) end)
+                            cleared = true
+                            totalCleared = totalCleared + 1
+                        end
+                        local unpriced = drained > 0 and (priceTable[currentType] or 0) <= 0
                         table.insert(report, string.format(
-                            "  %s: %.0f L/kg drained → refund %s", typeName, level, UIHelper.formatCurrencyValue(refund)))
-                        SoilLogger.info("SoilDrainVehicle: drained %.0f of %s, refund %s",
-                            level, typeName, UIHelper.formatCurrencyValue(refund))
+                            "  %s: %.0f of %.0f L/kg drained → refund %s%s%s", typeName, drained, pre,
+                            UIHelper.formatCurrencyValue(refund),
+                            unpriced and " (no shop price, refund 0)" or "",
+                            cleared and " (refused product forgotten)" or ""))
+                        SoilLogger.info("SoilDrainVehicle: drained %.0f of %.0f of %s, refund %s%s",
+                            drained, pre, typeName, UIHelper.formatCurrencyValue(refund), cleared and ", last-valid cleared" or "")
+                    else
+                        table.insert(report, string.format(
+                            "  %s: %.0f L/kg present (not host, drain logged only)", typeName, pre))
+                        SoilLogger.info("SoilDrainVehicle: %.0f of %s present, not host, nothing drained", pre, typeName)
+                    end
+                    totalDrained = totalDrained + drained
+                    totalRefund  = totalRefund  + refund
+                elseif pre <= 0 and (currentType == nil or currentType == FillType.UNKNOWN) and isRefused(lastValid) then
+                    -- R7: already empty, nothing to drain or refund, but the unit still
+                    -- remembers a refused product. Forget it so the next helper purchase is
+                    -- not steered back to a product it may not buy.
+                    local remembered = customSet[lastValid] or tostring(lastValid)
+                    if isServer then
+                        pcall(function() veh:setFillUnitLastValidFillType(fuIdx, FillType.UNKNOWN) end)
+                        totalCleared = totalCleared + 1
+                        table.insert(report, string.format("  %s: empty, remembered refused product forgotten", remembered))
+                        SoilLogger.info("SoilDrainVehicle: empty unit remembered refused %s, last-valid cleared", remembered)
+                    else
+                        table.insert(report, string.format("  %s: empty, remembered refused product (not host, logged only)", remembered))
                     end
                 end
             end
         end
     end
-
     if #report == 0 then
         return "No custom fertilizer found in vehicle or attached implements."
     end
@@ -1648,8 +1765,8 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     end
 
     local summary = string.format(
-        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%%)\n========================",
-        table.concat(report, "\n"), totalDrained, UIHelper.formatCurrencyValue(totalRefund)
+        "=== SoilDrainVehicle ===\n%s\nTotal: %.0f L/kg drained | Refund: %s (50%% of shop price) | Refused products forgotten: %d\n========================",
+        table.concat(report, "\n"), totalDrained, UIHelper.formatCurrencyValue(totalRefund), totalCleared
     )
     print(summary)
     return summary

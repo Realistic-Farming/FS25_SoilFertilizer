@@ -11,28 +11,34 @@
 -- =========================================================
 ---@class SoilSettingsUI
 
-SoilSettingsUI = {}
+SoilSettingsUI = SoilSettingsUI or {}
 local SoilSettingsUI_mt = Class(SoilSettingsUI)
 
--- Capture mod name at load time - g_currentModName is only valid during loading.
-local SF_MOD_NAME = g_currentModName
+-- Capture mod name at load time - (SoilFertilizerModName or g_currentModName) is only valid during loading.
 
 -- The 3 settings injected into the vanilla settings page (Shift+Esc).
 -- Everything else lives in the custom SoilSettingsPanel (Shift+O).
 local VANILLA_SETTINGS = { "enabled", "showNotifications", "debugMode" }
 
--- Resolve a translation key using the mod-scoped i18n instance.
--- g_i18n is the base-game global and does not know about mod keys.
+-- Resolve a translation key. g_i18n DOES know this mod's keys: mods.lua:453
+-- sets modEnv.g_i18n = g_i18n:addModI18N(modName), and that instance chains to
+-- the global, so a mod key resolves through either. The g_modEnvironments table
+-- this helper used to consult appears in zero files of the decompiled engine.
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 function SoilSettingsUI.new(settings)
@@ -147,8 +153,52 @@ function SoilSettingsUI:onFrameOpen(frame)
     local isAdmin = self:isPlayerAdmin()
 
     -- Section header with hint to open full settings panel
+    -- The old "(SHIFT+O ...)" named the WRONG action's key: SF_OPEN_SETTINGS
+    -- ships on Right Shift+S, while Right Shift+O is SF_TOGGLE_HUD. Read the
+    -- chord live from Soil's own helper rather than printing any default.
+    local sfHint = ""
+    if SoilLiveHint ~= nil and SoilLiveHint.chord ~= nil then
+        local c = SoilLiveHint.chord("SF_OPEN_SETTINGS")
+        if type(c) == "string" and c ~= "" then
+            sfHint = "  (" .. c .. " for full settings)"
+        end
+    end
     local ok, err = pcall(UIHelper.createSectionHeader, layout,
-        (tr("sf_section") or "Soil & Fertilizer") .. "  (SHIFT+O for full settings)")
+        (tr("sf_section") or "Soil & Fertilizer") .. sfHint)
+    -- This header is injected once per frame (soilFertilizer_initDone) and
+    -- Soil ships no INPUT_BINDINGS_CHANGED subscriber anywhere, so without
+    -- this the label would keep a chord from before a remap for the life of
+    -- the frame. createSectionHeader returns the element, which pcall hands
+    -- back as its second value on success.
+    if ok and err ~= nil and g_messageCenter ~= nil and MessageType ~= nil
+        and MessageType.INPUT_BINDINGS_CHANGED ~= nil then
+        local headerEl = err
+        -- The frame is rebuilt each mission while the message centre lives for
+        -- the game session and does not dedupe subscribers, so subscribing
+        -- unconditionally added one closure over a dead header per mission.
+        -- Drop the PREVIOUS subscriber first, then record this one. Passing
+        -- `self` here would unsubscribe the frame that is about to subscribe
+        -- and leave the previous mission's closure alive, which is exactly the
+        -- accumulation this is meant to stop.
+        SoilSettingsUI.releaseHeaderSubscription()
+        SoilSettingsUI._headerSubscriber = self
+        pcall(function()
+            g_messageCenter:subscribe(MessageType.INPUT_BINDINGS_CHANGED,
+                function()
+                    pcall(function()
+                        local h = ""
+                        if SoilLiveHint ~= nil and SoilLiveHint.chord ~= nil then
+                            local c2 = SoilLiveHint.chord("SF_OPEN_SETTINGS")
+                            if type(c2) == "string" and c2 ~= "" then
+                                h = "  (" .. c2 .. " for full settings)"
+                            end
+                        end
+                        headerEl:setText((tr("sf_section")
+                            or "Soil & Fertilizer") .. h)
+                    end)
+                end, self)
+        end)
+    end
     if not ok then
         SoilLogger.warning("Failed to create section header: %s", tostring(err))
     end
@@ -238,3 +288,24 @@ local function init()
 end
 
 init()
+
+--- Remove the header's binding-change subscription. Called before taking a new
+--- one and from teardown, so a second mission in one session cannot inherit the
+--- first mission's header element.
+function SoilSettingsUI.releaseHeaderSubscription(target)
+    local t = target or SoilSettingsUI._headerSubscriber
+    if t == nil then return end
+    if g_messageCenter ~= nil and MessageType ~= nil
+        and MessageType.INPUT_BINDINGS_CHANGED ~= nil then
+        pcall(function()
+            g_messageCenter:unsubscribe(MessageType.INPUT_BINDINGS_CHANGED, t)
+        end)
+    end
+    SoilSettingsUI._headerSubscriber = nil
+end
+
+if FSBaseMission ~= nil and Utils ~= nil and Utils.prependedFunction ~= nil then
+    FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, function()
+        SoilSettingsUI.releaseHeaderSubscription()
+    end)
+end

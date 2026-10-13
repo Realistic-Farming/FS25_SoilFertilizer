@@ -8,9 +8,12 @@
 -- fills it; a fresh instance's readStream drains it. A correct pair leaves the FIFO
 -- exactly empty with zero type mismatches. run() is a no-op here (g_server/g_client
 -- are nil in the prelude), so readStream's trailing self:run() does not interfere.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, src/ResistanceBands.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/maps/SoilValueMaps.lua, src/OrganicCertification.lua, src/ResistanceBands.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
-local CONN = { getIsServer = function() return false end }
+-- The receiver here is a pure client (g_server nil), so the connection it reads on is
+-- its server connection, isServer = true (Client.lua:152): a server-to-client event's
+-- readStream returns at once on any other connection (MAINTENANCE row 112).
+local CONN = { getIsServer = function() return true end }
 
 -- Serialize src, deserialize into a fresh instance of `class`, assert wire integrity,
 -- and hand back the reconstructed instance for value-level assertions.
@@ -22,6 +25,12 @@ local function rt(name, src, class)
   dst:readStream(s, CONN)
   T.eq(name .. ": no type mismatches", s.typeErrors, 0)
   T.eq(name .. ": no stream underflow", s.underflows, 0)
+  -- Width and range, checked here because a counter nobody reads is instrumentation.
+  -- These two were added to the mock in 2026-09-19; had they been added without
+  -- extending this helper, every round trip below would have kept passing while
+  -- ignoring them, which is exactly how the width claim went unchecked for so long.
+  T.eq(name .. ": no UIntN width mismatches", s.widthErrors, 0)
+  T.eq(name .. ": no value exceeds its declared width", s.rangeErrors, 0)
   T.eq(name .. ": stream fully drained", s.r, wrote + 1)
   return dst
 end
@@ -36,8 +45,14 @@ local function sampleField()
     weedPressure = 5, herbicideDaysLeft = 2, pestPressure = 3, insecticideDaysLeft = 1,
     diseasePressure = 17, fungicideDaysLeft = 4, dryDayCount = 6, burnDaysLeft = 2,
     coverageFraction = 0.5, compaction = 11,
+    -- RSF-F905: the amendment burn rides every field delivery as a value + known pair,
+    -- right after the field-level compaction.
+    amendBurnPenalty = 0.42,
     nutrientBuffer = { [12] = 4.5, [3] = 1.25 },
     activeDisease = "septoria", diseaseDiscovered = true,
+    -- CD-11: the durable scout bit is the band gate now (diseaseDiscovered alone no longer
+    -- reveals), and it must ride every field delivery after the bands.
+    fieldEverScouted = true,
     organic = { state = SoilConstants.ORGANIC.STATE_CERTIFIED, startDay = 100, certifiedDay = 220, breaches = 2 },
     -- CD-11: a saturated synthetic (10/10 -> FINISHED) and a natural at 70% of its own
     -- lower ceiling (3.5/5 -> SLIPPING). The natural is here on purpose: banded against
@@ -51,6 +66,8 @@ local function assertSampleField(name, b)
   T.ok(name .. ": field present", b ~= nil)
   if b == nil then return end
   T.near(name .. ": nitrogen", b.nitrogen, 55)
+  T.near(name .. ": amendBurnPenalty (RSF-F905)", b.amendBurnPenalty, 0.42)
+  T.eq(name .. ": amendBurnKnown arrives true from the owner (RSF-F905)", b.amendBurnKnown, true)
   T.near(name .. ": phosphorus", b.phosphorus, 40)
   T.near(name .. ": potassium", b.potassium, 30)
   T.near(name .. ": organicMatter", b.organicMatter, 4.2)
@@ -72,6 +89,8 @@ local function assertSampleField(name, b)
   T.eq(name .. ": fungicideDaysLeft", b.fungicideDaysLeft, 4)
   T.eq(name .. ": activeDisease", b.activeDisease, "septoria")
   T.ok(name .. ": diseaseDiscovered", b.diseaseDiscovered == true)
+  T.ok(name .. ": CD-11 fieldEverScouted survives after the bands", b.fieldEverScouted == true)
+  T.ok(name .. ": CD-11 receipt is stamped on the delivered table", b.resistanceBandsReceived == true)
   T.ok(name .. ": buffer present", b.nutrientBuffer ~= nil)
   T.near(name .. ": buffer[12]", b.nutrientBuffer[12], 4.5)
   T.near(name .. ": buffer[3]", b.nutrientBuffer[3], 1.25)
@@ -93,6 +112,33 @@ do
   streamReadString(s)   -- expects str, next is i32
   streamReadInt32(s)    -- expects i32, next is str
   T.ok("harness: type-mismatch is detected", s.typeErrors > 0)
+end
+-- The two new detectors, proved the same way the older two are. A width guard that
+-- cannot be shown to fire is worth nothing, and this mock spent its whole life
+-- CLAIMING to catch "wrong width" in its own header comment while discarding the bit
+-- count entirely.
+do
+  local s = _sfMockStream()
+  streamWriteUIntN(s, 5, 3)
+  streamReadUIntN(s, 4)   -- written as 3 bits, read as 4
+  T.ok("harness: UIntN width mismatch is detected", s.widthErrors > 0)
+  T.eq("harness: a width mismatch is not counted as a type mismatch", s.typeErrors, 0)
+end
+do
+  local s = _sfMockStream()
+  streamWriteUIntN(s, 5, 3)
+  streamReadUIntN(s, 3)
+  T.eq("harness: a matching width is clean", s.widthErrors, 0)
+end
+do
+  -- 8 does not fit in 3 bits (max 7). The engine truncates silently, so the value
+  -- that arrives is not the value that was sent and nothing reports it.
+  local s = _sfMockStream()
+  streamWriteUIntN(s, 8, 3)
+  T.ok("harness: a value too wide for its width is detected", s.rangeErrors > 0)
+  local ok = _sfMockStream()
+  streamWriteUIntN(ok, 7, 3)
+  T.eq("harness: the largest value that fits is clean", ok.rangeErrors, 0)
 end
 do
   local s = _sfMockStream()
@@ -272,4 +318,55 @@ do
   T.eq("vmChecksum: a skipped layer does not shift the next one", d.checksums[2].layerIdx, 5)
   T.eq("vmChecksum: second sum",     d.checksums[2].sum,     77)
   T.eq("vmChecksum: second nonZero", d.checksums[2].nonZero, 9)
+end
+
+-- ══════════════════════════════════════════════════════════
+-- The two events that carry UIntN and had NO wire round trip
+-- ══════════════════════════════════════════════════════════
+-- Found by mutation: a width drift in either of these SURVIVED the whole suite,
+-- because the width guard cannot guard a path no test walks. SoilValueMapChunkEvent
+-- run-length-encodes 4-bit cell states; SoilScoutingMaskSyncEvent writes the farm id
+-- at FarmManager.FARM_ID_SEND_NUM_BITS on both sides, and the harness had no
+-- FarmManager at all, so the event could not be exercised even in principle.
+
+do
+  -- Rows are run-length encoded as 4-bit states, so the fixture deliberately mixes
+  -- runs and singletons and includes 15, the largest value 4 bits can carry.
+  local rows = { { 0, 0, 0, 5, 5, 15 }, { 1, 2, 3, 3, 3, 3 } }
+  local src = SoilValueMapChunkEvent.new(2, 7, rows, true,
+    { mode = "PATCH", revision = 9, baseRevision = 8, transferId = 4,
+      partIndex = 1, partCount = 3, sourceResolution = 256, transportStride = 2 })
+  local d = rt("vmChunk", src, SoilValueMapChunkEvent)
+  T.eq("vmChunk: layerIdx", d.layerIdx, 2)
+  T.eq("vmChunk: gyStart", d.gyStart, 7)
+  T.eq("vmChunk: isLast", d.isLast, true)
+  T.eq("vmChunk: mode", d.mode, "PATCH")
+  T.eq("vmChunk: revision", d.revision, 9)
+  T.eq("vmChunk: partCount", d.partCount, 3)
+  T.eq("vmChunk: row count", #d.rows, 2)
+  T.eq("vmChunk: first row survives the run-length round trip",
+    table.concat(d.rows[1], ","), "0,0,0,5,5,15")
+  T.eq("vmChunk: second row survives too",
+    table.concat(d.rows[2], ","), "1,2,3,3,3,3")
+end
+
+do
+  local entries = {
+    { fieldId = 3, cellKey = "a:1", day = 12, truth = 0.5, x = 1.5, z = -2.5, gen = 7 },
+    { fieldId = 9, cellKey = "b:2", day = 13, truth = 0.25, x = 0,   z = 4.5,  gen = 8 },
+  }
+  -- 15 is the largest farm id 4 bits can carry, so it pins the boundary rather than
+  -- a comfortable middle value.
+  local src = SoilScoutingMaskSyncEvent.newFull(15, 2, 5, entries)
+  local d = rt("maskSync", src, SoilScoutingMaskSyncEvent)
+  T.eq("maskSync: schema", d.schema, SoilScoutingMaskSyncEvent.SCHEMA)
+  T.eq("maskSync: mode is FULL", d.mode, SoilScoutingMaskSyncEvent.MODE_FULL)
+  T.eq("maskSync: farmId at the 4-bit ceiling", d.farmId, 15)
+  T.eq("maskSync: chunkIndex", d.chunkIndex, 2)
+  T.eq("maskSync: chunkCount", d.chunkCount, 5)
+  T.eq("maskSync: entry count", #d.entries, 2)
+  T.eq("maskSync: first fieldId", d.entries[1].fieldId, 3)
+  T.eq("maskSync: first cellKey", d.entries[1].cellKey, "a:1")
+  T.near("maskSync: first truth", d.entries[1].truth, 0.5, 1e-9)
+  T.eq("maskSync: second gen", d.entries[2].gen, 8)
 end

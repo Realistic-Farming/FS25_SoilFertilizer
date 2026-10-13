@@ -15,22 +15,24 @@
 -- =========================================================
 
 ---@class SoilHarvesterPanel
-SoilHarvesterPanel = {}
+SoilHarvesterPanel = SoilHarvesterPanel or {}
 local SoilHarvesterPanel_mt = Class(SoilHarvesterPanel)
 
 -- ── Layout ────────────────────────────────────────────────
 SoilHarvesterPanel.PAD     = 0.006
 SoilHarvesterPanel.TITLE_H = 0.022
 SoilHarvesterPanel.ROW_H   = 0.022
-SoilHarvesterPanel.SEG_H   = 0.014   -- tank bar height
+SoilHarvesterPanel.SEG_H   = 0.005556 -- 6 px at 1080p, base fill-level height
 SoilHarvesterPanel.SEG_N   = 10      -- number of segments
 SoilHarvesterPanel.SEG_GAP = 0.0018  -- gap between segments
 SoilHarvesterPanel.PANEL_W = 0.210
 SoilHarvesterPanel.STAT_H  = 0.040   -- stats bar (icons + values) at bottom
 SoilHarvesterPanel.EST_H   = 0.012   -- provenance caption above the stats bar
 
-SoilHarvesterPanel.DEFAULT_X = 0.015625
-SoilHarvesterPanel.DEFAULT_Y = 0.340
+-- Default position / scale: the suite layout Wizard arranged in-game (2026-08-22).
+SoilHarvesterPanel.DEFAULT_X     = 0.328646
+SoilHarvesterPanel.DEFAULT_Y     = 0.051111
+SoilHarvesterPanel.DEFAULT_SCALE = 1.171455
 
 SoilHarvesterPanel.WARN_THRESHOLD = 0.85  -- flash warning above this fill ratio
 
@@ -77,7 +79,7 @@ function SoilHarvesterPanel.new(soilSystem, settings)
     self.resizeStartX     = 0
     self.resizeStartY     = 0
     self.resizeStartScale = 1.0
-    self.userScale        = 1.0
+    self.userScale        = SoilHarvesterPanel.DEFAULT_SCALE
     self.movedInEditMode  = false
     self._animTimer       = 0
 
@@ -120,6 +122,7 @@ function SoilHarvesterPanel:initialize()
 end
 
 function SoilHarvesterPanel:delete()
+    if self.editMode then self:exitEditMode() end
     if self.fillOverlay and self.fillOverlay ~= 0 then
         delete(self.fillOverlay)
         self.fillOverlay = nil
@@ -179,7 +182,7 @@ function SoilHarvesterPanel:loadLayout()
             self.panelX = x
             self.panelY = y
         end
-        self.userScale = xml:getFloat("harvesterPanelLayout.scale", 1.0)
+        self.userScale = xml:getFloat("harvesterPanelLayout.scale", SoilHarvesterPanel.DEFAULT_SCALE)
         xml:delete()
     end
 end
@@ -188,6 +191,10 @@ end
 
 function SoilHarvesterPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     if not self.editMode then return false end
+
+    if isDown and button == Input.MOUSE_BUTTON_LEFT and eventUsed then
+        return false
+    end
 
     local px = self._lastPanelX
     local py = self._lastPanelY
@@ -207,8 +214,8 @@ function SoilHarvesterPanel:onMouseEvent(posX, posY, isDown, isUp, button, event
 
     -- Mouse move: update position while dragging
     if self.dragging then
-        self.panelX = math.max(0, math.min(0.85, posX - self.dragOffsetX))
-        self.panelY = math.max(0.02, math.min(0.95, posY - self.dragOffsetY))
+        self.panelX = math.max(0, math.min(1 - pw, posX - self.dragOffsetX))
+        self.panelY = math.max(0, math.min(1 - ph, posY - self.dragOffsetY))
         return true
     end
 
@@ -219,7 +226,12 @@ function SoilHarvesterPanel:onMouseEvent(posX, posY, isDown, isUp, button, event
         local startDist = math.sqrt((self.resizeStartX - cx)^2 + (self.resizeStartY - cy)^2)
         local currDist  = math.sqrt((posX - cx)^2 + (posY - cy)^2)
         local delta = (currDist - startDist) * 2.5
-        self.userScale = math.max(0.5, math.min(2.5, self.resizeStartScale + delta))
+        local oldScale = self.userScale or 1.0
+        local newScale = math.max(0.5, math.min(2.5, self.resizeStartScale + delta))
+        local ratio = oldScale > 0 and newScale / oldScale or 1
+        self.userScale = newScale
+        self.panelX = math.max(0, math.min(1 - pw * ratio, self.panelX or px))
+        self.panelY = math.max(0, math.min(1 - ph * ratio, self.panelY or py))
         return true
     end
 
@@ -227,6 +239,8 @@ function SoilHarvesterPanel:onMouseEvent(posX, posY, isDown, isUp, button, event
     if isDown and button == Input.MOUSE_BUTTON_LEFT then
         if posX >= (px + pw - hs) and posX <= (px + pw) and
            posY >= py and posY <= (py + hs) then
+            self.panelX            = px
+            self.panelY            = py
             self.resizing         = true
             self.dragging         = false
             self.resizeStartX     = posX
@@ -236,6 +250,8 @@ function SoilHarvesterPanel:onMouseEvent(posX, posY, isDown, isUp, button, event
             return true
         end
         if posX >= px and posX <= px + pw and posY >= py and posY <= py + ph then
+            self.panelX         = px
+            self.panelY         = py
             self.dragging        = true
             self.dragOffsetX     = posX - px
             self.dragOffsetY     = posY - py
@@ -525,17 +541,23 @@ function SoilHarvesterPanel:drawTankBar(x, y, w, h, ratio, isWarning, pulse, gap
     gap = gap or SoilHarvesterPanel.SEG_GAP
     local segW   = (w - (N - 1) * gap) / N
     local filled = ratio * N
+    local renderer = SoilHUD and SoilHUD.getBaseGameRenderer and SoilHUD.getBaseGameRenderer() or nil
 
     for i = 0, N - 1 do
         local sx   = x + i * (segW + gap)
         local frac = math.max(0, math.min(1, filled - i))
-        -- Background
-        self:drawRect(sx, y, segW, h, SoilHarvesterPanel.C_SEG_BG)
-        -- Fill
-        if frac > 0 then
-            local col = isWarning and SoilHarvesterPanel.C_SEG_WARN or SoilHarvesterPanel.C_SEG_FILL
-            local alpha = isWarning and (0.6 + 0.4 * pulse) or 1.0
-            self:drawRect(sx, y, segW * frac, h, col, alpha)
+        local col = isWarning and SoilHarvesterPanel.C_SEG_WARN or SoilHarvesterPanel.C_SEG_FILL
+        local alpha = isWarning and (0.6 + 0.4 * pulse) or 1.0
+        local nativeColor = { col[1], col[2], col[3], alpha }
+        local usedNativeSegment = renderer ~= nil and renderer.renderProgressBar ~= nil
+            and renderer:renderProgressBar(sx, y, segW, h, frac, nativeColor)
+        if not usedNativeSegment then
+            -- Background
+            self:drawRect(sx, y, segW, h, SoilHarvesterPanel.C_SEG_BG)
+            -- Fill
+            if frac > 0 then
+                self:drawRect(sx, y, segW * frac, h, col, alpha)
+            end
         end
     end
 end
@@ -547,8 +569,15 @@ function SoilHarvesterPanel:draw()
     if not self.settings or not self.settings.enabled then return end
     if not g_currentMission or not g_currentMission.isRunning then return end
     local _sfm = g_SoilFertilityManager
-    if _sfm and _sfm.soilHUD and not _sfm.soilHUD.visible then return end
-    if _sfm and _sfm.settings and _sfm.settings.showHarvesterPanel == false then return end
+    -- Cab tool readouts follow the base-game HUD only. Suite hide-all and the
+    -- Soil monitor toggle must not hide a working tool panel. Vanilla HUD-hide does.
+    if not self.editMode and g_currentMission.hud
+        and type(g_currentMission.hud.getIsVisible) == "function"
+        and not g_currentMission.hud:getIsVisible() then return end
+    -- Edit mode always exposes a placement placeholder, even when the runtime
+    -- display preference is off or no combine is currently controlled.
+    if not self.editMode and _sfm and _sfm.settings
+        and _sfm.settings.showHarvesterPanel == false then return end
     if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then
         if not self.editMode then return end
     end
@@ -568,8 +597,9 @@ function SoilHarvesterPanel:draw()
     local segH   = SoilHarvesterPanel.SEG_H   * sc
     local panelW = SoilHarvesterPanel.PANEL_W  * sc
 
-    -- Rows: tank bar + fill text + divider + yield  (+stats bar when active)
-    local numContentRows = isActive and 4 or 1
+    -- Rows: tank bar + fill text + yield (+ stats bar when active). The separator
+    -- sits on the fill/yield boundary instead of consuming an empty row.
+    local numContentRows = isActive and 3 or 1
     local statH  = isActive and (SoilHarvesterPanel.STAT_H * sc) or 0
     -- [SF-50] Reserve a thin band above the stats bar for the estimate's provenance
     -- caption. The panel is anchored bottom-left, so this grows it upward and leaves
@@ -598,14 +628,20 @@ function SoilHarvesterPanel:draw()
 
     -- ── Render ──────────────────────────────────────────────
 
-    -- Shadow
-    self:drawRect(panelX + 0.002*sc, panelBot - 0.002*sc, panelW, panelH, {0,0,0,1}, 0.22)
-    -- Background
-    self:drawRect(panelX, panelBot, panelW, panelH, SoilHarvesterPanel.C_BG)
-    -- Border
-    self:drawRect(panelX, panelBot, panelW, panelH, SoilHarvesterPanel.C_BORDER, 0.55)
-    -- Title bar
-    self:drawRect(panelX, panelTop - titleH, panelW, titleH, SoilHarvesterPanel.C_TITLE_BG)
+    local renderer = SoilHUD and SoilHUD.getBaseGameRenderer and SoilHUD.getBaseGameRenderer() or nil
+    local usedNativePanel = renderer ~= nil and renderer.renderPanel ~= nil
+        and renderer:renderPanel(panelX, panelBot, panelW, panelH,
+            SoilHarvesterPanel.C_BG[4] or 0.82)
+    if not usedNativePanel then
+        -- Shadow
+        self:drawRect(panelX + 0.002*sc, panelBot - 0.002*sc, panelW, panelH, {0,0,0,1}, 0.22)
+        -- Background
+        self:drawRect(panelX, panelBot, panelW, panelH, SoilHarvesterPanel.C_BG)
+        -- Border
+        self:drawRect(panelX, panelBot, panelW, panelH, SoilHarvesterPanel.C_BORDER, 0.55)
+        -- Title bar
+        self:drawRect(panelX, panelTop - titleH, panelW, titleH, SoilHarvesterPanel.C_TITLE_BG)
+    end
 
     -- Edit mode chrome: pulsing border + resize handle
     if self.editMode then
@@ -627,9 +663,8 @@ function SoilHarvesterPanel:draw()
                         or (self.editMode and "Harvester Panel" or "")
     local fieldStr    = ""
     if self._fieldId then
-        local ok, fmtStr = pcall(function() return g_i18n:getText("sf_hud_field") end)
-        fieldStr = " · " .. ((ok and fmtStr and not fmtStr:find("^%$l10n_"))
-                   and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
+        local fmtStr = SoilL10n.tr("sf_hud_field")
+        fieldStr = " · " .. (fmtStr and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
     end
 
     setTextBold(true)
@@ -696,17 +731,11 @@ function SoilHarvesterPanel:draw()
         end
         cy = cy - rowH
 
-        -- ── Dashed divider ─────────────────────────────────
-        local divY = cy - rowH * 0.5
-        local dashW = 0.010 * sc
-        local dashH = 0.0012 * sc
-        local dashGap = 0.006 * sc
-        local numDash = math.floor((panelW - pad * 2) / (dashW + dashGap))
-        for i = 0, numDash - 1 do
-            self:drawRect(panelX + pad + i * (dashW + dashGap), divY, dashW, dashH,
-                          SoilHarvesterPanel.C_DIVIDER, 0.70)
-        end
-        cy = cy - rowH
+        -- Native-style one-pixel divider on the row boundary.
+        local dividerH = SoilHUD and SoilHUD.getSeparatorHeight
+            and SoilHUD.getSeparatorHeight() or (g_pixelSizeY or (1 / 1080))
+        self:drawRect(panelX + pad, cy - dividerH * 0.5,
+            panelW - pad * 2, dividerH, SoilHarvesterPanel.C_DIVIDER, 0.70)
 
         -- ── Row 4: Yield efficiency ────────────────────────
         local yieldRowBot = cy - rowH
@@ -735,18 +764,19 @@ function SoilHarvesterPanel:draw()
         -- ── Stats bar ──────────────────────────────────────────
         -- 4 cells: [wheat t/ha] [coverage %] [session ha] [total ha]
         local sbY = panelBot
-        local sbH = SoilHarvesterPanel.STAT_H
+        local sbH = statH
         local sbW = panelW
 
+        local dividerW = g_pixelSizeX or (1 / 1920)
         -- Dark separator line above stats bar
-        self:drawRect(panelX, sbY + sbH - 0.0015*sc, panelW, 0.0015*sc,
+        self:drawRect(panelX, sbY + sbH - dividerH, panelW, dividerH,
                       SoilHarvesterPanel.C_DIVIDER, 0.80)
 
         -- Faint cell dividers
         local cellW = sbW / 4
         for i = 1, 3 do
-            self:drawRect(panelX + cellW * i - 0.0008*sc, sbY + pad,
-                          0.0008*sc, sbH - pad * 2,
+            self:drawRect(panelX + cellW * i - dividerW * 0.5, sbY + pad,
+                          dividerW, sbH - pad * 2,
                           SoilHarvesterPanel.C_BORDER, 0.60)
         end
 
@@ -785,9 +815,8 @@ function SoilHarvesterPanel:draw()
         local thaY   = sbY + (sbH * 0.35 - thaSz) * 0.5
         setTextAlignment(RenderText.ALIGN_CENTER)
         if estTha then
-            local okT, fmtT = pcall(function() return g_i18n:getText("sf_hud_tha") end)
-            local thaStr = (okT and fmtT and not fmtT:find("^%$l10n_"))
-                           and string.format(fmtT, estTha)
+            local fmtT = SoilL10n.tr("sf_hud_tha")
+            local thaStr = fmtT and string.format(fmtT, estTha)
                            or  string.format("%.1f t/ha", estTha)
             setTextColor(unpack(C.C_VALUE))
             renderText(cell1X + cellW * 0.5, thaY, thaSz, thaStr)
@@ -799,15 +828,13 @@ function SoilHarvesterPanel:draw()
         -- ── [SF-50] Provenance caption ────────────────────────
         -- The t/ha figure is estimated from the map's crop data, not measured from what
         -- the player actually took off the field. Say so plainly, in their language.
-        -- (sbH is unscaled here while the reserved band is scaled - a pre-existing
-        -- mismatch at userScale ~= 1; max() keeps the caption clear of the bar either way.)
         local capSz = 0.0062 * sc
-        local okCap, capStr = pcall(function() return g_i18n:getText("sf_hud_yield_est_src") end)
-        if okCap and capStr and not capStr:find("^%$l10n_") then
+        local capStr = SoilL10n.tr("sf_hud_yield_est_src")
+        if capStr then
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(unpack(C.C_DIM))
             renderText(panelX + pad,
-                       sbY + math.max(sbH, statH) + (estH - capSz) * 0.5,
+                       sbY + sbH + (estH - capSz) * 0.5,
                        capSz, capStr)
         end
 
@@ -874,4 +901,13 @@ function SoilHarvesterPanel:draw()
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(1, 1, 1, 1)
     setTextBold(false)
+end
+
+-- Hot-reload: preserve the class table and patch the already-constructed panel.
+local sfm = g_SoilFertilityManager
+if sfm == nil and g_currentMission ~= nil then sfm = g_currentMission.soilFertilityManager end
+if sfm ~= nil and sfm.harvesterPanel ~= nil then
+    for k, v in pairs(SoilHarvesterPanel) do
+        if type(v) == "function" then sfm.harvesterPanel[k] = v end
+    end
 end

@@ -23,7 +23,7 @@
 -- =========================================================
 
 ---@class SoilPDAScreen
-SoilPDAScreen = {}
+SoilPDAScreen = SoilPDAScreen or {}
 SoilPDAScreen._mt = Class(SoilPDAScreen, TabbedMenuFrameElement)
 
 SoilPDAScreen.CLASS_NAME     = "SoilPDAScreen"
@@ -32,8 +32,7 @@ SoilPDAScreen.XML_FILENAME   = "xml/gui/SoilPDAScreen.xml"
 SoilPDAScreen.MENU_ICON_PATH = "textures/ui/menuIcon.dds"
 
 -- Capture mod directory at source-time (valid during loading only)
-local SF_PDA_MOD_DIR = g_currentModDirectory
-local SF_PDA_MOD_NAME = g_currentModName
+local SF_PDA_MOD_DIR = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilPDAScreen.CONTROLS = {
     "statsFieldsTracked", "statsFieldsOwned",
@@ -77,15 +76,48 @@ local _pendingModDir = nil
 -- ── i18n helper ───────────────────────────────────────────
 
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_PDA_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
+end
+
+-- ── Growth summary per field row (BUILD 09:40, Stage 7 v1) ──
+-- Field-level fractions from the growth family's published summary getter:
+-- how much of the field's area is blocked, how much is excellent. Read when
+-- the screen rebuilds its rows (open, filter toggle, its own refresh tick),
+-- never from a day-boundary subscriber. The summary is the mask's settled
+-- record, so this is a cheap table read, not a field walk.
+--
+-- Gates: Soil disabled or stood down by Precision Farming, growth_modulation
+-- not opted in, or the field not yet discovered (the same discovery flag the
+-- soil map paints by; a whole-field fraction has no per-cell compose) all
+-- yield nil, and the row keeps its nutrient status word as before.
+---@param fieldId number farmland id
+---@param fieldEntry table|nil the soil system's own field record
+---@return table|nil { blockedFrac, excellentFrac }
+local function readGrowthSummary(fieldId, fieldEntry)
+    if fieldEntry == nil or not fieldEntry.diseaseDiscovered then return nil end
+    local sfm = g_currentMission and g_currentMission.soilFertilityManager
+    if sfm == nil or type(sfm.getFieldGrowthSummary) ~= "function" then return nil end
+    if (sfm.settings ~= nil and sfm.settings.enabled == false) or sfm._disabledByPF then return nil end
+    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function"
+       and not ReleaseGate.isSystemLive("growth_modulation") then
+        return nil
+    end
+    local summary = sfm:getFieldGrowthSummary(fieldId)
+    if type(summary) ~= "table" then return nil end
+    return summary
 end
 
 -- ── Constructor ───────────────────────────────────────────
@@ -764,10 +796,17 @@ function SoilPDAScreen:_buildFieldData()
                 end)
                 if urgOk then urgency = urgVal end
 
+                local growth = nil
+                local gOk, gVal = pcall(function()
+                    return readGrowthSummary(fieldId, sfm.soilSystem.fieldData[fieldId])
+                end)
+                if gOk then growth = gVal end
+
                 table.insert(self.fieldData, {
                     fieldId = fieldId,
                     info    = info,
                     urgency = urgency,
+                    growth  = growth,
                 })
             end
         end
@@ -859,6 +898,7 @@ function SoilPDAScreen:_refreshSummaryStats()
 
     -- Compute averages
     local sumN, sumP, sumK, sumPH, sumOM = 0, 0, 0, 0, 0
+    local phCount = 0
     local weedCount, pestCount, diseaseCount, attentionCount = 0, 0, 0, 0
     local n = totalFields
 
@@ -867,7 +907,8 @@ function SoilPDAScreen:_refreshSummaryStats()
         sumN  = sumN  + info.nitrogen.value
         sumP  = sumP  + info.phosphorus.value
         sumK  = sumK  + info.potassium.value
-        sumPH = sumPH + (info.pH or SoilConstants.FIELD_DEFAULTS.pH)
+        -- [SF-79] an unknown pH sample is excluded from the mean, never counted as 7.0.
+        if type(info.pH) == 'number' then sumPH = sumPH + info.pH; phCount = phCount + 1 end
         sumOM = sumOM + (info.organicMatter or 3.5)
         if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then weedCount    = weedCount    + 1 end
         if (info.pestPressure    or 0) >= PRESSURE_THRESHOLD then pestCount    = pestCount    + 1 end
@@ -878,7 +919,7 @@ function SoilPDAScreen:_refreshSummaryStats()
     local avgN   = n > 0 and math.floor(sumN  / n) or 0
     local avgP   = n > 0 and math.floor(sumP  / n) or 0
     local avgK   = n > 0 and math.floor(sumK  / n) or 0
-    local avgPH  = n > 0 and string.format("%.1f", sumPH / n) or "--"
+    local avgPH  = phCount > 0 and string.format("%.1f", sumPH / phCount) or "--"
     local avgOM  = n > 0 and string.format("%.1f", sumOM / n) or "--"
 
     -- Set text and color for nutrient averages
@@ -1012,15 +1053,20 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
 
     -- pH
     if phEl then
-        local phVal = string.format("%.1f", info.pH or SoilConstants.FIELD_DEFAULTS.pH)
-        phEl:setText(phVal)
-        local ph = math.floor(((info.pH or SoilConstants.FIELD_DEFAULTS.pH) * 10) + 0.5) / 10
-        if ph >= 6.5 and ph <= 7.0 then
-            phEl:setTextColor(unpack(COLOR_GOOD))
-        elseif ph >= 6.0 and ph < 7.5 then
-            phEl:setTextColor(unpack(COLOR_FAIR))
+        if info.pH == nil then
+            phEl:setText("--")
+            phEl:setTextColor(unpack(COLOR_DIM))
         else
-            phEl:setTextColor(unpack(COLOR_POOR))
+            local phVal = string.format("%.1f", info.pH)
+            phEl:setText(phVal)
+            local ph = math.floor((info.pH * 10) + 0.5) / 10
+            if ph >= 6.5 and ph <= 7.0 then
+                phEl:setTextColor(unpack(COLOR_GOOD))
+            elseif ph >= 6.0 and ph < 7.5 then
+                phEl:setTextColor(unpack(COLOR_FAIR))
+            else
+                phEl:setTextColor(unpack(COLOR_POOR))
+            end
         end
     end
 
@@ -1038,14 +1084,32 @@ function SoilPDAScreen:_populateFieldCell(index, cell)
         end
     end
 
-    -- Overall status
+    -- Overall status. The growth summary shares this cell (no new column in
+    -- v1): a blocked share outranks the nutrient word, an excellent share
+    -- shows only when nothing else is wrong, so the worst news always wins.
     if statusEl then
-        if entry.urgency >= 60 then
+        local growth = entry.growth
+        local blockedPct, excellentPct = nil, nil
+        if type(growth) == "table" then
+            if type(growth.blockedFrac) == "number" then
+                blockedPct = math.floor(growth.blockedFrac * 100 + 0.5)
+            end
+            if type(growth.excellentFrac) == "number" then
+                excellentPct = math.floor(growth.excellentFrac * 100 + 0.5)
+            end
+        end
+        if blockedPct ~= nil and blockedPct >= 1 then
+            statusEl:setText(string.format(tr("sf_pda_growth_blocked", "Blocked %d%%"), blockedPct))
+            statusEl:setTextColor(unpack(COLOR_POOR))
+        elseif entry.urgency >= 60 then
             statusEl:setText(tr("sf_pda_status_poor", "Poor"))
             statusEl:setTextColor(unpack(COLOR_POOR))
         elseif entry.urgency >= 25 then
             statusEl:setText(tr("sf_pda_status_fair", "Fair"))
             statusEl:setTextColor(unpack(COLOR_FAIR))
+        elseif excellentPct ~= nil and excellentPct >= 1 then
+            statusEl:setText(string.format(tr("sf_pda_growth_ahead", "Ahead %d%%"), excellentPct))
+            statusEl:setTextColor(unpack(COLOR_GOOD))
         else
             statusEl:setText(tr("sf_pda_status_good", "Good"))
             statusEl:setTextColor(unpack(COLOR_GOOD))
@@ -1075,7 +1139,8 @@ local function buildNeedsString(info)
     if info.potassium.value  < kThreshPoor then
         table.insert(needs, tr("sf_pda_need_k", "Potassium"))
     end
-    if (info.pH or SoilConstants.FIELD_DEFAULTS.pH) < phThreshLow then
+    -- [SF-79] unknown pH cannot assert a lime need.
+    if type(info.pH) == 'number' and info.pH < phThreshLow then
         table.insert(needs, tr("sf_pda_need_ph", "Lime (pH)"))
     end
     if (info.weedPressure    or 0) >= PRESSURE_THRESHOLD then

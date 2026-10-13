@@ -7,7 +7,7 @@
 -- =========================================================
 
 ---@class HookManager
-HookManager = {}
+HookManager = HookManager or {}
 local HookManager_mt = Class(HookManager)
 
 --- [SF-19 item 5] Resolve the per-section pest/disease pressure for See & Spray.
@@ -41,7 +41,276 @@ function HookManager.new()
     self.hooks = {}
     self.installed = false
     self._sectionScratch = {}   -- reused scratch table for sprayer section loops
+    -- RSF-F196 R1a: two product-level maps with different jobs, both keyed by fill
+    -- type index and neither keyed by price.
+    --   customProductIndices  identity only. Membership of the one fixed name
+    --                         population, rebuilt whenever indices become available.
+    --   refusedProducts       a property of the PRODUCT, not of any machine, work
+    --                         area or pass. Written only by the registration path.
+    -- Neither is saved or transmitted; each peer reaches the same verdict from its
+    -- own loaded descriptors.
+    self.customProductIndices = {}
+    self.refusedProducts = {}
     return self
+end
+
+-- =========================================================
+-- RSF-F196: custom-product identity, kept apart from price
+-- =========================================================
+
+--- The one custom-product name population (V12b).
+--- Returned fresh each call because SoilBlends.appendNames APPENDS: handing out a
+--- shared table would grow it by the blend list on every rebuild.
+---@return string[]
+function HookManager.buildCustomNamePopulation()
+    local names = {
+        -- Liquid
+        "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
+        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
+        "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
+        -- Solid
+        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
+        "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
+    }
+    if SoilBlends and SoilBlends.appendNames then
+        SoilBlends.appendNames(names)   -- CD-12
+    end
+    return names
+end
+
+--- A fill type's density in KILOGRAMS PER LITRE, or nil when it has none usable.
+---
+--- The engine stores this in TONNES per litre, not kilograms. FillTypeDesc.lua:71
+--- reads `physics#massPerLiter` (documented in kilograms at :290) and multiplies by
+--- 0.001, over a default of 0.001 set at :13. FillTypeManager.MASS_SCALE is 1.
+--- Anything comparing the stored number against a kg/ha rate without this scale is
+--- out by a thousand, which is the unit error U2 exists to prevent.
+---
+--- WHAT THIS CANNOT DETECT, stated because the gap is in the engine and not here:
+--- a fill type that declares NO density is stored as 0.001 t/L, exactly 1 kg/L, and
+--- is indistinguishable from one that declares massPerLiter="1.0". "Absent" is not
+--- reachable through the loader, so refusal covers nonsense (nil or non-positive)
+--- and does not pretend to cover absence.
+---@param fillType table|nil
+---@return number|nil  kg per litre, or nil when unusable
+function HookManager.densityOf(fillType)
+    if fillType == nil then return nil end
+    local stored = fillType.massPerLiter
+    if type(stored) ~= "number" or stored <= 0 then return nil end
+    local kgPerLitre = stored * 1000
+    if kgPerLitre ~= kgPerLitre then return nil end   -- NaN survives the > 0 test
+    return kgPerLitre
+end
+
+--- The twelve dry products (R7). A subset of the population above, named here once
+--- so the Drain Vehicle recovery and the density refusal cannot drift apart.
+HookManager.DRY_PRODUCT_NAMES = {
+    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
+    "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
+}
+local DRY_PRODUCT_SET = {}
+for _, dryName in ipairs(HookManager.DRY_PRODUCT_NAMES) do DRY_PRODUCT_SET[dryName] = true end
+
+---@param name string|nil
+---@return boolean
+function HookManager.isDryProductName(name)
+    return name ~= nil and DRY_PRODUCT_SET[name] == true
+end
+
+--- RSF-F196 U2: THE conversion, in one place. A dry product's public rate is
+--- kilograms per hectare, while every stored, drained, billed and transmitted
+--- quantity is engine litres (U1). So wherever litres meet a kg/ha number, the
+--- litres are multiplied by the product's density first. That is the whole
+--- conversion; it happens at the point of use and stores nothing. Only the
+--- twelve dry products convert. Everything else is passthrough (U4): liquids,
+--- base-game FERTILIZER and LIME (dry in the public table, but not F196's), and
+--- the crop-protection buffer keys keep their exact arithmetic.
+---@param fillType table|nil  a fill-type descriptor (name, massPerLiter)
+---@return number|nil  kg per litre for one of the twelve, nil = passthrough
+function HookManager.rateKgPerLiter(fillType)
+    if fillType == nil or not HookManager.isDryProductName(fillType.name) then return nil end
+    return HookManager.densityOf(fillType)
+end
+
+--- Litres expressed as the mass a kg/ha rate can be compared with (U2/U3). The
+--- four interpretation sites (the nutrient factor, the fully-treated comparison,
+--- the litre-fallback coverage and the HUD ghost bar) all call this, so the bar
+--- and the threshold can never disagree. A dry product whose density is unusable
+--- never reaches these sites: it is refused at registration and applies nothing.
+---@param fillType table|nil
+---@param liters number
+---@return number
+function HookManager.massEquivalent(fillType, liters)
+    local kgPerLiter = HookManager.rateKgPerLiter(fillType)
+    if kgPerLiter == nil then return liters end
+    return liters * kgPerLiter
+end
+
+--- Rebuild the identity catalogue from the one name population (V12).
+--- Membership records identity ONLY. Price is not consulted here and must not be:
+--- a product whose price arrives late is still the same product, and V12b exists
+--- because identity that disappears when price is late is how a helper decision
+--- silently falls back to a price-keyed path.
+---@return number  how many names resolved to an index
+function HookManager:rebuildCustomProductCatalogue()
+    self:ensureProductTables()
+    self.customProductIndices = {}
+    if not g_fillTypeManager then return 0 end
+    local resolved = 0
+    for _, name in ipairs(HookManager.buildCustomNamePopulation()) do
+        local ok, idx = pcall(function() return g_fillTypeManager:getFillTypeIndexByName(name) end)
+        if ok and idx and idx > 0 and idx ~= FillType.UNKNOWN then
+            self.customProductIndices[idx] = true
+            resolved = resolved + 1
+        end
+    end
+    return resolved
+end
+
+--- RSF-F196 X1 / V12a: the ONE price source, by name. Overrides from Constants
+--- (PURCHASABLE_SINGLE_NUTRIENT pricePerLiter) win, else the fillTypes.xml economy
+--- fallback. Lifted verbatim from installPurchaseRefillHook so the install-time
+--- wrapper and the per-attempt rebuild below read one table, never two copies
+--- that can drift. A name with no entry here (every blend) has NO price and is
+--- not eligible for the completeness predicate; billing such a product is
+--- native's path, not ours (V17).
+local FALLBACK_PRICES = {
+    UAN32 = 1.60, UAN28 = 1.50, ANHYDROUS = 1.85, STARTER = 1.70,
+    LIQUIDLIME = 1.20, INSECTICIDE = 1.20, FUNGICIDE = 1.30,
+    -- Physical named fungicides (6-chemical kit): premium anchors, balance pass owns finals
+    PROPICONAZOLE = 1.40, AZOXYSTROBIN = 1.60, BOSCALID = 1.85,
+    MANCOZEB = 0.90, METALAXYL = 1.45, TEBUCONAZOLE = 1.55,
+    -- Organic-approved preventatives (OM-209): cheap, priced below the synthetic six
+    SULFUR = 0.40, COPPER_HYDROXIDE = 0.55,
+    LIQUID_UREA = 1.70, LIQUID_AMS = 1.45, LIQUID_MAP = 2.00, LIQUID_DAP = 1.80, LIQUID_POTASH = 1.85,
+    UREA = 1.65, AN = 1.55, AMS = 1.40, MAP = 1.95, DAP = 1.75, POTASH = 1.80, POLIFOSKA = 1.35,
+    COMPOST = 0.60, BIOSOLIDS = 0.55, CHICKEN_MANURE = 0.50,
+    PELLETIZED_MANURE = 0.70, GYPSUM = 0.35,  -- reduced: amendment, not plant food ($525/ha vs $1200)
+}
+---@param name string|nil
+---@return number|nil pricePerLiter, nil when the name has no price entry
+function HookManager.customPriceFor(name)
+    if type(name) ~= "string" then return nil end
+    local pcs = SoilConstants and SoilConstants.PURCHASABLE_SINGLE_NUTRIENT
+    if pcs then
+        for entryName, data in pairs(pcs) do
+            if string.upper(entryName) == name and data.pricePerLiter ~= nil then
+                return data.pricePerLiter
+            end
+        end
+    end
+    return FALLBACK_PRICES[name]
+end
+
+--- RSF-F196 X1 / V12a: rebuild the price map on EVERY registration attempt, the
+--- dedi retry included, beside the identity catalogue. Until this existed the map
+--- had exactly one writer, installPurchaseRefillHook, which runs once from
+--- installAll and never on a retry: a product whose descriptor arrived late
+--- (#431) resolved into the catalogue and never got a price, so helper buying
+--- refused it for the whole session while the completion flag still went true.
+---
+--- Builds a COMPLETE replacement for every resolved, non-refused population index
+--- whose name has a price, then assigns it in ONE step, so no partial map is ever
+--- observable by the two call-time readers (getExternalFill's charge and the
+--- backup refill). Returns whether the map is complete: every such eligible index
+--- carries a finite, nonnegative price. Eligibility is "the name has a price
+--- entry"; blends have none and must never count as missing, or every load would
+--- time out. The purchase wrapper's captured install-time copy is untouched here
+--- (V12a's wrapper half, with V12c).
+---@return boolean complete
+function HookManager:rebuildCustomPriceMap()
+    self:ensureProductTables()
+    local fm = g_fillTypeManager
+    local map, complete = {}, true
+    if fm ~= nil then
+        for _, name in ipairs(HookManager.buildCustomNamePopulation()) do
+            local price = HookManager.customPriceFor(name)
+            if price ~= nil then
+                local ok, idx = pcall(function() return fm:getFillTypeIndexByName(name) end)
+                if ok and idx and idx > 0 and self.refusedProducts[idx] == nil then
+                    if type(price) == "number" and price == price and price >= 0 and price < math.huge then
+                        map[idx] = price
+                    else
+                        complete = false
+                    end
+                end
+            end
+        end
+    end
+    self.customFillTypePrices = map
+    return complete
+end
+
+--- Make sure the two product tables exist on this instance.
+--- HookManager.new() creates them, but registerCustomSprayTypes is reachable on an
+--- object built straight from the metatable (the F187 bar does exactly that), and a
+--- registration path that indexes a nil table would fail for a reason that has
+--- nothing to do with registration.
+function HookManager:ensureProductTables()
+    if self.customProductIndices == nil then self.customProductIndices = {} end
+    if self.refusedProducts == nil then self.refusedProducts = {} end
+end
+
+---@param index number|nil
+---@return boolean
+function HookManager:isCustomProduct(index)
+    self:ensureProductTables()
+    return index ~= nil and self.customProductIndices[index] == true
+end
+
+---@param index number|nil
+---@return boolean
+function HookManager:isRefusedProduct(index)
+    self:ensureProductTables()
+    return index ~= nil and self.refusedProducts[index] ~= nil
+end
+
+--- R1b, the ONE product-intent resolver. Every refusal and helper-buy consumer
+--- calls this and no consumer invents another membership or price-keyed path.
+---
+--- Candidate priority, and the order is the argument:
+---   1. a direct non-UNKNOWN fill type supplied by the caller, including the final
+---      post-native workAreaParameters.sprayFillType. That covers an attached nurse
+---      tank, which would otherwise disappear behind a local empty unit.
+---   2. the current physical fill type of the local unit getSprayerFillUnitIndex()
+---      names. Current outranks last-valid so an actual product switch wins at once.
+---   3. that unit's native getFillUnitLastValidFillType (FillUnit.lua:699). This is
+---      the empty-tank and late-join answer: the engine retains it when the level
+---      reaches zero and syncs it in its own stream (FillUnit.lua:482 initial, :541
+---      update), so a client joining after the tank emptied reaches the same product
+---      without a new event or any transmitted verdict.
+---
+--- A candidate is accepted only when it is a catalogue member. A fresh empty unit
+--- with no last-valid custom product has NO custom intent and stays eligible for
+--- ordinary native behaviour; this does not guess one.
+---@param sprayer table|nil
+---@param directFillType number|nil
+---@return number|nil  a catalogue member index, or nil for no custom intent
+function HookManager:resolveCustomProductIntent(sprayer, directFillType)
+    if directFillType ~= nil and directFillType ~= FillType.UNKNOWN
+        and self:isCustomProduct(directFillType) then
+        return directFillType
+    end
+
+    if sprayer == nil or sprayer.getSprayerFillUnitIndex == nil then return nil end
+    local okFui, fuIdx = pcall(function() return sprayer:getSprayerFillUnitIndex() end)
+    if not okFui or fuIdx == nil then return nil end
+
+    if sprayer.getFillUnitFillType ~= nil then
+        local okFt, current = pcall(function() return sprayer:getFillUnitFillType(fuIdx) end)
+        if okFt and current ~= nil and current ~= FillType.UNKNOWN and self:isCustomProduct(current) then
+            return current
+        end
+    end
+
+    if sprayer.getFillUnitLastValidFillType ~= nil then
+        local okLast, lastValid = pcall(function() return sprayer:getFillUnitLastValidFillType(fuIdx) end)
+        if okLast and lastValid ~= nil and lastValid ~= FillType.UNKNOWN and self:isCustomProduct(lastValid) then
+            return lastValid
+        end
+    end
+
+    return nil
 end
 
 -- =========================================================
@@ -250,23 +519,48 @@ function HookManager:installAll(soilSystem)
     local failCount = 0
 
     SoilLogger.info("Installing event hooks...")
+    -- [SF-73] the system this manager serves, for the target controller's handle
+    self._soilSystemRef = soilSystem
+
+    -- AI fruit requirement guard: must run before any vehicle loads, because a
+    -- mismatched custom density map aborts the process on the first AI field job.
+    local aiGuardOk = self:installAIFruitRequirementGuard()
+    if aiGuardOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Harvest hook: direct-cut combines and forage harvesters (Cutter spec)
     local harvestOk = self:installHarvestHook()
+    self._harvestHookOk = harvestOk == true   -- RSF-741 item 9: the token rides this wrapper
     if harvestOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- Yield modifier hook: applies soil-fertility yield reduction via the combine hopper
-    -- (separate from addCutterArea for RealisticHarvesting compatibility - see issue #284)
-    local yieldModOk = self:installYieldModifierHook()
-    if yieldModOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    -- Later-vehicle routes (RSF-F226 item 2, MAINTENANCE row 172): the ONE
+    -- VehicleSystem.addVehicle class wrap through which every hook below reaches a
+    -- vehicle bought after install. Right after harvest, before any hook registers a
+    -- route on it. It needs VehicleSystem only, never a specialization.
+    local routesOk = self:installVehicleRoutes()
+    if routesOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Sprayer overlap gate (RSF-F226 item 3): the present sprayers, and one route on
+    -- the wrap above for sprayers bought later.
+    local overlapGateOk = self:installSprayerOverlapGate()
+    if overlapGateOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Zone yield cutter hook (SF-14): scales the newly-added Cutter
+    -- multiplier-area delta by the pre-cut spatial scalar (or the frozen
+    -- field-average scalar) on the live cutter work-area pointer. Replaces
+    -- the old FillUnit hopper yield-modifier wrapper.
+    local zoneYieldOk = self:installZoneYieldCutterHook()
+    self._zoneYieldHookOk = zoneYieldOk == true   -- RSF-741 item 9: standing capture rides this wrapper
+    if zoneYieldOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Harvest contract underwrite (#741 / SF-29): wraps HarvestMission.getCompletion so a
     -- base-game harvest contract on a degraded neighbour field tops up to the vanilla-
-    -- expected completion at delivery (divides out the same yield modifier the hopper hook
+    -- expected completion at delivery (divides out the same yield modifier the cutter hook
     -- above applied). Server-side, fail-safe, no soil write, no farm-money move. Must run
-    -- after installYieldModifierHook so the modifier it inverts is the one in force.
+    -- after installZoneYieldCutterHook so the modifier it inverts is the one in force.
+    -- RSF-741: the underwrite is live only when every capture surface is (item 9); see
+    -- installHarvestUnderwrite. A failure leaves the underwrite vanilla passthrough.
     if HarvestContractUnderwrite and HarvestContractUnderwrite.install then
-        local underwriteOk = HarvestContractUnderwrite.install(self)
+        local underwriteOk = self:installHarvestUnderwrite()
         if underwriteOk then successCount = successCount + 1 else failCount = failCount + 1 end
     end
 
@@ -282,9 +576,22 @@ function HookManager:installAll(soilSystem)
     local tedderOk = self:installTedderHook()
     if tedderOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Windrower hook (RSF-F208 section 3): ground condition follows the windrowed material
+    local windrowerOk = self:installWindrowerHook()
+    if windrowerOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Mower carrier (RSF-F208 section 3): ground condition follows the mown windrow
+    local mowerCarrierOk = self:installMowerCarrierHook()
+    if mowerCarrierOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Combine swath hook (SF-43/SF-45): straw birth on the age layer
     local swathOk = self:installCombineSwathHook()
     if swathOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- Indoor mask lifecycle (RSF-F213 section 5): a roof painted or removed
+    -- invalidates the shelter read over the cells it touches
+    local indoorOk = self:installIndoorMaskHook()
+    if indoorOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Bale birth and death hooks (SF-46 "THE YARD LADDER"): per-bale condition rows
     local baleBirthOk = self:installBaleBirthHook()
@@ -293,9 +600,15 @@ function HookManager:installAll(soilSystem)
     local baleDeleteOk = self:installBaleDeleteHook()
     if baleDeleteOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- [RSF-F215] A bale deleted into an object storage keeps its row (STORED)
+    local baleStorageOk = self:installBaleStorageFrame()
+    if baleStorageOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Birth sample (RULED 2026-07-31): litres-weighted swath wetness at the pickup
     local balePickupOk = self:installBalerPickupHook()
+    local forageWagonOk = self:installForageWagonCollectionHook()
     if balePickupOk then successCount = successCount + 1 else failCount = failCount + 1 end
+    if forageWagonOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Fertilizer application hook (covers ALL sprayers + spreaders via Sprayer specialization)
     local sprayerAreaOk = self:installSprayerAreaHook()
@@ -359,13 +672,12 @@ function HookManager:installAll(soilSystem)
     local extFillOk = self:installExternalFillHook()
     if extFillOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
-    -- CRITICAL: propagate the getExternalFill wrapper down to vehicleType.functions and
-    -- live vehicle instances. SpecializationUtil.copyTypeFunctionsInto copies function
-    -- refs directly onto vehicle instances at load time, so patching Sprayer.getExternalFill
-    -- on the class table alone NEVER reaches already-loaded vehicles (issue #205).
-    if extFillOk then
-        self:propagateExternalFillHookToLiveVehicles()
-    end
+    -- RSF-F196 V12c: SpecializationUtil.copyTypeFunctionsInto copies function refs
+    -- onto vehicle instances at load time, so a class-table patch alone never reaches
+    -- a loaded vehicle (issue #205). The owned layer inside installExternalFillHook
+    -- now wraps the class, every sprayer type and every live instance itself, with
+    -- records and one cleanup; the old propagate pass, which assigned the CLASS
+    -- wrapper over any type-level predecessor, is gone.
 
     -- Rate multiplier → wap.usage + wap.usagePerMin (event listener, reliable class-table dispatch).
     -- Must run before installSprayerUsageHook so the chain is: vanilla sets wap.usage → this hook
@@ -378,6 +690,13 @@ function HookManager:installAll(soilSystem)
     -- consumption scales correctly with area covered at the vehicle's real speed.
     local sprayUsageOk = self:installSprayerUsageHook()
     if sprayUsageOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
+    -- [SF-73] Target-accurate N/P/K: the cycle-start prepend and the owned OUTER
+    -- layer on getSprayerUsage, installed after the actual-speed replacement above so
+    -- that replacement is the captured predecessor every non-target quote delegates
+    -- to and every target plan measures its capacity with.
+    local targetOk = self:installTargetApplicationHooks()
+    if targetOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
     -- Opt custom fill types into the vanilla "external fill" skip-depletion path.
     -- This is the canonical BUY-mode fix (issue #205): by telling the base engine that
@@ -456,6 +775,26 @@ function HookManager:installAll(soilSystem)
 
     -- System 3: Variable Rate - per-section rate pre-computation (appended after See & Spray).
     self:installVariableRateHook()
+    -- RSF-F196 R2: MUST be the last append on Sprayer.onStartWorkAreaProcessing,
+    -- after the five above (rate multiplier, density-map remap, section sensor,
+    -- see-and-spray, variable rate). It runs after native's final assignment and
+    -- after everything the mod already installs, so nothing later can re-arm a
+    -- dose it zeroed. The overlap hook below is a PREPEND and is not in the way.
+    --
+    -- FILE ORDER ARGUES THE OPPOSITE, AND FILE ORDER IS WRONG. The body of
+    -- installSprayerStartHook (the rate multiplier append) sits near the END of
+    -- this file, textually far below installDensityRefusalHook, so a reader walking
+    -- the file top to bottom concludes the rate multiplier is appended later. What
+    -- settles append order is the CALL order in this function: the start hook is
+    -- installed above as System 1, this call comes after every other append, and
+    -- the only installs that follow it are prepends. Bob re-derived this in the
+    -- #974 cold review; it lives here so nobody has to again.
+    self:installDensityRefusalHook()
+    -- [SF-73] The target cycle's enforcement is appended AFTER R2, which makes it the
+    -- last start append: nothing later can re-arm a target cycle it zeroed or move a
+    -- target quantity it fixed. R2 still owns every refused product; a refused
+    -- product never becomes a target plan, so the two never act on one cycle.
+    self:installTargetStartEnforcement()
 
     -- System 4: Overlap Prevention - density-map SPRAY_LEVEL nozzle shutoff on already-sprayed ground.
     -- Runs after VariableRate so the rate computation still sees the original isActive states.
@@ -468,11 +807,135 @@ function HookManager:installAll(soilSystem)
     -- causing the boom to lock at minimum width until the player manually cycles the width.
     self:installSectionStatePreserver()
 
+    -- RSF-F196 V13: the drain token, installed LAST so its prepend is the outermost
+    -- wrapper on Sprayer.onEndWorkAreaProcessing and stores exactly the usage native
+    -- reads (every usage writer sits inside it).
+    self:installDrainTokenHook()
+
     self.installed = true
 end
 
 --- Uninstall all hooks and restore original functions
 --- Called on mod unload to prevent hook accumulation
+-- =========================================================
+-- AI FRUIT REQUIREMENT GUARD: mismatched custom density maps
+-- =========================================================
+-- AIImplement:createFieldCropsQuery builds its query on the ground-type map and
+-- then calls addRequiredDensityMapValue for every fruit requirement carrying a
+-- map of its own. The engine rejects any such map whose resolution differs from
+-- the ground-type map ("Density map must match the size of the ground terrain
+-- detail") and takes the process down with it, so one mismatched map turns every
+-- AI field job on that map into a hard crash.
+--
+-- Three base specializations pass a custom map: Weeder and Sprayer pass the weed
+-- map, StonePicker passes the stone map. Whether a map ships those at the
+-- ground-type resolution is map data, not something any script controls.
+--
+-- The requirement cannot be intercepted where it is added. Vehicle.lua copies
+-- every spec function onto the instance at creation (copyTypeFunctionsInto), so
+-- wrapping AIImplement.addAIFruitRequirement afterwards never reaches the copies
+-- the vehicles actually call. AIVehicleUtil.getAIAreaOfVehicle is a plain module
+-- function resolved at call time and is the only caller of getFieldCropsQuery,
+-- so the offending entries are stripped there, immediately before the query is
+-- built. The job then runs without that filter (the implement works the whole
+-- field rather than only weedy or stony cells) instead of killing the game.
+-- Entries whose resolution cannot be measured are left exactly as they are.
+---@return boolean true when the guard was installed
+function HookManager:installAIFruitRequirementGuard()
+    if not AIVehicleUtil or type(AIVehicleUtil.getAIAreaOfVehicle) ~= "function" then
+        SoilLogger.warning("[AIGuard] AIVehicleUtil.getAIAreaOfVehicle not found - skipping")
+        return false
+    end
+    if getDensityMapSize == nil then
+        SoilLogger.warning("[AIGuard] getDensityMapSize unavailable - skipping")
+        return false
+    end
+
+    local sizeCache = {}   -- [densityMapId] = resolution in px
+    local reported  = {}   -- [densityMapId] = true once measured and logged
+    local groundSize       -- ground-type resolution, measured once
+
+    local function measure(mapId)
+        local cached = sizeCache[mapId]
+        if cached ~= nil then return cached end
+        local ok, size = pcall(getDensityMapSize, mapId)
+        if not ok or size == nil then return nil end
+        sizeCache[mapId] = size
+        return size
+    end
+
+    local function getGroundSize()
+        if groundSize ~= nil then return groundSize end
+        local groundSystem = g_currentMission and g_currentMission.fieldGroundSystem
+        if groundSystem == nil then return nil end
+        local ok, mapId = pcall(function()
+            return groundSystem:getDensityMapData(FieldDensityMap.GROUND_TYPE)
+        end)
+        if not ok or mapId == nil then return nil end
+        groundSize = measure(mapId)
+        return groundSize
+    end
+
+    -- Removes entries the engine would reject. Returns true when the list changed.
+    local function stripMismatched(list, label)
+        if list == nil then return false end
+        local removed = false
+
+        for i = #list, 1, -1 do
+            local mapId = list[i].customMapId
+            if mapId ~= nil then
+                local customSize = measure(mapId)
+                local gSize = getGroundSize()
+
+                if customSize ~= nil and gSize ~= nil then
+                    if not reported[mapId] then
+                        reported[mapId] = true
+                        SoilLogger.info("[AIGuard] AI %s density map %s is %s px, ground-type map is %s px",
+                            label, tostring(mapId), tostring(customSize), tostring(gSize))
+                    end
+
+                    if customSize ~= gSize then
+                        table.remove(list, i)
+                        removed = true
+                        SoilLogger.warning("[AIGuard] Dropped the AI %s requirement on density map %s: the engine aborts the process on this mismatch",
+                            label, tostring(mapId))
+                    end
+                elseif not reported[mapId] then
+                    reported[mapId] = true
+                    SoilLogger.warning("[AIGuard] Could not measure AI %s density map %s (custom=%s, ground=%s) - leaving it in place",
+                        label, tostring(mapId), tostring(customSize), tostring(gSize))
+                end
+            end
+        end
+
+        return removed
+    end
+
+    local original = AIVehicleUtil.getAIAreaOfVehicle
+
+    AIVehicleUtil.getAIAreaOfVehicle = function(vehicle, ...)
+        local spec = vehicle ~= nil and vehicle.spec_aiImplement or nil
+        if spec ~= nil then
+            local strippedRequired   = stripMismatched(spec.requiredFruitTypes,   "required")
+            local strippedProhibited = stripMismatched(spec.prohibitedFruitTypes, "prohibited")
+
+            -- Only an already-built query needs rebuilding; an unbuilt one picks
+            -- up the cleaned list on its first use.
+            if (strippedRequired or strippedProhibited)
+                and spec.fieldCropyQuery ~= nil
+                and vehicle.updateFieldCropsQuery ~= nil then
+                vehicle:updateFieldCropsQuery()
+            end
+        end
+
+        return original(vehicle, ...)
+    end
+
+    self:register(AIVehicleUtil, "getAIAreaOfVehicle", original, "AIFruitRequirementGuard")
+    SoilLogger.info("[AIGuard] AI fruit requirement guard installed on AIVehicleUtil.getAIAreaOfVehicle")
+    return true
+end
+
 function HookManager:uninstallAll()
     if not self.installed then return end
 
@@ -631,14 +1094,57 @@ function HookManager:registerCustomSprayTypes()
         end
     end
 
+    self:ensureProductTables()
     for _, name in ipairs(solidNames) do
-        if g_fillTypeManager:getFillTypeByName(name) then
-            local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
-            local customLPS  = customRate / 36000   -- exact: LPS = target_kg_ha / 36000
-            SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha", name, customLPS, customRate)
+        local ft = g_fillTypeManager:getFillTypeByName(name)
+        if ft then
+            -- RSF-F196 R1: a dry product's rate is stated in kg/ha, so it can only be
+            -- interpreted through the product's density. A product whose density is
+            -- unusable is RESOLVED BUT NOT REGISTERED, and its index is recorded in
+            -- the refused table. Refusal is then a first-class fact read by name, not
+            -- inferred from a zero: AI-1's entry condition is both dose fields being
+            -- zero or nil, so a numeric refusal would be indistinguishable from an
+            -- empty tank a helper should refill.
+            -- Refuse only on a density that is PRESENT and nonsense. A nil or
+            -- non-number massPerLiter is not a product defect: FillTypeDesc.lua:13
+            -- and :71 mean the engine's loader always writes a number, over a
+            -- schema default of 1 kg at :290, so nil is unreachable from real
+            -- product data and only appears on an object that did not come through
+            -- the loader. Refusing it would fire the gate on fixtures rather than
+            -- on products, which is the same mistake as encoding an i18n shape the
+            -- engine cannot produce.
+            local declared = ft.massPerLiter
+            local invalid = type(declared) == "number" and HookManager.densityOf(ft) == nil
+            if invalid then
+                self.refusedProducts[ft.index or -1] = "density"
+                SoilLogger.warning(
+                    "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
+                    name, tostring(ft.massPerLiter))
+                skipped = skipped + 1
+            else
+                -- R1a/R6: a retry that finds a previously refused product now valid
+                -- removes the refusal atomically, before registering it.
+                if ft.index ~= nil then self.refusedProducts[ft.index] = nil end
 
-            g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
-            registered = registered + 1
+                -- RSF-F196 C2: the public rate is KILOGRAMS per hectare and the engine
+                -- drains LITRES, so the registered litres-per-second is the mass rate
+                -- divided by the product's density. A hectare at 1.0x then drains
+                -- exactly the configured mass (COMPOST at 0.60 kg/L draws 8,333 L/ha
+                -- where it used to draw 5,000). The tank, the wire and the bill stay in
+                -- litres; the four interpretation sites in SoilFertilitySystem and the
+                -- HUD convert litres back to mass through HookManager.massEquivalent,
+                -- so a full correct pass has the same agronomic consequence as before.
+                -- densityOf is nil only on an object that never went through the loader
+                -- (see the refusal above); that registers at factor 1, passthrough.
+                local customRate = baseRates[name] and baseRates[name].value or (solidLPS * 36000)
+                local kgPerLiter = HookManager.densityOf(ft) or 1
+                local customLPS  = (customRate / kgPerLiter) / 36000
+                SoilLogger.debug("SprayType [DRY] %-20s  LPS=%.6f  rate=%.1f kg/ha  density=%.3f kg/L  (%.0f L/ha)",
+                    name, customLPS, customRate, kgPerLiter, customRate / kgPerLiter)
+
+                g_sprayTypeManager:addSprayType(name, customLPS, "FERTILIZER", solidGroundType, false)
+                registered = registered + 1
+            end
         else
             skipped = skipped + 1
         end
@@ -667,10 +1173,32 @@ function HookManager:registerCustomSprayTypes()
         )
         SoilLogger.info("     Enable SoilDebug to see per-type LPS and rate values")
     end
+    -- RSF-F196 V12/V12a: rebuild the identity catalogue on EVERY registration
+    -- attempt, the dedi retry included (SoilFertilityManager calls this function
+    -- again until it completes), so a fill type that resolved late is a product
+    -- from the moment it exists. THIS IS THE ONLY PRODUCTION CALLER. Without it
+    -- the catalogue stays empty and every custom product resolves as "not
+    -- custom" at the external-fill charge, the purchase intercept and the backup
+    -- refill, which is the regression #974 shipped: its benches all supplied the
+    -- catalogue themselves, so none of them noticed that production never did.
+    local catalogued = self:rebuildCustomProductCatalogue()
+    SoilLogger.debug("[F196] identity catalogue: %d custom products resolved to an index", catalogued)
+    -- RSF-F196 X1 / V12a: the price map is rebuilt on the same cadence as the
+    -- catalogue, so a product that resolved late has its price the moment it
+    -- exists (see rebuildCustomPriceMap). Completion is now honest about price:
+    -- every name resolved AND every eligible resolved product priced. The brief's
+    -- `_sprayTypesExhausted` is the mission-time timeout in _updateDeferredInit
+    -- (#970), which warns once, keeps refusals and leaves this false; no flag.
+    local priceComplete = self:rebuildCustomPriceMap()
+
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
-    self._sprayTypesComplete = (skipped == 0)
+    self._sprayTypesComplete = (skipped == 0) and priceComplete
     if not self._sprayTypesComplete then
-        SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+        if skipped > 0 then
+            SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+        else
+            SoilLogger.warning("[DeferredInit] every fill type resolved but a priced product carries an unusable price - scheduling retry")
+        end
     end
 end
 
@@ -902,9 +1430,10 @@ function HookManager:installSprayTypeEffectsHook()
     for _, n in ipairs(liquidNames) do liquidNameSet[string.upper(n)] = true end
     for _, n in ipairs(solidNames)  do solidNameSet[string.upper(n)]  = true end
 
-    -- Pass 2 must NOT strip vanilla fill type names from their native slots.
-    -- HERBICIDE is a vanilla spray type; INSECTICIDE/FUNGICIDE have dedicated vehicle
-    -- slots with their own effects. Stripping them empties the slot → getActiveSprayType()
+    -- Pass 2 must NOT strip these names from a slot of their own.
+    -- HERBICIDE is a base-game spray type. INSECTICIDE and FUNGICIDE are Soil's own fill
+    -- types (fillTypes.xml), not base-game ones, so only a mod sprayer can give them a slot of
+    -- their own. Stripping a name empties its slot → getActiveSprayType()
     -- returns nil → vanilla starts no slot effects → no spray visual.
     local vanillaNames = { HERBICIDE = true, INSECTICIDE = true, FUNGICIDE = true }
 
@@ -963,8 +1492,8 @@ function HookManager:installSprayTypeEffectsHook()
         end
 
         -- Pass 2: strip our names from any slot that lacks a base fertilizer type.
-        -- Without this, vanilla HERBICIDE/INSECTICIDE/FUNGICIDE slots (center-only
-        -- nozzle config) are found first by getActiveSprayType and override the
+        -- Without this, a HERBICIDE slot (center-only nozzle config), or a mod sprayer's own
+        -- INSECTICIDE/FUNGICIDE slot, is found first by getActiveSprayType and overrides the
         -- full-boom LIQUIDFERTILIZER slot we patched in Pass 1.
         for _, st in ipairs(spec.sprayTypes) do
             if st.fillTypes then
@@ -1255,13 +1784,17 @@ function HookManager:installSectionControlHook()
             -- Gate 1: SF must be initialised
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
+            -- [SF-73] one physical rate serves a target cycle's whole accepted width:
+            -- no late section shut-off may change the result after the plan is fixed
+            local sf73TA = hookMgrRef:getTargetApplication()
+            if sf73TA ~= nil and sf73TA:isTargetCycle(sprayerSelf) then return end
 
             -- Field Boundary Enforcement + Overlap Prevention:
             -- (1) Suppress boom sections whose outer tip extends outside the current field.
-            -- (2) Suppress boom sections whose outer tip (or root for center) is in a cell
-            --     already sprayed this session AND stamped more than OVERLAP_GRACE_MS ago.
-            --     The grace period prevents self-suppression on the current forward pass:
-            --     a cell stamped < 20 s ago is still "fresh" and won't block its own section.
+            -- (2) Suppress boom sections whose outer tip (or the boom-line centre for the
+            --     center section) is in a cell sprayed on an earlier pass - same rule as
+            --     overlap prevention (HookManager.isCellSprayedEarlier), so the current
+            --     pass does not switch off its own sections.
             -- Independent of Smart Sensor - applies to every fill type when enabled.
             if sfm.settings and sfm.settings.fieldBoundaryControl then
                 local vwwBE = sprayerSelf.spec_variableWorkWidth
@@ -1278,20 +1811,21 @@ function HookManager:installSectionControlHook()
                         local fieldDataRef = soilSysRef and soilSysRef.fieldData
                         local fieldEntry   = (fieldDataRef and vehicleFieldId and vehicleFieldId > 0)
                                             and fieldDataRef[vehicleFieldId] or nil
-                        local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells or nil
-                        local zoneCell     = SoilConstants.ZONE and SoilConstants.ZONE.CELL_SIZE or 10
-                        local graceMs      = SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_GRACE_MS or 20000
-                        local nowMs        = g_currentMission and g_currentMission.time or 0
+                        -- MAINTENANCE row 234: the overlap record, not the 10 m cells.
+                        local overlapRecord = fieldEntry and fieldEntry.sessionOverlapOdo or nil
+                        local graceM       = sprayerSelf._sfOverlapGraceM
+                                             or (SoilConstants.ZONE and SoilConstants.ZONE.OVERLAP_GRACE_M or 15)
 
                         for i, section in ipairs(vwwBE.sections) do
                             if section.isActive then
                                 -- Determine position to check:
                                 -- Non-center sections use the cached outer tip.
-                                -- Center section uses the vehicle root (no tip node).
+                                -- Center section uses the boom-line centre (no tip node);
+                                -- the root sits ahead of the boom.
                                 local sx, sz
                                 if section.isCenter then
-                                    sx = rx
-                                    sz = rz
+                                    sx = sprayerSelf._sfBoomCentreX or rx
+                                    sz = sprayerSelf._sfBoomCentreZ or rz
                                 else
                                     local tip = tips and tips[i]
                                     if tip then
@@ -1313,13 +1847,9 @@ function HookManager:installSectionControlHook()
                                         end
                                     end
 
-                                    -- (2) Overlap: cell already visited AND older than grace period.
-                                    if section.isActive and coveredCells then
-                                        local cx      = math.floor(sx / zoneCell)
-                                        local cz      = math.floor(sz / zoneCell)
-                                        local cellKey = tostring(cx * 10000 + cz)
-                                        local stampMs = coveredCells[cellKey]
-                                        if stampMs and (nowMs - stampMs) > graceMs then
+                                    -- (2) Overlap: ground sprayed on an earlier pass.
+                                    if section.isActive and overlapRecord then
+                                        if HookManager.isOverlapCellSprayedEarlier(fieldEntry, sx, sz, sprayerSelf, graceM) then
                                             section.isActive = false
                                             if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
                                             sprayerSelf._sfSuppressedSections[i] = true
@@ -1376,19 +1906,18 @@ function HookManager:installSectionControlHook()
             if not rootX then return end
 
             local soilSys = sfm.soilSystem
-            local tips = sprayerSelf._sfSectionTip
+            -- MAINTENANCE row 232: the ground under each section, not halfway to its tip.
+            local samples = hookMgrRef:sectionSamplePoints(sprayerSelf)
 
             for i, section in ipairs(vww.sections) do
                 -- Center sections CAN be suppressed: getIsWorkAreaActive() checks workArea.sectionIndex
-                -- → section.isActive for all sections including center. Center has no tip node, so its
-                -- position check falls back to rootX/rootZ (vehicle center = center strip position).
+                -- → section.isActive for all sections including center.
                 -- installSectionStatePreserver() restores isActive for all sections after work areas process.
                 if section.isActive then
-                    -- Midpoint between root and section outer edge (from preserver cache).
-                    -- Center section has no tip node → tips[i] = nil → falls back to rootX/rootZ.
-                    local tip = tips and tips[i]
-                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
-                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
+                    -- "That section's world position": the section's own centre on the boom
+                    -- line (the boom-line centre for a section with no known ground).
+                    local here = samples[i][1]
+                    local sx, sz = here.x, here.z
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     if fieldId and fieldId > 0 then
@@ -1493,6 +2022,10 @@ function HookManager:installSeeAndSprayHook()
             local sfm = g_SoilFertilityManager
             if not sfm or not sfm.soilSystem then return end
 
+            -- [SF-73] never on a target cycle (see the section sensor above)
+            local sf73TA = hookMgrRef:getTargetApplication()
+            if sf73TA ~= nil and sf73TA:isTargetCycle(sprayerSelf) then return end
+
             -- See & Spray is a purchased vehicle feature - read from SFNozzleEffects spec.
             local sfSpec = SFNozzleEffects and sprayerSelf[SFNozzleEffects.SPEC_TABLE_NAME]
             if not sfSpec then return end
@@ -1527,7 +2060,6 @@ function HookManager:installSeeAndSprayHook()
             local soilSys = sfm.soilSystem
             local ssCfg   = SoilConstants.SEE_AND_SPRAY
             local zone    = SoilConstants.ZONE
-            local tips    = sprayerSelf._sfSectionTip
 
             -- #678: when per-vehicle Variable Rate is on, See & Spray runs graduated -
             -- each non-skipped section gets a rate from its cell's pest/disease/weed
@@ -1542,82 +2074,101 @@ function HookManager:installSeeAndSprayHook()
             local vrCfg = SoilConstants.VARIABLE_RATE
             if variableOn then sensorMgr:clearSectionRates(vehicleId) end
 
-            for i, section in ipairs(vww.sections) do
-                if section.isActive then
-                    local tip = tips and tips[i]
-                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
-                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
+            -- MAINTENANCE row 232: one point's reading. nil when the point is on no field
+            -- with soil data; else whether the product is not needed there and, with the
+            -- graduated rate on, the share of it the point needs.
+            local function readPoint(sx, sz)
+                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
+                if not fieldId or fieldId <= 0 then return nil end
+                local fd = soilSys.fieldData[fieldId]
+                if not fd then return nil end
+                local cellKey = tostring(
+                    math.floor(sx / zone.CELL_SIZE) * 10000 +
+                    math.floor(sz / zone.CELL_SIZE))
+                local cell = fd.zoneData and fd.zoneData[cellKey]
 
-                    local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
-                    if fieldId and fieldId > 0 then
-                        local fd = soilSys.fieldData[fieldId]
-                        if fd then
-                            local cellKey = tostring(
-                                math.floor(sx / zone.CELL_SIZE) * 10000 +
-                                math.floor(sz / zone.CELL_SIZE))
-                            local cell = fd.zoneData and fd.zoneData[cellKey]
+                -- [SF-19 item 5] Client fidelity: prefer the synced
+                -- per-pixel display maps, then the cell, then the field
+                -- scalar. See resolveCellPressure for the contract.
+                local cellPest, cellDisease = HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
+                -- Weed stays on the cell/field path: the brief leaves weed to
+                -- the game-native weed density map (queried below), so it is
+                -- not part of the pressure re-point.
+                local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
 
-                            -- [SF-19 item 5] Client fidelity: prefer the synced
-                            -- per-pixel display maps, then the cell, then the field
-                            -- scalar. See resolveCellPressure for the contract.
-                            local cellPest, cellDisease = HookManager.resolveCellPressure(soilSys, fd, cell, sx, sz)
-                            -- Weed stays on the cell/field path: the brief leaves weed to
-                            -- the game-native weed density map (queried below), so it is
-                            -- not part of the pressure re-point.
-                            local cellWeed    = (cell and cell.weedPressure)    or (fd.weedPressure    or 0)
-
-                            local skip = false
-                            if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
-                            if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
-                            if weedSS    then
-                                local herbicideActive = (fd.herbicideDaysLeft or 0) > 0
-                                local weedsGone = herbicideActive
-                                if not weedsGone then
-                                    -- Ground truth: query the game's weed density map at this exact position.
-                                    -- weedState 0=none, 1-6=alive, 7-9=withered/dying → suppress 0 or >=7.
-                                    local fs = getWeedFieldState(fieldId)
-                                    if fs then
-                                        local uok = pcall(function() fs:update(sx, sz) end)
-                                        if uok then
-                                            local ws = fs.weedState or -1
-                                            weedsGone = (ws == 0 or ws >= 7)
-                                        end
-                                    end
-                                    -- Fallback to stale cell pressure if weed system unavailable.
-                                    if not weedsGone then
-                                        weedsGone = (cellWeed < ssCfg.WEED_THRESHOLD)
-                                    end
-                                end
-                                skip = skip or weedsGone
-                            end
-                            if skip then
-                                section.isActive = false
-                                if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
-                                sprayerSelf._sfSuppressedSections[i] = true
-                            elseif variableOn then
-                                -- #678: graduated rate from the active target's pressure.
-                                -- Maps [threshold .. FULL_RATE_PRESSURE] → [MIN_RATE .. MAX_RATE],
-                                -- then eases toward it (same 0.6/0.4 blend the NPK hook uses).
-                                local pressure, thr
-                                if pestSS then
-                                    pressure, thr = cellPest, ssCfg.PEST_THRESHOLD
-                                elseif diseaseSS then
-                                    pressure, thr = cellDisease, ssCfg.DISEASE_THRESHOLD
-                                else
-                                    pressure, thr = cellWeed, ssCfg.WEED_THRESHOLD
-                                end
-                                local full = ssCfg.FULL_RATE_PRESSURE or 50
-                                local frac = (full > thr) and ((pressure - thr) / (full - thr)) or 1
-                                -- Weeds pass a ground-truth check but cellWeed can be stale/0;
-                                -- never under-treat a section the check said needs spraying.
-                                if weedSS and (pressure or 0) <= 0 then frac = 1 end
-                                if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
-                                local rate = vrCfg.MIN_RATE + frac * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
-                                local prev = sensorMgr:getSectionRate(vehicleId, section) or rate
-                                rate = prev * 0.6 + rate * 0.4
-                                sensorMgr:setSectionRate(vehicleId, section, rate)
+                local skip = false
+                if pestSS    then skip = skip or (cellPest    < ssCfg.PEST_THRESHOLD)    end
+                if diseaseSS then skip = skip or (cellDisease < ssCfg.DISEASE_THRESHOLD) end
+                if weedSS    then
+                    local weedsGone = false
+                    local groundTruth = false
+                    local fs = getWeedFieldState(fieldId)
+                    if fs then
+                        local uok = pcall(function() fs:update(sx, sz) end)
+                        if uok then
+                            local ws = fs.weedState or -1
+                            if ws >= 0 then
+                                groundTruth = true
+                                weedsGone = (ws == 0 or ws >= 7)
                             end
                         end
+                    end
+                    if not groundTruth then
+                        weedsGone = (fd.herbicideDaysLeft or 0) > 0
+                            or (cellWeed < ssCfg.WEED_THRESHOLD)
+                    end
+                    skip = skip or weedsGone
+                end
+                if skip then return true, nil end
+                if not variableOn then return false, nil end
+
+                -- #678: graduated rate from the active target's pressure.
+                -- Maps [threshold .. FULL_RATE_PRESSURE] → [MIN_RATE .. MAX_RATE];
+                -- the section then eases toward it (same 0.6/0.4 blend the NPK hook uses).
+                local pressure, thr
+                if pestSS then
+                    pressure, thr = cellPest, ssCfg.PEST_THRESHOLD
+                elseif diseaseSS then
+                    pressure, thr = cellDisease, ssCfg.DISEASE_THRESHOLD
+                else
+                    pressure, thr = cellWeed, ssCfg.WEED_THRESHOLD
+                end
+                local full = ssCfg.FULL_RATE_PRESSURE or 50
+                local frac = (full > thr) and ((pressure - thr) / (full - thr)) or 1
+                -- Weeds pass a ground-truth check but cellWeed can be stale/0;
+                -- never under-treat a section the check said needs spraying.
+                if weedSS and (pressure or 0) <= 0 then frac = 1 end
+                if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+                return false, frac
+            end
+
+            -- The points across each section's own width (MAINTENANCE row 232). A section is
+            -- skipped only when every point that can be read says its product is not
+            -- needed, so a weed or a pressure anywhere under it keeps it spraying; the
+            -- graduated rate takes the highest share any point needs (never under-treat).
+            local samples = hookMgrRef:sectionSamplePoints(sprayerSelf)
+            for i, section in ipairs(vww.sections) do
+                if section.isActive then
+                    local readable, allSkip, frac = 0, true, nil
+                    for _, pt in ipairs(samples[i]) do
+                        local skipHere, fracHere = readPoint(pt.x, pt.z)
+                        if skipHere ~= nil then
+                            readable = readable + 1
+                            if not skipHere then
+                                allSkip = false
+                                if fracHere ~= nil and (frac == nil or fracHere > frac) then frac = fracHere end
+                            end
+                        end
+                    end
+                    if readable > 0 and allSkip then
+                        section.isActive = false
+                        if not sprayerSelf._sfSuppressedSections then sprayerSelf._sfSuppressedSections = {} end
+                        sprayerSelf._sfSuppressedSections[i] = true
+                    elseif readable > 0 and frac ~= nil then
+                        local rate = vrCfg.MIN_RATE + frac * (vrCfg.MAX_RATE - vrCfg.MIN_RATE)
+                        local prev = sensorMgr:getSectionRate(vehicleId, section) or rate
+                        rate = prev * 0.6 + rate * 0.4
+                        sensorMgr:setSectionRate(vehicleId, section, rate)
                     end
                 end
             end
@@ -1696,6 +2247,9 @@ function HookManager:installVariableRateHook()
             if not sfm or not sfm.sensorManager or not sfm.soilSystem then return end
 
             if sfm.settings and sfm.settings.variableRateEnabled == false then return end
+            -- [SF-73] never on a target cycle (see the section sensor above)
+            local sf73TA = hookMgrRef:getTargetApplication()
+            if sf73TA ~= nil and sf73TA:isTargetCycle(sprayerSelf) then return end
 
             local sensorMgr = sfm.sensorManager
             -- Resolve vehicleId via rootVehicle for rate consistency (#754).
@@ -1749,15 +2303,16 @@ function HookManager:installVariableRateHook()
             local vrCfg   = SoilConstants.VARIABLE_RATE
             local target  = vrCfg.NUTRIENT_TARGET
             local zone    = SoilConstants.ZONE
-            local tips    = sprayerSelf._sfSectionTip
+            local samples = hookMgrRef:sectionSamplePoints(sprayerSelf)
 
             sensorMgr:clearSectionRates(vehicleId)
 
             for i, section in ipairs(vww.sections) do
                 if section.isActive and not section.isCenter then
-                    local tip = tips and tips[i]
-                    local sx = tip and ((rootX + tip[1]) * 0.5) or rootX
-                    local sz = tip and ((rootZ + tip[2]) * 0.5) or rootZ
+                    -- MAINTENANCE row 232: "the cell directly under each boom section", the
+                    -- section's own centre on the boom line, not halfway to its tip.
+                    local here = samples[i][1]
+                    local sx, sz = here.x, here.z
 
                     local fieldId = hookMgrRef:getFieldIdAtWorldPosition(sx, sz)
                     local rate = vrCfg.MIN_RATE + (vrCfg.MAX_RATE - vrCfg.MIN_RATE) * 0.5  -- default mid
@@ -1827,14 +2382,208 @@ function HookManager:installVariableRateHook()
 end
 
 -- =========================================================
+-- OVERLAP PREVENTION: "sprayed earlier" rule shared by the overlap hook and the
+-- fieldBoundaryControl overlap check (installSectionControlHook)
+-- =========================================================
+-- markBoomCells stamps each cell ONCE, on first visit, with the stamping vehicle and
+-- its driven distance (vehicle._sfOdoM, accumulated by installSectionStatePreserver).
+-- The stamp points are a world-axis sweep through the vehicle ROOT plus the root cell
+-- (getBoomCellPositions), not the boom line, so a section can reach a cell its own
+-- pass stamped up to (half-width + boom offset behind the root) metres of travel
+-- before or after the stamp, and then stays in it for up to one cell diagonal.
+-- That sum is the grace. It replaces a time grace (10 s) that aged while standing
+-- still and a no-grace "centre cell" rule that assumed the root cell is always
+-- unstamped ahead of the boom - false on every sprayer (booms sit 0.5-4.8 m behind
+-- the root), so the centre and inner sections switched off on a never-sprayed field.
+-- Limits: the bound holds for straight passes and gentle curves. The distance is the
+-- root's, and in a tight corner taken with the boom on (root radius below ~1.75x the
+-- half-width) the inner tip moves slower than the root, so an inner-side section can
+-- still drop out for a few metres. Counting the slowest boom point instead would stop
+-- a pivot-tight headland U-turn from ageing the previous lane at all. Reversing back
+-- over this pass's own fresh track (and driving forward over that stretch again)
+-- looks like the current pass until the distance since the stamp passes the grace,
+-- about 8-13 m of reversing on a 24 m boom, so those sections keep spraying.
+
+--- Boom geometry from the cached section tips: the boom-line centre (where a section
+--- with no tip node is checked) and the grace distance in metres.
+---@param tips table|nil  sprayer._sfSectionTip: [sectionIndex] = {x, z} (may have holes)
+---@param rx number  root world X
+---@param rz number  root world Z
+---@param baseM number  SoilConstants.ZONE.OVERLAP_GRACE_M
+---@return number|nil centreX, number|nil centreZ, number graceM
+function HookManager.computeOverlapBoomGeometry(tips, rx, rz, baseM)
+    -- Two ends of the boom: the tip furthest from the root, then the tip furthest
+    -- from that one.
+    local ax, az, best = nil, nil, -1
+    for _, t in pairs(tips or {}) do
+        local dx, dz = t[1] - rx, t[2] - rz
+        local d2 = dx * dx + dz * dz
+        if d2 > best then best, ax, az = d2, t[1], t[2] end
+    end
+    if not ax then return nil, nil, baseM end
+    local bx, bz = ax, az
+    best = -1
+    for _, t in pairs(tips) do
+        local dx, dz = t[1] - ax, t[2] - az
+        local d2 = dx * dx + dz * dz
+        if d2 > best then best, bx, bz = d2, t[1], t[2] end
+    end
+    local len = math.sqrt(best)
+    if len < 0.5 then
+        -- One usable tip: no boom direction. Its distance bounds both terms.
+        return nil, nil, baseM + 2 * math.sqrt((ax - rx) ^ 2 + (az - rz) ^ 2)
+    end
+    -- u = along the boom, n = across it (travel direction). Half-width and offset are
+    -- measured from the ROOT, because that is where the stamp sweep runs.
+    local ux, uz = (bx - ax) / len, (bz - az) / len
+    local nx, nz = -uz, ux
+    local halfW, offset = 0, 0
+    for _, t in pairs(tips) do
+        local dx, dz = t[1] - rx, t[2] - rz
+        halfW  = math.max(halfW,  math.abs(dx * ux + dz * uz))
+        offset = math.max(offset, math.abs(dx * nx + dz * nz))
+    end
+    return (ax + bx) * 0.5, (az + bz) * 0.5, baseM + halfW + offset
+end
+
+--- True when a session coverage stamp means "sprayed on an earlier pass".
+---@param stamp any  sessionCoverageCells[cellKey]: nil, or {ms, odo, by} from markBoomCells
+---@param sprayer table  the vehicle deciding
+---@param graceM number  from computeOverlapBoomGeometry
+---@return boolean
+function HookManager.isCellSprayedEarlier(stamp, sprayer, graceM)
+    if stamp == nil then return false end
+    -- Another vehicle's stamp, or one with no distance on it: an earlier pass.
+    if type(stamp) ~= "table" or stamp.by ~= sprayer or stamp.odo == nil then return true end
+    return ((sprayer._sfOdoM or 0) - stamp.odo) > graceM
+end
+
+-- =========================================================
+-- MAINTENANCE row 234: overlap prevention's own finer record
+-- =========================================================
+-- Both overlap checks used to read the 10 m session cells, which are stamped whole
+-- when any part of a boom sweep touches them. So when the next row's section tip
+-- landed in a cell the previous row only grazed, that whole section switched off over
+-- ground nobody sprayed (aussieyoda, SF-1032). The checks now read a finer record:
+-- field.sessionOverlapOdo / sessionOverlapBy, a ZONE.OVERLAP_CELL_SIZE grid (2 m)
+-- stamped from the same boom nodes beside every markBoomCells call, server only, never
+-- saved, cleared where the session cells are cleared. The 10 m cells, and everything
+-- that reads them (the green square, pass %, the protection grants), are unchanged.
+
+--- The overlap record's key for a world point: one per OVERLAP_CELL_SIZE cell.
+function HookManager.overlapCellKey(x, z)
+    local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    return math.floor(x / size) * 100000 + math.floor(z / size)
+end
+
+local overlapStamp = {}   -- reused: the record keeps two plain maps, not a table per cell
+
+--- HookManager.isCellSprayedEarlier's rule on the overlap record, at a world point.
+function HookManager.isOverlapCellSprayedEarlier(field, x, z, sprayer, graceM)
+    local odoMap = field and field.sessionOverlapOdo
+    if odoMap == nil then return false end
+    local key = HookManager.overlapCellKey(x, z)
+    local odo = odoMap[key]
+    if odo == nil then return false end
+    overlapStamp.odo = odo or nil
+    overlapStamp.by = field.sessionOverlapBy and field.sessionOverlapBy[key] or nil
+    return HookManager.isCellSprayedEarlier(overlapStamp, sprayer, graceM)
+end
+
+--- The overlap record's sweep: the OVERLAP_CELL_SIZE cells along the boom's own line,
+--- laid in the sprayer's own frame (components[1].node, local X across the boom, as
+--- getBoomLineEndpoints uses), from the same nodes as the 10 m sweep. A cell is stamped
+--- when its centre lies across the boom's span (between the outer nodes) and within half
+--- a cell of the boom line (the mean of the nodes along the travel), so a cell the boom
+--- only grazes, past its end or ahead of it, is not; at any heading. A cell whose centre
+--- only switched-off sections cover is left out. Returns the cells' centres; nil with
+--- fewer than two nodes or no frame.
+function HookManager:getBoomOverlapPositions(vehicle)
+    local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    local frame = vehicle.components and vehicle.components[1] and vehicle.components[1].node or vehicle.rootNode
+    if frame == nil then return nil end
+    local n, lo, hi, fwdSum = 0, nil, nil, 0
+    for _, node in ipairs(self:_collectBoomNodes(vehicle)) do
+        local ok, x, _, z = pcall(localToLocal, node, frame, 0, 0, 0)
+        if ok and type(x) == "number" and type(z) == "number" then
+            n = n + 1
+            if lo == nil or x < lo then lo = x end
+            if hi == nil or x > hi then hi = x end
+            fwdSum = fwdSum + z
+        end
+    end
+    if n < 2 or hi <= lo then return nil end
+    local fwd = fwdSum / n
+    -- The frame's origin and axes in world space; everything below is arithmetic.
+    local okO, ox, _, oz = pcall(localToWorld, frame, 0, 0, 0)
+    local okU, ux, _, uz = pcall(localToWorld, frame, 1, 0, 0)
+    local okV, vx, _, vz = pcall(localToWorld, frame, 0, 0, 1)
+    if not (okO and okU and okV and type(ox) == "number" and type(ux) == "number" and type(vx) == "number") then
+        return nil
+    end
+    ux, uz, vx, vz = ux - ox, uz - oz, vx - ox, vz - oz
+    local lu, lv = math.sqrt(ux * ux + uz * uz), math.sqrt(vx * vx + vz * vz)
+    if lu <= 0 or lv <= 0 then return nil end
+    ux, uz, vx, vz = ux / lu, uz / lu, vx / lv, vz / lv
+    local grounds = self:_switchedOffGrounds(vehicle)
+    local pts, seen = {}, {}
+    local function consider(lat)
+        local wx, wz = ox + lat * ux + fwd * vx, oz + lat * uz + fwd * vz
+        local key = HookManager.overlapCellKey(wx, wz)
+        if seen[key] then return end
+        seen[key] = true
+        local cx = (math.floor(wx / size) + 0.5) * size
+        local cz = (math.floor(wz / size) + 0.5) * size
+        local dx, dz = cx - ox, cz - oz
+        local clat, cfwd = dx * ux + dz * uz, dx * vx + dz * vz
+        if clat < lo or clat > hi or math.abs(cfwd - fwd) > size * 0.5 then return end
+        if grounds ~= nil and HookManager._onlySwitchedOffAt(grounds, cx, cz) then return end
+        pts[#pts + 1] = { x = cx, z = cz }
+    end
+    local step = size * 0.25
+    local lat = lo
+    while lat < hi do
+        consider(lat)
+        lat = lat + step
+    end
+    consider(hi)
+    return pts
+end
+
+--- True when the world point lies only on ground switched-off sections cover, for every
+--- object whose sections govern the pass (grounds from _switchedOffGrounds).
+function HookManager._onlySwitchedOffAt(grounds, x, z)
+    for _, g in ipairs(grounds) do
+        local ok, lat = pcall(worldToLocal, g.frame, x, g.y, z)
+        if not (ok and type(lat) == "number") then return false end
+        local inOff = false
+        for _, piece in ipairs(g.off) do
+            if lat >= piece[1] and lat <= piece[2] then inOff = true; break end
+        end
+        if not inOff then return false end
+    end
+    return true
+end
+
+--- Stamp this tick's overlap record beside a markBoomCells call.
+function HookManager:markOverlapRecord(soilSys, fieldId, vehicle)
+    if soilSys == nil or type(soilSys.markOverlapCells) ~= "function" then return end
+    local pts = self:getBoomOverlapPositions(vehicle)
+    if pts == nil then return end
+    soilSys:markOverlapCells(fieldId, pts, vehicle)
+end
+
+-- =========================================================
 -- OVERLAP PREVENTION: session-cell-based nozzle shutoff
 -- =========================================================
 -- Prepended to onStartWorkAreaProcessing (before VWW processes work areas).
--- For each non-center VWW section, checks whether the section tip's 10×10 m cell
--- was already sprayed by this sprayer during the current session (tracked in
--- sessionCoverageCells with a timestamp).  If the cell was stamped more than
--- OVERLAP_GRACE_MS ago, the section is suppressed so the nozzle does not
--- re-apply product on overlapping headland swaths.
+-- For each VWW section, checks whether the 10×10 m cell under the section tip
+-- (or, for a section with no tip node, under the boom-line centre) was already
+-- sprayed this session (sessionCoverageCells). See HookManager.isCellSprayedEarlier:
+-- a cell stamped by another vehicle counts at once; a cell this sprayer stamped
+-- counts once it has driven the grace distance past the stamp, so its own current
+-- pass does not switch its sections off, standing still and reversing included (see
+-- the limits noted above isCellSprayedEarlier).
 --
 -- Uses session coverage cells rather than the SPRAY_LEVEL density map.
 -- The density-map approach (EQUAL lvlMax) was unreliable because:
@@ -1848,11 +2597,117 @@ end
 -- only ever reflect what this sprayer session has actually applied.
 -- StatePreserver restores section.isActive after work areas process - no permanent lock.
 -- No-ops when the overlapPrevention setting is disabled.
+-- =========================================================
+-- RSF-F196 R2: the density refusal, last append on Sprayer.onStartWorkAreaProcessing
+-- =========================================================
+-- Native onStartWorkAreaProcessing ends by writing the frame's dose into
+-- workAreaParameters (Sprayer.lua:926-931 in our tree): sprayFillType, sprayFillLevel,
+-- usage, usagePerMin, sprayVehicle, sprayVehicleFillUnitIndex. Everything downstream
+-- reads those fields as permission: processSprayerArea paints only while
+-- sprayFillLevel > 0 (:320) and onEndWorkAreaProcessing drains by usage (:942).
+--
+-- So refusing a product is zeroing the three dose fields AFTER native and after every
+-- append the mod already installs, and leaving sprayVehicle, the fill units and the
+-- real tank levels alone. Nothing is painted, credited, advanced, drained or charged
+-- for that frame, on any peer.
+--
+-- NOT SERVER-ONLY, and this is the clause that was easy to get wrong: the rate
+-- multiplier append returns at once when not the server, and a refusal folded into
+-- it would inherit that return. processSprayerArea runs on CLIENTS (Sprayer.lua:314)
+-- while the mod's end hook is server-only, so a server-only refusal leaves every
+-- nearby client painting a product the server refused. This append runs on both,
+-- and each peer reaches the same verdict from its own loaded descriptors: no
+-- refusal state is transmitted, and none needs to be.
+
+--- Log the technical reason once per vehicle at the existing 3 s throttle, and tell
+--- the farmer once per product for the loaded mission (V18). Respects
+--- showNotifications through showNotification itself.
+---@param vehicle table
+---@param fillTypeIndex number
+function HookManager:_noteRefusedPass(vehicle, fillTypeIndex)
+    local now = (g_currentMission and g_currentMission.time) or 0
+    local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+    local name = (ft and ft.name) or tostring(fillTypeIndex)
+    if not vehicle._sfRefusalLogAt or (now - vehicle._sfRefusalLogAt) > 3000 then
+        vehicle._sfRefusalLogAt = now
+        SoilLogger.warning("[F196] pass refused: %s has no usable density (reason=%s), veh=%s; nothing painted, drained or charged",
+            name, tostring(self.refusedProducts[fillTypeIndex]), tostring(vehicle.id))
+    end
+    self._refusalNotified = self._refusalNotified or {}
+    if self._refusalNotified[fillTypeIndex] then return end
+    self._refusalNotified[fillTypeIndex] = true
+    local soilSys = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if not soilSys or type(soilSys.showNotification) ~= "function" then return end
+    local title = HookManager._text("sf_notify_treated_title", "Soil Update")
+    local body  = HookManager._text("sf_notify_density_refused",
+        "%s has no usable density and was skipped. Use Drain Vehicle before refilling.")
+    local display = (ft and ft.title) or name
+    local okFmt, msg = pcall(string.format, body, display)
+    soilSys:showNotification(title, okFmt and msg or (display .. ": " .. body))
+end
+
+--- Localised text the #973 way: hasText is the gate, the return is opaque past it.
+---@param key string
+---@param fallback string
+---@return string
+function HookManager._text(key, fallback)
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback
+    end
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback end
+    return text
+end
+
+---@return boolean success
+function HookManager:installDensityRefusalHook()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[F196] Sprayer.onStartWorkAreaProcessing not available - density refusal not installed")
+        return false
+    end
+    local hookMgrRef = self
+    local original = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(original, function(self, dt)
+        -- The same stand-down as the end hook: when SoilFertilizer has stood down,
+        -- including its Precision Farming stand-down, this does nothing and does not
+        -- become a new partial compatibility path.
+        if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem
+           or not g_SoilFertilityManager.settings or not g_SoilFertilityManager.settings.enabled then
+            return
+        end
+        local spec = self.spec_sprayer
+        local wap = spec and spec.workAreaParameters
+        if not wap then return end
+        -- The direct candidate is native's FINAL sprayFillType, which is the local,
+        -- attached-source or external-fill product native actually selected, so an
+        -- attached nurse tank does not disappear behind a local empty unit.
+        local intent = hookMgrRef:resolveCustomProductIntent(self, wap.sprayFillType)
+        if intent == nil or not hookMgrRef:isRefusedProduct(intent) then return end
+        wap.sprayFillLevel = 0
+        wap.usage          = 0
+        wap.usagePerMin    = 0
+        hookMgrRef:_noteRefusedPass(self, intent)
+    end)
+    self:register(Sprayer, "onStartWorkAreaProcessing", original,
+        "Sprayer.onStartWorkAreaProcessing (F196 density refusal, last append)")
+    SoilLogger.info("[OK] F196 density refusal installed as the last append on onStartWorkAreaProcessing (server and client)")
+    return true
+end
+
 function HookManager:installOverlapPreventionHook()
     if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[OverlapPrev] Sprayer.onStartWorkAreaProcessing not found - skipping")
         return false
     end
+
+    -- NOTHING HERE OWES A RESTORE (RSF-F226 item 3). The tank block is the permanent
+    -- gate on the captured processSprayerArea slot (installSprayerOverlapGate), which
+    -- reads _sfOverlapBlockedPass on every call. The flag is set in the prepend below
+    -- and cleared at the start of every window, so no end-event half has to exist for
+    -- a block to come off, and the end append further down only re-stops effects.
 
     local hookMgrRef = self
 
@@ -1896,6 +2751,17 @@ function HookManager:installOverlapPreventionHook()
     Sprayer.onStartWorkAreaProcessing = Utils.prependedFunction(
         Sprayer.onStartWorkAreaProcessing,
         function(sprayerSelf, dt)
+            -- RSF-F226d: one flag per pass, cleared HERE at the start of every pass
+            -- so a blocked pass can never colour a later one. The permanent gate
+            -- reads it on every processor call; the nutrient hook, billing and
+            -- SF-73 read it through HookManager.isOverlapBlockedPass.
+            --
+            -- CLEARING IT HERE IS WHAT ENDS A BLOCK. The start event is raised
+            -- unconditionally (WorkArea.lua:126); the end event is not (a processor
+            -- error skips :206). A block that came off in the end event could
+            -- outlive its window; this one cannot.
+            sprayerSelf._sfOverlapBlockedPass = nil
+
             local sfm = g_SoilFertilityManager
             if not sfm then return end
             if sfm.settings and sfm.settings.overlapPrevention == false then return end
@@ -1953,11 +2819,14 @@ function HookManager:installOverlapPreventionHook()
             end
 
             local zone    = SoilConstants.ZONE
-            local zoneCell = zone and zone.CELL_SIZE or 10
-            local graceMs  = zone and zone.OVERLAP_GRACE_MS or 20000
+            local graceM   = sprayerSelf._sfOverlapGraceM or (zone and zone.OVERLAP_GRACE_M or 15)
             local nowMs    = g_currentMission and g_currentMission.time or 0
 
             local tips = sprayerSelf._sfSectionTip
+            -- A section with no tip node (e.g. an isCenter section) is checked on the
+            -- boom line, not at the root: the root is ahead of the boom.
+            local centreX = sprayerSelf._sfBoomCentreX or rootX
+            local centreZ = sprayerSelf._sfBoomCentreZ or rootZ
 
             -- Debug diagnostic: throttled to once per ~2s per sprayer instance
             local debugEnabled = sfm.settings and sfm.settings.debugMode
@@ -1965,8 +2834,8 @@ function HookManager:installOverlapPreventionHook()
             local doLog = debugEnabled and (not dbgLogThrottle[vid] or (nowMs - dbgLogThrottle[vid]) > 2000)
             if doLog then
                 dbgLogThrottle[vid] = nowMs
-                SoilLogger.debug("[OverlapPrev] ft=%d fieldId=%d rootX=%.1f rootZ=%.1f graceMs=%d",
-                    fillTypeIndex, vehicleFieldId, rootX, rootZ, graceMs)
+                SoilLogger.debug("[OverlapPrev] ft=%d fieldId=%d rootX=%.1f rootZ=%.1f odo=%.1f graceM=%.1f",
+                    fillTypeIndex, vehicleFieldId, rootX, rootZ, sprayerSelf._sfOdoM or 0, graceM)
             end
 
             -- Transition-based effect management:
@@ -1978,9 +2847,8 @@ function HookManager:installOverlapPreventionHook()
             local currSuppressed = {}
 
             -- At >=99% field coverage every section is guaranteed to be on
-            -- already-sprayed ground - suppress everything without a grace period.
-            -- This handles the centre section whose coverage cells are always stamped
-            -- fresh (it's under the vehicle) and never age past graceMs on the current pass.
+            -- already-sprayed ground - suppress everything without a grace period,
+            -- including cells this pass stamped less than graceM metres ago.
             local coverage = fieldEntry and fieldEntry.sessionCoverageFraction or 0
             local coverageComplete = coverage >= 0.99
 
@@ -1990,38 +2858,20 @@ function HookManager:installOverlapPreventionHook()
                 local alreadySprayed = coverageComplete  -- global gate at 99%+
 
                 if not alreadySprayed then
-                    -- Tip-based cell check. Wing sections use their outer tip node;
-                    -- sections with no tip node fall back to the vehicle root position.
-                    --
-                    -- Grace period rationale:
-                    --   Wings (tip in a different cell from root): graceMs required -
-                    --     the tip's cell may have been freshly stamped by an adjacent
-                    --     strip only seconds ago, and skipping grace would cause false
-                    --     suppression on the current forward pass.
-                    --   Centre (no tip, OR tip maps to the same cell as root): the
-                    --     cell under the root/tip is ALWAYS unstamped ahead of the
-                    --     vehicle on the current pass (markBoomCells runs AFTER this
-                    --     PREPEND), so any existing stamp means "visited in a prior
-                    --     pass." No grace needed - this also fixes JD R700i/R975i
-                    --     where the centre tip exists but falls in the root cell.
-                    local tx = tip and tip[1] or rootX
-                    local tz = tip and tip[2] or rootZ
-                    local cx = math.floor(tx / zoneCell)
-                    local cz = math.floor(tz / zoneCell)
-                    local cellKey = tostring(cx * 10000 + cz)
-                    local stampMs = coveredCells[cellKey]
-                    local rootCx = math.floor(rootX / zoneCell)
-                    local rootCz = math.floor(rootZ / zoneCell)
-                    local isCentreCell = (cx == rootCx and cz == rootCz)
-                    if tip and not isCentreCell then
-                        alreadySprayed = stampMs ~= nil and (nowMs - stampMs) > graceMs
-                    else
-                        alreadySprayed = stampMs ~= nil  -- no grace for centre cell
-                    end
+                    -- Tip-based cell check (#562: sample at the tip, so a section whose
+                    -- outer edge is on fresh ground keeps spraying). Sections with no
+                    -- tip node use the boom-line centre. One rule for every section:
+                    -- HookManager.isCellSprayedEarlier (own stamps need graceM metres
+                    -- of driving, other vehicles' stamps count at once), on the overlap
+                    -- record's cell under the tip (MAINTENANCE row 234).
+                    local tx = tip and tip[1] or centreX
+                    local tz = tip and tip[2] or centreZ
+                    alreadySprayed = HookManager.isOverlapCellSprayedEarlier(fieldEntry, tx, tz, sprayerSelf, graceM)
 
                     if doLog and i <= 4 then
-                        SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampMs=%s graceOk=%s",
-                            i, tx, tz, tostring(stampMs), tostring(alreadySprayed))
+                        SoilLogger.debug("[OverlapPrev]   sec%d tip=%.1f,%.1f stampOdo=%s sprayedEarlier=%s",
+                            i, tx, tz, tostring(fieldEntry.sessionOverlapOdo and fieldEntry.sessionOverlapOdo[HookManager.overlapCellKey(tx, tz)]),
+                            tostring(alreadySprayed))
                     end
                 end
 
@@ -2059,12 +2909,33 @@ function HookManager:installOverlapPreventionHook()
                 SoilLogger.debug("[OverlapPrev] suppressed %d sections", suppressCount)
             end
 
-            -- When all sections are overlap-suppressed, also block processSprayerArea
-            -- at the instance level so the non-VWW centre work area cannot drain the
-            -- tank. Restored in onEndWorkAreaProcessing each frame.
-            if coverageComplete then
-                sprayerSelf._sfSprayAreaBlocked = true
-                sprayerSelf.processSprayerArea  = function() return 0 end
+            -- When all sections are overlap-suppressed, also block the sprayer's
+            -- work-area processing so the non-VWW centre work area cannot drain the
+            -- tank. The block is the permanent gate on the captured slot
+            -- (installSprayerOverlapGate); this line only arms it for this window.
+            --
+            -- THE BLOCK ONCE NEVER TOOK EFFECT (RSF-F226, the sprayer case). It
+            -- assigned sprayerSelf.processSprayerArea, the instance copy WorkArea:onLoad
+            -- had already read from at WorkArea.lua:266, so the engine went on calling
+            -- its own captured pointer. This file already explained the trap for this
+            -- exact function (the "Root cause" note above installDensityMapSprayHook).
+            -- A later repair swapped the captured
+            -- pointer per window; the gate replaced that swap, see the note above
+            -- makeSprayerGate.
+            --
+            -- THE FLAG MEANS "THE GATE REFUSED THIS PASS", so it is set only where a
+            -- gate exists to refuse it. A Sprayer-spec vehicle that drains through
+            -- another processor (a fertilizing seeder or cultivator) has no
+            -- processSprayerArea gate: nothing refuses its pass, it drains, and it must
+            -- be credited. Server only: session coverage exists only there.
+            --
+            -- RSF-F226d: this is the one case where consumption and application are
+            -- guaranteed to disagree, because WE are the reason nothing reached the
+            -- ground. Partial suppression leaves coverageComplete false, does not
+            -- block, and must still credit the ground it did cover.
+            if coverageComplete and sprayerSelf.isServer
+               and HookManager.hasActiveSprayerGate(sprayerSelf) then
+                sprayerSelf._sfOverlapBlockedPass = true
             end
         end
     )
@@ -2078,18 +2949,14 @@ function HookManager:installOverlapPreventionHook()
     -- g_effectManager:startEffects(spec.effects) on a state-change tick (e.g. sprayer
     -- just turned on after braking), restarting effects we suppressed in the PREPEND.
     -- This APPEND re-stops them so the boom stays visually correct.
+    --
+    -- It never touches processingFunction or the instance field: the tank block is
+    -- the permanent gate, and nothing here owes it a restore.
     if type(Sprayer.onEndWorkAreaProcessing) == "function" then
         local origEnd = Sprayer.onEndWorkAreaProcessing
         Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
             Sprayer.onEndWorkAreaProcessing,
             function(sprayerSelf, dt, hasProcessed)
-                -- Restore the processSprayerArea instance override we set in the PREPEND.
-                -- This runs AFTER the processing window, so any no-op blocking already took effect.
-                if sprayerSelf._sfSprayAreaBlocked then
-                    sprayerSelf.processSprayerArea = nil
-                    sprayerSelf._sfSprayAreaBlocked = nil
-                end
-
                 local suppressed = sprayerSelf._sfOverlapSuppressedSections
                 if suppressed and next(suppressed) then
                     for _, section in pairs(suppressed) do
@@ -2177,6 +3044,17 @@ function HookManager:installSectionStatePreserver()
             -- Cache root world position once; the three appended hooks read this
             -- cache instead of calling getWorldTranslation independently.
             local rx, _, rz = getWorldTranslation(sprayerSelf.rootNode)
+            -- Distance driven, for overlap prevention's own-stamp grace
+            -- (HookManager.isCellSprayedEarlier). Accumulated here because this prepend
+            -- runs every tick, spraying or not (WorkArea:onUpdateTick raises the event
+            -- unconditionally), so a headland turn with the boom off still counts.
+            local prevX, prevZ = sprayerSelf._sfRootX, sprayerSelf._sfRootZ
+            local step = 0
+            if rx and prevX then
+                local ddx, ddz = rx - prevX, rz - prevZ
+                step = math.sqrt(ddx * ddx + ddz * ddz)
+            end
+            sprayerSelf._sfOdoM = (sprayerSelf._sfOdoM or 0) + step
             sprayerSelf._sfRootX = rx
             sprayerSelf._sfRootZ = rz
 
@@ -2240,6 +3118,12 @@ function HookManager:installSectionStatePreserver()
                         tips[i] = nil
                     end
                 end
+
+                -- Boom-line centre and own-stamp grace for overlap prevention and
+                -- the fieldBoundaryControl overlap check.
+                local zone = SoilConstants.ZONE
+                sprayerSelf._sfBoomCentreX, sprayerSelf._sfBoomCentreZ, sprayerSelf._sfOverlapGraceM =
+                    HookManager.computeOverlapBoomGeometry(tips, rx, rz, zone and zone.OVERLAP_GRACE_M or 15)
             else
                 for i, section in ipairs(vww.sections) do
                     saved[i] = (prevOverlapSup and prevOverlapSup[i] ~= nil) and true or section.isActive
@@ -2294,11 +3178,222 @@ function HookManager:registerCleanup(name, cleanupFn)
 end
 
 -- =========================================================
+-- RSF-F196 V12c: the OWNED registered-function layer
+-- =========================================================
+-- A registered specialization function (SpecializationUtil.registerFunction,
+-- SpecializationUtil.lua:38) is COPIED: finalizeTypes reads the class function
+-- into every vehicle type's `functions` table at game boot (TypeManager.lua:185-
+-- 199; FillUnit.lua:197, Sprayer.lua:81-82), and Vehicle:load copies the type
+-- table onto each instance (SpecializationUtil.copyTypeFunctionsInto :141-145,
+-- from Vehicle.lua:486). This mod installs from installAll at mission load, long
+-- after both copies, so a class-level patch reaches NO loaded vehicle. That is
+-- how the purchase-refill FillUnit hook shipped for weeks without ever firing:
+-- "BUY SUCCESS (FillUnit hook)" could not happen in production.
+--
+-- One installer, three surfaces, ONE owner record per reference:
+--   (i)   the class slot, wrapped from its current value (a composed chain such as
+--         Utils.overwrittenFunction(FillUnit, SowingMachine) is wrapped, never
+--         bypassed);
+--   (ii)  every vehicle type carrying the relevant specialization whose functions
+--         table holds the slot, wrapping the function ACTUALLY present there;
+--   (iii) every live instance holding a raw copy of the slot (rawget), reusing the
+--         type wrapper when the raw pointer equals a type predecessor so one type
+--         gets one wrapper, not one per vehicle.
+-- The installer refuses to wrap a slot already holding one of its own wrappers,
+-- so a retry cannot stack layers. Late vehicles get exactly one wrapper through
+-- ensureOwnedLayers, called from the FillUnit onPostLoad prepend (raised at
+-- Vehicle.lua:905, after the copy at :486). ONE cleanup restores a slot only if
+-- it still holds the recorded wrapper, so a later owner's replacement is left.
+-- Written as a reusable method taking (class, funcName, factory) on purpose:
+-- RSF-741 item 9 tags the same shape once per surface and reuses this.
+
+--- Install one owned layer on a registered function.
+---@param class table        the specialization class (FillUnit, Sprayer)
+---@param funcName string    the registered function's name
+---@param makeWrapper fun(predecessor:function):function  the factory
+---@param specName string    the specialization a type must carry ("fillUnit", "sprayer")
+---@param label string|nil   for the cleanup entry
+---@return table record      the layer record (also kept on self._f196Layers)
+function HookManager:installOwnedRegisteredFunctionLayer(class, funcName, makeWrapper, specName, label)
+    self._f196Layers = self._f196Layers or {}
+    local existing = self._f196Layers[funcName]
+    if existing ~= nil then return existing end
+
+    local layer = {
+        owner = "F196", class = class, funcName = funcName, specName = specName,
+        makeWrapper = makeWrapper,
+        refs = {},          -- { slot, predecessor, wrapper } per reference wrapped
+        wrappers = {},      -- wrapper -> true, the set of this layer's own closures
+        typeWrappers = {},  -- predecessor -> wrapper, shared between a type and its instances
+    }
+    local function wrapSlot(slot, predecessor, reuse)
+        if type(predecessor) ~= "function" or layer.wrappers[predecessor] then return nil end
+        local wrapper = reuse and layer.typeWrappers[predecessor] or nil
+        if wrapper == nil then
+            wrapper = makeWrapper(predecessor)
+            layer.wrappers[wrapper] = true
+            if reuse then layer.typeWrappers[predecessor] = wrapper end
+        end
+        slot[funcName] = wrapper
+        layer.refs[#layer.refs + 1] = { slot = slot, predecessor = predecessor, wrapper = wrapper }
+        return wrapper
+    end
+    layer.wrapSlot = wrapSlot
+
+    -- (i) the class
+    if type(class) == "table" then
+        wrapSlot(class, rawget(class, funcName), false)
+    end
+    -- (ii) every type carrying the specialization; the function present there is
+    -- the predecessor, whatever chain it already is.
+    local types = g_vehicleTypeManager and g_vehicleTypeManager.types
+    if type(types) == "table" then
+        for _, typeDef in pairs(types) do
+            local carries = typeDef and typeDef.specializationsByName and typeDef.specializationsByName[specName]
+            if carries and typeDef.functions and typeDef.functions[funcName] ~= nil then
+                wrapSlot(typeDef.functions, typeDef.functions[funcName], true)
+            end
+        end
+    end
+    -- (iii) every live instance holding a raw copy
+    local vList = (g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles)
+        or (g_currentMission and g_currentMission.vehicles) or {}
+    for _, vehicle in pairs(vList) do
+        if type(vehicle) == "table" and rawget(vehicle, funcName) ~= nil then
+            wrapSlot(vehicle, rawget(vehicle, funcName), true)
+        end
+    end
+
+    self._f196Layers[funcName] = layer
+    self:registerCleanup(label or (funcName .. " (F196 owned layer)"), function()
+        for _, ref in ipairs(layer.refs) do
+            if ref.slot[funcName] == ref.wrapper then
+                ref.slot[funcName] = ref.predecessor
+            end
+        end
+        if self._f196Layers then self._f196Layers[funcName] = nil end
+    end)
+    SoilLogger.debug("[F196] owned layer on %s: %d reference(s) wrapped", funcName, #layer.refs)
+    return layer
+end
+
+--- Give a late vehicle exactly one wrapper per installed layer. A vehicle whose
+--- slot already holds a layer wrapper (its type was patched before it loaded, so
+--- the copy at Vehicle.lua:486 brought the wrapper) gets nothing.
+---@param vehicle table
+---@return number wrapped
+function HookManager:ensureOwnedLayers(vehicle)
+    local layers = self._f196Layers
+    if type(layers) ~= "table" or type(vehicle) ~= "table" then return 0 end
+    local wrapped = 0
+    for funcName, layer in pairs(layers) do
+        local raw = rawget(vehicle, funcName)
+        if raw ~= nil and layer.wrapSlot(vehicle, raw, true) ~= nil then
+            wrapped = wrapped + 1
+        end
+    end
+    return wrapped
+end
+
+--- Re-sweep the live vehicle list through ensureOwnedLayers. Kept for callers
+--- of the old propagation pass (it used to assign the CLASS wrapper over every
+--- type and instance); the layers now wrap at install and this only catches a
+--- vehicle listed since. Idempotent.
+---@return number wrapped
+function HookManager:propagateExternalFillHookToLiveVehicles()
+    local vList = (g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles)
+        or (g_currentMission and g_currentMission.vehicles) or {}
+    local wrapped = 0
+    for _, vehicle in pairs(vList) do
+        wrapped = wrapped + self:ensureOwnedLayers(vehicle)
+    end
+    return wrapped
+end
+
+--- True when a function is one of this manager's F196 layer wrappers.
+function HookManager:isOwnedLayerWrapper(fn)
+    local layers = self._f196Layers
+    if type(layers) ~= "table" or fn == nil then return false end
+    for _, layer in pairs(layers) do
+        if layer.wrappers[fn] then return true end
+    end
+    return false
+end
+
+-- =========================================================
+-- RSF-F196 V13: the native-drain token
+-- =========================================================
+-- Native drains the spray vehicle from Sprayer:onEndWorkAreaProcessing
+-- (Sprayer.lua:938-957): if self.isServer and wap.isActive and wap.sprayVehicle
+-- ~= nil, it calls sprayVehicle:addFillUnitFillLevel(ownerFarmId,
+-- wap.sprayVehicleFillUnitIndex, -usage, wap.sprayFillType, ToolType.UNDEFINED,
+-- unloadInfo) (:950). The receiver is the SPRAY VEHICLE, not always self. A
+-- prepend here stores a token on that vehicle holding exactly the call native
+-- will make: {fuIdx, delta, fillType}. The FillUnit layer below consumes a token
+-- only on the exact match; every UNTOKENED delta (-math.huge, emptyAllFillUnits,
+-- the settings drain, the residual snap, stream sync, SoilDrainVehicle) delegates
+-- to its predecessor. An append clears any token native did not consume, the
+-- guard for a propagation miss. Installed LAST in installAll so this prepend is
+-- the outermost wrapper and sees the FINAL wap.usage: the writers (R2, the rate
+-- multiplier, AI-1) all sit inside it.
+function HookManager:installDrainTokenHook()
+    if not Sprayer or type(Sprayer.onEndWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[F196] V13 drain token: Sprayer.onEndWorkAreaProcessing not available - skipping")
+        return false
+    end
+    local hookMgrRef = self
+    local original = Sprayer.onEndWorkAreaProcessing
+    local function tokenFor(sprayerSelf)
+        local spec = sprayerSelf and sprayerSelf.spec_sprayer
+        local wap = spec and spec.workAreaParameters
+        if wap == nil or not sprayerSelf.isServer or wap.isActive ~= true then return nil, nil end
+        local target = wap.sprayVehicle
+        local usage = wap.usage
+        if target == nil or type(usage) ~= "number" or usage ~= usage or usage <= 0 or usage == math.huge then
+            return nil, nil
+        end
+        return target, { fuIdx = wap.sprayVehicleFillUnitIndex, delta = -usage, fillType = wap.sprayFillType }
+    end
+    local withPrepend = Utils.prependedFunction(original, function(sprayerSelf)
+        local target, token = tokenFor(sprayerSelf)
+        if target ~= nil then
+            -- [SF-73] a target dose cycle rides the token, so the applied delta FillUnit
+            -- returns for exactly native's call lands on the cycle's record
+            local ta = hookMgrRef:getTargetApplication()
+            if ta ~= nil then token.sf73Cycle = ta:tokenCycle(sprayerSelf) end
+            target._sfF196DrainToken = token
+        end
+    end)
+    Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(withPrepend, function(sprayerSelf)
+        local spec = sprayerSelf and sprayerSelf.spec_sprayer
+        local target = spec and spec.workAreaParameters and spec.workAreaParameters.sprayVehicle
+        if type(target) == "table" and target._sfF196DrainToken ~= nil then
+            target._sfF196DrainToken = nil
+        end
+    end)
+    self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing (F196 V13 drain token)")
+    SoilLogger.info("[OK] F196 V13 drain token installed on Sprayer.onEndWorkAreaProcessing")
+    return true
+end
+
+--- True when a FillUnit call matches the token native was about to make.
+---@return boolean
+function HookManager.drainTokenMatches(token, fillUnitIndex, fillLevelDelta, fillTypeIndex)
+    if type(token) ~= "table" or type(fillLevelDelta) ~= "number" then return false end
+    if fillLevelDelta ~= fillLevelDelta or fillLevelDelta >= 0 or fillLevelDelta == -math.huge then return false end
+    return token.fuIdx == fillUnitIndex and token.delta == fillLevelDelta and token.fillType == fillTypeIndex
+end
+
+-- =========================================================
 -- HOOK 1: Harvest events (Cutter.onEndWorkAreaProcessing)
 -- =========================================================
--- Combine.addCutterArea is registered via SpecializationUtil.registerFunction,
--- then WorkArea captures it as a direct closure reference at vehicle load -
--- class-level hook is bypassed completely.
+-- Combine.addCutterArea is an ordinary copied method (RSF-F226 item 5): it is
+-- registered on the vehicle type (Combine.lua:109), copied onto each vehicle at
+-- load (SpecializationUtil.lua:141-145) and called on the vehicle as
+-- combineVehicle:addCutterArea(...) (Cutter.lua:801). WorkArea never captures it.
+-- A class-level wrap alone misses the copy each vehicle holds, which is why this
+-- hook patches the vehicle instances and reaches later ones through its
+-- VehicleSystem.addVehicle late patch.
 -- Cutter.onEndWorkAreaProcessing IS an event listener (dynamic dispatch).
 -- It runs AFTER processCutterArea accumulates workAreaParameters this tick,
 -- and AFTER calling combineVehicle:addCutterArea internally, so all harvest
@@ -2315,9 +3410,9 @@ end
 -- crop loss, and engine load.
 --
 -- Fix: addCutterArea is now used ONLY for soil nutrient tracking (field detection
--- + onHarvest).  The yield modifier is applied in a separate per-combine
--- addFillUnitFillLevel wrapper (see installYieldModifierHook below) which always
--- receives actual liters regardless of who sits above it in the call chain.
+-- + onHarvest).  The yield modifier is applied in a separate per-cutter
+-- processCutterArea delta wrapper (see installZoneYieldCutterHook below) which
+-- scales the newly-added multiplier-area delta on the live work-area pointer.
 ---@return boolean success True if hook installed successfully
 function HookManager:installHarvestHook()
     if not Cutter or type(Cutter.onEndWorkAreaProcessing) ~= "function" then
@@ -2337,7 +3432,7 @@ function HookManager:installHarvestHook()
     -- that captures and forwards the original's return value instead.
     --
     -- The wrapper no longer modifies the liters argument - yield reduction is
-    -- handled by installYieldModifierHook (addFillUnitFillLevel on the hopper).
+    -- handled by installZoneYieldCutterHook (the processCutterArea delta wrapper).
     -- This makes the hook argument-order-agnostic and safe regardless of what
     -- other mods pass as the 3rd positional argument.
     --
@@ -2349,8 +3444,18 @@ function HookManager:installHarvestHook()
             SoilLogger.debug("Harvest hook entered: isServer=%s area=%.1f liters=%.0f fruit=%s",
                 tostring(combineSelf.isServer), area or 0, liters or 0, tostring(inputFruitType))
 
+            -- RSF-741 items 7 and 8: consume the cutter-end token for THIS combine before the
+            -- original runs (the additive branch is judged on the tank as it stands). The live
+            -- arguments are the truth; a missing token is a no-op.
+            local uwPrepared = nil
+            local HCU = HarvestContractUnderwrite
+            if combineSelf.isServer and HCU ~= nil and HCU._token ~= nil and HCU.takeToken ~= nil then
+                local okTok, prep = pcall(HCU.takeToken, combineSelf, liters, inputFruitType, outputFillType)
+                if okTok then uwPrepared = prep end
+            end
+
             -- Detect field for nutrient depletion tracking (onHarvest).
-            -- Yield modifier is NO LONGER applied here - see installYieldModifierHook.
+            -- Yield modifier is NO LONGER applied here - see installZoneYieldCutterHook.
             local detectedFieldId = nil
             local detectedX, detectedZ = nil, nil
 
@@ -2436,7 +3541,7 @@ function HookManager:installHarvestHook()
 
                     detectedFieldId = fieldId
                     detectedX, detectedZ = x, z
-                    SoilLogger.debug("Harvest hook: Field %d, Crop %d, area=%.1fm2 (yield modifier applied via hopper hook)",
+                    SoilLogger.debug("Harvest hook: Field %d, Crop %d, area=%.1fm2 (yield modifier applied at the cutter)",
                         fieldId, inputFruitType, area)
                 end)
 
@@ -2468,7 +3573,20 @@ function HookManager:installHarvestHook()
             end
 
             -- Pass arguments completely untouched - we no longer modify liters here.
-            local r1, r2, r3, r4, r5 = chainFn(combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad)
+            local r1, r2, r3, r4, r5
+            if uwPrepared ~= nil then
+                -- Only a tokened call runs under pcall: an error faults the named record and
+                -- then travels on unchanged.
+                local res = { pcall(chainFn, combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad) }
+                if not res[1] then
+                    pcall(HCU.faultPrepared, uwPrepared, "Combine.addCutterArea raised")
+                    error(res[2], 0)
+                end
+                r1, r2, r3, r4, r5 = res[2], res[3], res[4], res[5], res[6]
+                pcall(HCU.recordApplied, uwPrepared, r1)
+            else
+                r1, r2, r3, r4, r5 = chainFn(combineSelf, area, liters, inputFruitType, outputFillType, strawRatio, farmId, cutterLoad)
+            end
 
             -- Nutrient depletion uses original (biological) liters - the soil depleted what
             -- the crop grew regardless of the yield modifier applied to the hopper.
@@ -2596,167 +3714,209 @@ function HookManager:installHarvestHook()
 end
 
 -- =========================================================
--- HOOK 1b: Yield modifier applied via combine hopper
+-- HOOK 1b: Zone yield applied via the live Cutter pointer
 -- =========================================================
--- Applies the SF yield modifier by wrapping Combine.addFillUnitFillLevel.
--- This is the companion to installHarvestHook.  Separating the modifier
--- application from addCutterArea fixes the RealisticHarvesting conflict:
--- RHM uses registerOverwrittenFunction for addCutterArea and calls
---   superFunc(self, area, realArea, inputFruitType, ...)
--- where the 3rd argument is realArea (pixel count), NOT liters.  The old
--- code read arg 3 as "liters" and returned liters*yieldModifier - RHM got
--- a garbage retLiters and its HUD went blank (issue #284).
+-- Applies the SF-14 zone-yield scalar by wrapping Cutter.processCutterArea on
+-- the surfaces the engine actually calls. The engine invokes
+-- `workArea.processingFunction(self, workArea, dt)` (WorkArea.lua:178-183),
+-- and that pointer is COPIED from `self[functionName]` at vehicle load
+-- (WorkArea.lua:257-266), so a class-only hook is a failed install. We wrap
+-- all four surfaces (class, registered type, live instance, live work-area
+-- stored pointer) with one factory, retain every exact original, and register
+-- cleanup for all four layers. The factory itself has no identity guard (RSF-F226
+-- item 6): it wraps whatever it is handed. Stacking is prevented at the slot, where
+-- a slot already holding one of its tagged wrappers is skipped (RSF-741 item 9,
+-- HookManager._zoneYieldWrappers below).
 --
--- By moving modifier logic here (where the value is always actual hopper
--- liters), we are argument-order-agnostic and the conflict disappears.
--- Instance patching uses makeYieldWrapper(vehicle.addFillUnitFillLevel) to
--- preserve any other mod's chain rather than replacing it outright.
+-- The wrapper scales ONLY the newly-added multiplier-area delta
+-- (`lastMultiplierArea` after minus before) by the pre-cut spatial scalar (or
+-- the frozen field-average scalar), leaving the base Cutter chain to run
+-- exactly once with unchanged arguments. An SCS multiplier already in the
+-- stored chain stays inside the call and composes.
 ---@return boolean success True if hook installed successfully
-function HookManager:installYieldModifierHook()
-    -- FillUnit.addFillUnitFillLevel is the correct FS25 hook target.
-    -- Combine does NOT register addFillUnitFillLevel as its own class method --
-    -- it inherits it from FillUnit via the vehicle specialization system.
-    -- Hooking Combine.addFillUnitFillLevel therefore always fails (nil check).
-    -- Real FS25 signature: addFillUnitFillLevel(self, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-    if not FillUnit or type(FillUnit.addFillUnitFillLevel) ~= "function" then
-        SoilLogger.warning("Yield modifier hook: FillUnit.addFillUnitFillLevel not available -- yield reduction skipped")
+function HookManager:installZoneYieldCutterHook()
+    -- SF-14 ZONE YIELD CUTTER HOOK. Moves the yield quantity to the LIVE CUTTER
+    -- pointer: the engine calls `workArea.processingFunction(self, workArea, dt)`
+    -- (WorkArea.lua:178-183), and that pointer is COPIED from `self[functionName]`
+    -- at vehicle load (WorkArea.lua:257-266). A class-only hook is therefore a
+    -- FAILED install. We wrap all four surfaces the engine actually uses:
+    --   1. Cutter.processCutterArea class (future registration);
+    --   2. every registered cutter type's functions.processCutterArea;
+    --   3. every live cutter instance's processCutterArea;
+    --   4. every live CUTTER work area's stored processingFunction where
+    --      functionName == "processCutterArea".
+    -- The wrapper scales ONLY the newly-added multiplier-area delta by the
+    -- pre-cut spatial scalar (or the frozen field-average scalar), leaving the
+    -- base Cutter chain to run exactly once with unchanged arguments. An SCS
+    -- multiplier already in the stored chain stays inside the call.
+    if not Cutter or type(Cutter.processCutterArea) ~= "function" then
+        SoilLogger.warning("Zone yield cutter hook: Cutter.processCutterArea not available -- skipped")
         return false
     end
 
-    local original = FillUnit.addFillUnitFillLevel
+    local hookMgrRef = self
+    -- RSF-741 item 9: one tagged wrapper per callable. A slot already holding one of these
+    -- is skipped, so a re-run cannot stack a second scaling (or a second capture) layer.
+    HookManager._zoneYieldWrappers = HookManager._zoneYieldWrappers or setmetatable({}, { __mode = "k" })
+    local zyTags = HookManager._zoneYieldWrappers
 
-    -- Factory so the same modifier logic wraps any chainFn
-    local function makeYieldWrapper(chainFn)
-        -- Correct FS25 signature includes farmId as first arg after self
-        return function(combineSelf, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-            -- Only apply modifier on the server when filling the hopper (delta > 0),
-            -- only for combine spec vehicles, and only when SF systems are ready.
-            local modifiedDelta = fillLevelDelta
-            if combineSelf.isServer
-                and combineSelf.spec_combine ~= nil
-                and fillLevelDelta and fillLevelDelta > 0
-                and fillTypeIndex
-                and g_SoilFertilityManager
-                and g_SoilFertilityManager.soilSystem
-                and g_SoilFertilityManager.settings.enabled
-                and g_SoilFertilityManager.settings.nutrientCycles
+    -- One factory so the same delta-scaling logic wraps any chainFn.
+    local function makeCutterWrapper(chainFn)
+        local wrapper
+        wrapper = function(cutterSelf, workArea, dt)
+            -- Prepare the pre-cut context BEFORE the destructive base call so we
+            -- snapshot lastMultiplierArea and resolve the scalar first.
+            local context = nil
+            local zoneYield = g_SoilFertilityManager and g_SoilFertilityManager.zoneYield
+            if zoneYield ~= nil and type(zoneYield.preparePreCutContext) == "function"
+               and cutterSelf.isServer
+               and g_SoilFertilityManager
+               and g_SoilFertilityManager.soilSystem
+               and g_SoilFertilityManager.settings.enabled
             then
-                local ok, errMsg = pcall(function()
-                    local fruitType = nil
-                    if g_fruitTypeManager then
-                        local ft = g_fruitTypeManager:getFruitTypeByFillTypeIndex(fillTypeIndex)
-                        if ft then fruitType = ft.index end
-                    end
-                    if not fruitType or fruitType <= 0 then return end
-
-                    local x, _, z = getWorldTranslation(combineSelf.rootNode)
-                    if not x then return end
-
-                    local fieldId = nil
-                    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-                        local field = g_fieldManager:getFieldAtWorldPosition(x, z)
-                        if field and field.farmland then fieldId = field.farmland.id end
-                    end
-                    if not fieldId and g_farmlandManager then
-                        local farmland = g_farmlandManager:getFarmlandAtWorldPosition(x, z)
-                        if farmland then fieldId = farmland.id end
-                    end
-                    -- Fallback: rootNode may sit outside field polygon on large combines
-                    if not fieldId or fieldId <= 0 then
-                        local attachedImpls = combineSelf.spec_attacherJoints and combineSelf.spec_attacherJoints.attachedImplements
-                        if attachedImpls then
-                            for _, impl in ipairs(attachedImpls) do
-                                local obj = impl and impl.object
-                                if obj then
-                                    local ix, _, iz = getWorldTranslation(obj.rootNode)
-                                    if ix then
-                                        if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-                                            local f = g_fieldManager:getFieldAtWorldPosition(ix, iz)
-                                            if f and f.farmland then fieldId = f.farmland.id end
-                                        end
-                                        if not fieldId and g_farmlandManager then
-                                            local fl = g_farmlandManager:getFarmlandAtWorldPosition(ix, iz)
-                                            if fl then fieldId = fl.id end
-                                        end
-                                    end
-                                    if (not fieldId or fieldId <= 0) and obj.spec_workArea and obj.spec_workArea.workAreas then
-                                        for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                                            if wa.start then
-                                                local sx, _, sz = getWorldTranslation(wa.start)
-                                                if sx then
-                                                    if g_fieldManager and type(g_fieldManager.getFieldAtWorldPosition) == "function" then
-                                                        local f = g_fieldManager:getFieldAtWorldPosition(sx, sz)
-                                                        if f and f.farmland then fieldId = f.farmland.id end
-                                                    end
-                                                    if not fieldId and g_farmlandManager then
-                                                        local fl = g_farmlandManager:getFarmlandAtWorldPosition(sx, sz)
-                                                        if fl then fieldId = fl.id end
-                                                    end
-                                                end
-                                            end
-                                            if fieldId and fieldId > 0 then break end
-                                        end
-                                    end
-                                end
-                                if fieldId and fieldId > 0 then break end
-                            end
-                        end
-                    end
-                    if not fieldId or fieldId <= 0 then return end
-
-                    -- SF-14 FREEZE SUPERSESSION (spatial path). On the spatial path
-                    -- (value maps present and the captured yieldEfficiency layer is
-                    -- live), the per-pass modifier is the AREA-WEIGHTED READ of the
-                    -- captured, growth-time-static layer under the header, computed
-                    -- fresh each pass. The SF-16 scalar freeze is BYPASSED, not
-                    -- reused; when the spatial read cannot answer (nil), the call
-                    -- falls through to the untouched field-average computeYieldModifier
-                    -- with its scalar freeze (maps absent / no captured data).
-                    local yieldModifier = nil
-                    local zoneYield = g_SoilFertilityManager.zoneYield
-                    if zoneYield ~= nil and type(zoneYield.readHeaderAreaWeighted) == "function"
-                       and zoneYield:isLive() then
-                        local okRead, spatial = pcall(function()
-                            return zoneYield:readHeaderAreaWeighted(combineSelf, fieldId)
-                        end)
-                        if okRead and type(spatial) == "number" then
-                            yieldModifier = spatial
-                        end
-                    end
-                    if yieldModifier == nil then
-                        yieldModifier = g_SoilFertilityManager.soilSystem:computeYieldModifier(fieldId, fruitType)
-                    end
-                    if yieldModifier ~= 1.0 then
-                        modifiedDelta = fillLevelDelta * yieldModifier
-                        SoilLogger.debug("Yield modifier hook: Field %d Fruit %d modifier=%.3f (%.1fL -- %.1fL)",
-                            fieldId, fruitType, yieldModifier, fillLevelDelta, modifiedDelta)
-                    end
+                local ok, ctx = pcall(function()
+                    return zoneYield:preparePreCutContext(cutterSelf, workArea)
                 end)
-                if not ok then
-                    SoilLogger.error("Yield modifier hook failed: %s", tostring(errMsg))
-                    modifiedDelta = fillLevelDelta
+                if ok then context = ctx end
+            end
+
+            local spec = cutterSelf.spec_cutter
+            local before = spec and spec.workAreaParameters and spec.workAreaParameters.lastMultiplierArea or 0
+
+            -- Call the chain once; capture its return values unchanged.
+            local r1, r2, r3, r4, r5 = chainFn(cutterSelf, workArea, dt)
+
+            -- The native delta, before any SF scaling (RSF-741 item 5 reads it below).
+            local added = 0
+            if spec ~= nil and spec.workAreaParameters ~= nil then
+                added = (spec.workAreaParameters.lastMultiplierArea or 0) - before
+            end
+
+            -- Scale only when we have a valid context (fruit + field resolved).
+            if context ~= nil and spec ~= nil and spec.workAreaParameters ~= nil then
+                if added > 0
+                   and spec.workAreaParameters.lastFruitType == context.fruitTypeIndex
+                   and context.fieldId and context.fieldId > 0
+                then
+                    local ok, errMsg = pcall(function()
+                        -- The spatial scalar when SF-14 gave one (it also establishes the
+                        -- persisted crop freeze once, as SF-14 built it). Every other path
+                        -- (fallback, contract) is the baseline field-average scalar, which,
+                        -- like the hopper hook it replaced, applies only with nutrient cycles
+                        -- on (MAINTENANCE row 210).
+                        local soilSystem = g_SoilFertilityManager.soilSystem
+                        local scalar = 1.0
+                        if context.path == "spatial" and type(context.scalar) == "number" then
+                            soilSystem:computeYieldModifier(context.fieldId, context.fruitTypeIndex)
+                            scalar = context.scalar
+                        elseif g_SoilFertilityManager.settings.nutrientCycles then
+                            scalar = soilSystem:computeYieldModifier(context.fieldId, context.fruitTypeIndex)
+                        end
+                        if scalar ~= 1.0 then
+                            spec.workAreaParameters.lastMultiplierArea = before + added * scalar
+                        end
+                        -- [SF-14 One Ground] Freeze the exact spatial or fallback
+                        -- receipt on this first positive matching cut.
+                        if zoneYield and type(zoneYield.onFirstCut) == "function" then
+                            zoneYield:onFirstCut(context)
+                        end
+                        SoilLogger.debug("SF14_CUT field=%d fruit=%d path=%s base=%.3f sf=%.3f added=%.3f final=%.3f drag=%s",
+                            context.fieldId, context.fruitTypeIndex, context.path or "none",
+                            before, scalar, added, spec.workAreaParameters.lastMultiplierArea,
+                            tostring(context.drag))
+                    end)
+                    if not ok then
+                        SoilLogger.error("Zone yield cutter hook failed: %s", tostring(errMsg))
+                    end
                 end
             end
-            return chainFn(combineSelf, farmId, fillUnitIndex, modifiedDelta, fillTypeIndex, toolType, fillPositionData)
+
+            -- RSF-741 item 5: the standing pair for the harvest underwrite. Healthy is the
+            -- native delta, actual is what stands after SF scaling (equal when SF-14 had no
+            -- context, a 1.0 scalar or a fruit mismatch). Server only; clients never capture.
+            if cutterSelf.isServer and added > 0 and spec ~= nil and spec.workAreaParameters ~= nil
+                and HarvestContractUnderwrite ~= nil and HarvestContractUnderwrite.onStandingArea ~= nil then
+                local actual = (spec.workAreaParameters.lastMultiplierArea or 0) - before
+                local okUw, errUw = pcall(HarvestContractUnderwrite.onStandingArea, cutterSelf, workArea, added, actual)
+                if not okUw then
+                    SoilLogger.debug("Harvest underwrite standing capture skipped: %s", tostring(errUw))
+                end
+            end
+
+            return r1, r2, r3, r4, r5
         end
+        zyTags[wrapper] = true
+        return wrapper
     end
 
-    FillUnit.addFillUnitFillLevel = makeYieldWrapper(original)
-    self:register(FillUnit, "addFillUnitFillLevel", original, "FillUnit.addFillUnitFillLevel (yield modifier)")
+    -- Layer 1: Cutter class (future registration).
+    local classOriginal = Cutter.processCutterArea
+    if not zyTags[classOriginal] then
+        Cutter.processCutterArea = makeCutterWrapper(classOriginal)
+        hookMgrRef:register(Cutter, "processCutterArea", classOriginal, "Cutter.processCutterArea (zone yield)")
+    end
 
-    -- Wrap existing combine instances to preserve other mods specialization chains.
-    local patched = 0
-    local vehicleSystem = g_currentMission and g_currentMission.vehicleSystem
-    if vehicleSystem and vehicleSystem.vehicles then
-        for _, vehicle in pairs(vehicleSystem.vehicles) do
-            if vehicle.spec_combine and type(vehicle.addFillUnitFillLevel) == "function" then
-                vehicle.addFillUnitFillLevel = makeYieldWrapper(vehicle.addFillUnitFillLevel)
-                patched = patched + 1
+    -- Layer 2: every registered cutter type's functions.processCutterArea.
+    local typesPatched = 0
+    local typeManager = g_vehicleTypeManager
+    if typeManager and typeManager.types then
+        for _, typeDef in pairs(typeManager.types) do
+            local hasCutter = false
+            if typeDef.specializationsByName and typeDef.specializationsByName.cutter then
+                hasCutter = true
+            elseif typeDef.specializations then
+                for _, spec in ipairs(typeDef.specializations) do
+                    if spec == Cutter or (spec and spec.specName == "cutter") then
+                        hasCutter = true
+                        break
+                    end
+                end
+            end
+            if hasCutter and typeDef.functions and typeDef.functions.processCutterArea
+                and not zyTags[typeDef.functions.processCutterArea] then
+                local origTypeFn = typeDef.functions.processCutterArea
+                typeDef.functions.processCutterArea = makeCutterWrapper(origTypeFn)
+                hookMgrRef:register(typeDef.functions, "processCutterArea", origTypeFn, "type.processCutterArea (zone yield)")
+                typesPatched = typesPatched + 1
             end
         end
     end
 
-    SoilLogger.info("[OK] Yield modifier hook installed (FillUnit.addFillUnitFillLevel) -- %d existing combines patched", patched)
+    -- Layer 3: every live cutter instance's processCutterArea.
+    local instancesPatched = 0
+    if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
+        for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
+            if vehicle.spec_cutter and type(vehicle.processCutterArea) == "function"
+                and not zyTags[vehicle.processCutterArea] then
+                local origInst = vehicle.processCutterArea
+                vehicle.processCutterArea = makeCutterWrapper(origInst)
+                hookMgrRef:register(vehicle, "processCutterArea", origInst, "instance.processCutterArea (zone yield)")
+                instancesPatched = instancesPatched + 1
+            end
+        end
+    end
+
+    -- Layer 4: every live CUTTER work area's stored processingFunction where
+    -- functionName == "processCutterArea". This is the surface the engine calls.
+    local workAreasPatched = 0
+    if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
+        for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
+            if vehicle.spec_cutter and vehicle.spec_workArea and vehicle.spec_workArea.workAreas then
+                for _, wa in ipairs(vehicle.spec_workArea.workAreas) do
+                    if wa.functionName == "processCutterArea" and type(wa.processingFunction) == "function"
+                        and not zyTags[wa.processingFunction] then
+                        local origWa = wa.processingFunction
+                        wa.processingFunction = makeCutterWrapper(origWa)
+                        hookMgrRef:register(wa, "processingFunction", origWa, "workArea.processingFunction (zone yield)")
+                        workAreasPatched = workAreasPatched + 1
+                    end
+                end
+            end
+        end
+    end
+
+    SoilLogger.info("SF14_HOOK_INSTALL class=1 types=%d instances=%d workAreas=%d",
+        typesPatched, instancesPatched, workAreasPatched)
     return true
 end
 
@@ -2782,6 +3942,148 @@ end
 -- Depletion is area-based (not liter-based) via SoilFertilitySystem:onMow().
 -- SoilConstants.MOWER_HA_FACTOR calibrates per-ha depletion relative to grain crops.
 ---@return boolean success True if hook installed successfully
+-- =========================================================
+-- RSF-741 items 5, 6 and 9: the rest of the underwrite capture surface
+-- =========================================================
+-- The standing half rides installZoneYieldCutterHook and the Combine half rides
+-- installHarvestHook. What remains is the pickup work-area function (a registered
+-- function, COPIED into every vehicle type and instance and captured again as each work
+-- area's processingFunction at load, WorkArea.lua loadWorkAreaFromXML) and the Cutter
+-- start/end event listeners (dispatched through the Cutter class table at call time,
+-- SpecializationUtil.raiseEvent, so one class wrapper reaches every cutter).
+
+--- Install the pickup layer and the Cutter start/end wrappers. True only when all are live.
+---@return boolean
+function HookManager:installUnderwriteCaptureHooks()
+    local HCU = HarvestContractUnderwrite
+    if HCU == nil or Cutter == nil then return false end
+    HookManager._underwriteWrappers = HookManager._underwriteWrappers or setmetatable({}, { __mode = "k" })
+    local tags = HookManager._underwriteWrappers
+    local refs = {}
+
+    local function makePickupWrapper(chainFn)
+        local wrapper = function(cutterSelf, workArea, dt)
+            local r1, r2, r3, r4, r5 = chainFn(cutterSelf, workArea, dt)
+            -- Server pickup positivity: the engine returns 1 only when pickedUpLiters > 0
+            -- wrote lastLiters on the server (Cutter.lua processPickupCutterArea).
+            if cutterSelf.isServer and type(r1) == "number" and r1 > 0 and HCU.onPickup ~= nil then
+                local okUw, errUw = pcall(HCU.onPickup, cutterSelf, workArea)
+                if not okUw then SoilLogger.debug("Harvest underwrite pickup capture skipped: %s", tostring(errUw)) end
+            end
+            return r1, r2, r3, r4, r5
+        end
+        tags[wrapper] = true
+        return wrapper
+    end
+    local function wrapSlot(slot, key, fn, maker)
+        if type(fn) ~= "function" or tags[fn] then return false end
+        local wrapper = maker(fn)
+        slot[key] = wrapper
+        refs[#refs + 1] = { slot = slot, key = key, predecessor = fn, wrapper = wrapper }
+        return true
+    end
+
+    -- (a) pickup: class, every cutter type, every live instance, every live pickup work area
+    local pickupOk = type(Cutter.processPickupCutterArea) == "function"
+    if pickupOk then
+        wrapSlot(Cutter, "processPickupCutterArea", Cutter.processPickupCutterArea, makePickupWrapper)
+        local types = g_vehicleTypeManager and g_vehicleTypeManager.types
+        if type(types) == "table" then
+            for _, typeDef in pairs(types) do
+                local carries = typeDef and typeDef.specializationsByName and typeDef.specializationsByName.cutter
+                if carries and typeDef.functions then
+                    wrapSlot(typeDef.functions, "processPickupCutterArea", typeDef.functions.processPickupCutterArea, makePickupWrapper)
+                end
+            end
+        end
+        local vList = (g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles) or {}
+        for _, vehicle in pairs(vList) do
+            if type(vehicle) == "table" and vehicle.spec_cutter then
+                wrapSlot(vehicle, "processPickupCutterArea", rawget(vehicle, "processPickupCutterArea"), makePickupWrapper)
+                local areas = vehicle.spec_workArea and vehicle.spec_workArea.workAreas
+                if type(areas) == "table" then
+                    for _, wa in ipairs(areas) do
+                        if wa.functionName == "processPickupCutterArea" then
+                            wrapSlot(wa, "processingFunction", wa.processingFunction, makePickupWrapper)
+                        end
+                    end
+                end
+            end
+        end
+    else
+        SoilLogger.warning("Harvest underwrite: Cutter.processPickupCutterArea not available")
+    end
+
+    -- (b) Cutter start and end
+    local startEndOk = type(Cutter.onStartWorkAreaProcessing) == "function"
+        and type(Cutter.onEndWorkAreaProcessing) == "function"
+    if startEndOk then
+        wrapSlot(Cutter, "onStartWorkAreaProcessing", Cutter.onStartWorkAreaProcessing, function(orig)
+            local wrapper = function(cutterSelf, ...)
+                -- Item 6: start clears the pending material and binding.
+                if cutterSelf.isServer then pcall(HCU.beginTick, cutterSelf) end
+                return orig(cutterSelf, ...)
+            end
+            tags[wrapper] = true
+            return wrapper
+        end)
+        wrapSlot(Cutter, "onEndWorkAreaProcessing", Cutter.onEndWorkAreaProcessing, function(orig)
+            local wrapper = function(cutterSelf, ...)
+                -- Item 6: end performs no spatial lookup; one unanimous mission gets a token,
+                -- the base end runs (and calls the Combine, which consumes it), and the token
+                -- and the pending tick are cleared after it returns, Combine called or not.
+                local token = nil
+                if cutterSelf.isServer then
+                    local okT, tk = pcall(HCU.makeToken, cutterSelf)
+                    if okT then token = tk end
+                end
+                HCU._token = token
+                local okE, errE = pcall(orig, cutterSelf, ...)
+                HCU._token = nil
+                local spec = cutterSelf.spec_cutter
+                if spec ~= nil then spec._sf741 = nil end
+                if not okE then error(errE, 0) end
+            end
+            tags[wrapper] = true
+            return wrapper
+        end)
+    else
+        SoilLogger.warning("Harvest underwrite: Cutter start/end work-area events not available")
+    end
+
+    self:registerCleanup("Harvest underwrite capture (pickup layer, Cutter start/end)", function()
+        for i = #refs, 1, -1 do
+            local ref = refs[i]
+            if ref.slot[ref.key] == ref.wrapper then ref.slot[ref.key] = ref.predecessor end
+        end
+        HCU._token = nil
+    end)
+    return pickupOk and startEndOk
+end
+
+--- The harvest underwrite, whole (RSF-741): the capture surface above plus the Combine and
+--- standing halves (installHarvestHook, installZoneYieldCutterHook, which installAll runs
+--- first), then the completion wrapper. Provenance is READY only when every one of them is
+--- live; otherwise the underwrite stays vanilla passthrough (item 9).
+---@return boolean ready
+function HookManager:installHarvestUnderwrite()
+    local HCU = HarvestContractUnderwrite
+    if HCU == nil or type(HCU.install) ~= "function" then return false end
+    HCU.setCaptureReady(false)
+    local captureOk = self:installUnderwriteCaptureHooks()
+    local pairOk = HCU.install(self) == true
+    local ready = self._harvestHookOk == true and self._zoneYieldHookOk == true and captureOk and pairOk
+    HCU.setCaptureReady(ready)
+    self:registerCleanup("Harvest underwrite readiness", function() HCU.setCaptureReady(false) end)
+    if ready then
+        SoilLogger.info("[OK] Harvest underwrite capture ready (combine, standing, pickup, cutter start/end, completion)")
+    else
+        SoilLogger.warning("Harvest underwrite NOT ready (combine=%s standing=%s capture=%s completion=%s): contracts stay vanilla",
+            tostring(self._harvestHookOk), tostring(self._zoneYieldHookOk), tostring(captureOk), tostring(pairOk))
+    end
+    return ready
+end
+
 function HookManager:installMowerHook()
     if not Mower or type(Mower.onEndWorkAreaProcessing) ~= "function" then
         SoilLogger.warning("[MowerHook] Mower.onEndWorkAreaProcessing not available - forage crop tracking skipped")
@@ -2816,9 +4118,20 @@ function HookManager:installMowerHook()
             -- of nutrientCycles: a player who turns nutrient cycling off should still
             -- get hay that remembers when it was cut (Arissani ruling 2026-07-30).
             -- The TRACKED_MATERIALS gate filters non-tracked crops automatically.
+            --
+            -- RSF-F212 (contract section 4): NOT while the ground-condition carrier
+            -- owns this mower's deposits this frame (GroundMovementCarrier.stampHandled,
+            -- set by the cut and drop frames' begin, and by a begin a StockGuard lease
+            -- then owned). The carrier projected the fresh material where it landed,
+            -- with its starting profile, or marked what it could not vouch for; this
+            -- generic no-record birth over the cut strip would invent material on bare
+            -- ground beside it. While the ground family is not armed it runs as it
+            -- always has.
             do
                 local md = g_SoilFertilityManager.soilSystem.materialDown
-                if md and md:isArmed() then
+                local carried = GroundMovementCarrier ~= nil and type(GroundMovementCarrier.handledThisFrame) == "function"
+                    and GroundMovementCarrier.handledThisFrame(mowerSelf)
+                if md and md:isArmed() and not carried then
                     local waPoly = buildWorkAreaPolygon(mowerSelf, WorkAreaType.MOWER)
                     if waPoly then
                         -- Polygon centre for field lookup (avoids header-vs-tractor offset)
@@ -2986,14 +4299,497 @@ function HookManager:installMowerYieldHook()
 end
 
 -- =========================================================
+-- THE WORK-AREA WRAP SLOT (RSF-F226)
+-- =========================================================
+-- There are THREE copies of a work-area processing function in series, and each
+-- one freezes the previous. Verified in the decompiled engine, not inferred:
+--
+--   1. SpecializationUtil.registerFunction writes objectType.functions[name].
+--   2. Vehicle.lua:486 calls SpecializationUtil.copyTypeFunctionsInto, which is
+--      literally `for funcName, func in pairs(typeDef.functions) do
+--      target[funcName] = func end` (SpecializationUtil.lua:141-145). That puts a
+--      copy on the INSTANCE, and it runs before onPreLoad is raised at :532, so
+--      before any onLoad.
+--   3. WorkArea:onLoad then captures `workArea.processingFunction =
+--      self[workArea.functionName]` (WorkArea.lua:266), reading that instance copy.
+--   4. WorkArea.lua:182-183 calls ONLY the captured pointer:
+--      `local xs, _ = workArea.processingFunction(self, workArea, dt)`.
+--      It never re-resolves self[functionName].
+--
+-- So a wrapper installed on the class table, on objectType.functions, or on the
+-- instance copy is INERT. All three sit upstream of a pointer that was taken
+-- before the wrapper existed. This is the whole of RSF-F226, and it is why the
+-- tedder hook below logged "N tedders patched" for months while its wrapper never
+-- ran once, and why HayBet drying has never fired.
+--
+-- WHY THE OLD HOOK'S TIMING WAS NEVER THE PROBLEM. It patched at install and again
+-- from VehicleSystem.addVehicle. addVehicle runs after the vehicle has finished
+-- loading, which is exactly when spec_workArea.workAreas is populated, so it is
+-- the RIGHT moment. Only the target was wrong.
+--
+-- TWO TRAPS FOR ANYONE ADDING A CARRIER HERE.
+--
+-- First, the signature is (vehicleSelf, workArea, dt) with the vehicle passed
+-- EXPLICITLY as the first argument. It is a dot call, not a colon call, so a
+-- wrapper written as a method silently shifts every argument.
+--
+-- Second, PRESERVE EVERY RETURN. WorkArea.lua:183 destructures `local xs, _` and
+-- the very next line is `if xs > 0`. A wrapper that returns nothing therefore
+-- compares nil with a number and THROWS inside the work-area loop; it does not
+-- merely lose the worked-hectares figure. Delegate and return what the original
+-- returned, which is what unpack over a packed result table does below.
+--
+-- And a naming trap: all three carrier specializations register a function called
+-- `processDropArea` (Mower.lua:34, Tedder.lua:23, Windrower.lua:27). Selecting a
+-- work area by functionName ALONE would conflate a mower's drop area with a
+-- tedder's, so the owning spec field is part of the selector.
+
+--- THE IDENTITY RECORD (RSF-F226 item 2): one durable table on the global HookManager
+--- class, weakly keyed by work area. For each wrapped slot it holds the exact
+--- predecessor, the exact wrapper installed, the owning site and an active flag. It is
+--- not the per-instance hook row list, so uninstallAll's row wipe cannot erase it, and
+--- a deleted vehicle's work areas fall away with it. It is the only authority for
+--- "already wrapped". Kept across a re-run of this file, so it stays durable.
+HookManager.workAreaRecords = HookManager.workAreaRecords or setmetatable({}, { __mode = "k" })
+
+--- The identity record of one slot, or nil.
+---@return table|nil { predecessor, wrapper, site, active }
+function HookManager.workAreaRecord(workArea, functionName)
+    local byName = type(workArea) == "table" and HookManager.workAreaRecords[workArea] or nil
+    return byName and byName[functionName] or nil
+end
+
+--- Wrap the captured processing pointer of every matching work area on one vehicle.
+--- The identity record lives in HookManager.workAreaRecords (above).
+---
+--- Idempotent: a slot that already has a record is REACTIVATED, never wrapped again,
+--- so a second sweep, a re-entrant addVehicle or a reinstall after teardown cannot
+--- stack a second Soil wrapper under a foreign one.
+---
+---@param vehicle table       the vehicle instance, after its load has finished
+---@param specField string    e.g. "spec_tedder", the owning specialization
+---@param functionName string e.g. "processTedderArea", as registered
+---@param makeWrapper function  (predecessor, record) -> wrapperFn; a wrapper that reads
+---                            record.active is a pure pass-through while it is false
+---@param site string|nil     the owning site, for the record and the teardown log
+---@param activated table|nil a set that collects every slot this call wrapped or
+---                            reactivated, for the caller's teardown
+---@return number wrapped  how many work areas were newly wrapped
+function HookManager.wrapWorkAreaProcessing(vehicle, specField, functionName, makeWrapper, site, activated)
+    if type(vehicle) ~= "table" then return 0 end
+    -- The owning spec must be present: functionName alone is not unique across
+    -- carriers, and a vehicle without the spec has no business being wrapped.
+    if vehicle[specField] == nil then return 0 end
+
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0 end
+
+    local wrapped = 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table"
+           and workArea.functionName == functionName
+           and type(workArea.processingFunction) == "function" then
+            local byName = HookManager.workAreaRecords[workArea]
+            if byName == nil then byName = {} HookManager.workAreaRecords[workArea] = byName end
+            local record = byName[functionName]
+            if record ~= nil then
+                record.active = true
+                if activated then activated[workArea] = true end
+            else
+                record = { predecessor = workArea.processingFunction, site = site or functionName, active = true }
+                local wrapper = makeWrapper(workArea.processingFunction, record)
+                if type(wrapper) == "function" then
+                    record.wrapper = wrapper
+                    byName[functionName] = record
+                    workArea.processingFunction = wrapper
+                    wrapped = wrapped + 1
+                    if activated then activated[workArea] = true end
+                end
+            end
+        end
+    end
+    return wrapped
+end
+
+--- Take Soil's wrapper out of one slot, but ONLY where the live pointer is still the
+--- wrapper Soil installed: then the recorded predecessor goes back and the record is
+--- deleted. If something else has wrapped us since, restoring would silently delete
+--- that other mod's hook, so the record is set INACTIVE and KEPT: the wrapper becomes
+--- a pure pass-through, and a later install reactivates it instead of stacking a
+--- second Soil wrapper (for a drying delta that would dry hay at double rate, with
+--- nothing anywhere reporting it). Never writes nil, a class or a type function.
+---@return string|nil "restored", "left" or nil when the slot has no record
+function HookManager.releaseWorkAreaSlot(workArea, functionName)
+    local record = HookManager.workAreaRecord(workArea, functionName)
+    if type(record) ~= "table" then return nil end
+    if workArea.processingFunction == record.wrapper and type(record.predecessor) == "function" then
+        workArea.processingFunction = record.predecessor
+        HookManager.workAreaRecords[workArea][functionName] = nil
+        return "restored"
+    end
+    record.active = false
+    return "left"
+end
+
+--- releaseWorkAreaSlot over one vehicle's matching work areas.
+---@return number restored, number leftInPlace
+function HookManager.unwrapWorkAreaProcessing(vehicle, specField, functionName)
+    if type(vehicle) ~= "table" or vehicle[specField] == nil then return 0, 0 end
+    local waSpec = vehicle.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return 0, 0 end
+
+    local restored, leftInPlace = 0, 0
+    for _, workArea in pairs(waSpec.workAreas) do
+        local result = HookManager.releaseWorkAreaSlot(workArea, functionName)
+        if result == "restored" then restored = restored + 1
+        elseif result == "left" then leftInPlace = leftInPlace + 1 end
+    end
+    return restored, leftInPlace
+end
+
+--- releaseWorkAreaSlot over every slot one install wrapped or reactivated, emptying
+--- the set as it goes.
+---@param activated table   the weak set wrapWorkAreaProcessing filled
+---@return number restored, number leftInPlace
+function HookManager.releaseActivatedSlots(activated, functionName)
+    local restored, leftInPlace = 0, 0
+    for workArea in pairs(activated) do
+        local result = HookManager.releaseWorkAreaSlot(workArea, functionName)
+        if result == "restored" then restored = restored + 1
+        elseif result == "left" then leftInPlace = leftInPlace + 1 end
+        activated[workArea] = nil
+    end
+    return restored, leftInPlace
+end
+
+--- A makeWrapper whose wrapper is a pure pass-through while its identity record is
+--- inactive. A slot a teardown had to leave under a foreign wrap then calls its exact
+--- predecessor once, every return and error passed on, and applies no Soil effect; a
+--- reinstall reactivates the record instead of stacking a second wrapper.
+---@param makeWrapper function (predecessor, record) -> wrapperFn
+---@return function (predecessor, record) -> wrapperFn
+function HookManager.passThroughWhenInactive(makeWrapper)
+    return function(predecessor, record)
+        local inner = makeWrapper(predecessor, record)
+        if type(inner) ~= "function" then return inner end
+        return function(...)
+            if not record.active then return predecessor(...) end
+            return inner(...)
+        end
+    end
+end
+
+--- Wrap one copied instance function (Vehicle.lua:486 copies the type's functions
+--- into the vehicle) and record the wrapper beside the original, under `markerKey`,
+--- so the teardown can tell whether the live function is still ours.
+--- One record per function name: a name already recorded is not wrapped again.
+---@param makeWrapper function original -> wrapperFn
+---@return boolean wrapped
+function HookManager.wrapInstanceFunction(vehicle, markerKey, name, makeWrapper)
+    if type(vehicle) ~= "table" then return false end
+    local wraps = rawget(vehicle, markerKey)
+    if wraps ~= nil and wraps[name] ~= nil then return false end
+    local original = vehicle[name]
+    if type(original) ~= "function" then return false end
+    local wrapper = makeWrapper(original)
+    if type(wrapper) ~= "function" then return false end
+    if wraps == nil then
+        wraps = {}
+        rawset(vehicle, markerKey, wraps)
+    end
+    rawset(vehicle, name, wrapper)
+    wraps[name] = { original = original, wrapper = wrapper }
+    return true
+end
+
+--- Take Soil's copied-instance-function wraps off one vehicle, each ONLY while the live
+--- function is still the wrapper Soil installed (GROUND-CONDITION-CONTRACT v1.5
+--- section 3 and RSF-F211: "restore only still-owned wrappers"). A function something
+--- else has wrapped since is left in place, still working, and stays in the record, so
+--- a reinstall does not stack a second wrapper under the foreign one.
+---@return number restored, number leftInPlace
+function HookManager.releaseInstanceWraps(vehicle, markerKey)
+    local wraps = type(vehicle) == "table" and rawget(vehicle, markerKey) or nil
+    if type(wraps) ~= "table" then return 0, 0 end
+    local restored, leftInPlace = 0, 0
+    for name, w in pairs(wraps) do
+        if rawget(vehicle, name) == w.wrapper then
+            rawset(vehicle, name, w.original)
+            wraps[name] = nil
+            restored = restored + 1
+        else
+            leftInPlace = leftInPlace + 1
+        end
+    end
+    if next(wraps) == nil then rawset(vehicle, markerKey, nil) end
+    return restored, leftInPlace
+end
+
+-- =========================================================
+-- THE LATER-VEHICLE ROUTES (RSF-F226 item 2, MAINTENANCE row 172)
+-- =========================================================
+-- A vehicle bought after install reaches Soil through ONE VehicleSystem.addVehicle
+-- class wrap. Vehicle.lua:1044 registers every vehicle with the colon call
+-- g_currentMission.vehicleSystem:addVehicle(self), which finds the class method
+-- through the instance's metatable (VehicleSystem.lua:3, :6; class.lua:13-16).
+--
+-- Six hooks used to write the live instance field vehicleSystem.addVehicle instead,
+-- each chaining the one before. That shadowed every class wrap, and it wrapped a
+-- vehicle whatever the add returned. Now each hook registers a ROUTE here. The wrap:
+--   * calls its predecessor first and forwards every return unchanged;
+--   * runs the routes only when the add returned true (VehicleSystem.lua:178), so a
+--     refused add (:163, :167) wraps nothing;
+--   * runs each route under its own pcall: one route's error stops neither another
+--     route nor the add, and a failing route is logged once;
+--   * needs VehicleSystem only, never a specialization (the sprayer gate is a route).
+-- Its cleanup row turns the wrap inactive, and restores the class method only while it
+-- is still ours; under a foreign wrap it stays in the chain as a pure pass-through. Each
+-- site's own teardown row switches its route off (registerSiteTeardown). Each install
+-- wraps afresh, with its own route list.
+
+--- Install the one addVehicle class wrap; the hooks installed after it register their
+--- routes through addVehicleRoute.
+---@return boolean success
+function HookManager:installVehicleRoutes()
+    self._vehicleRoutes = nil
+    if type(VehicleSystem) ~= "table" or type(VehicleSystem.addVehicle) ~= "function" then
+        SoilLogger.warning("[VehicleRoutes] VehicleSystem.addVehicle not available - vehicles bought later get no Soil hooks")
+        return false
+    end
+    local routes = {}
+    self._vehicleRoutes = routes
+
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    local predecessorAdd = VehicleSystem.addVehicle
+    local addRecord = { active = true }
+    local ourAdd = function(vsSelf, vehicle, ...)
+        local results = packAll(predecessorAdd(vsSelf, vehicle, ...))
+        if addRecord.active and results[1] == true then
+            for _, route in ipairs(routes) do
+                if route.active then
+                    local ok, err = pcall(route.fn, vehicle)
+                    if not ok and not route.failureLogged then
+                        route.failureLogged = true
+                        SoilLogger.warning("[VehicleRoutes] %s: install on a new vehicle failed (%s) - native work unaffected",
+                            tostring(route.name), tostring(err))
+                    end
+                end
+            end
+        end
+        return unpack(results, 1, results.n)
+    end
+    VehicleSystem.addVehicle = ourAdd
+    self:registerCleanup("VehicleSystem.addVehicle (later-vehicle routes)", function()
+        -- Inactive always: if something sits above us, we stay in its chain as a
+        -- pure pass-through. Restored only while the live method is still ours. Each
+        -- route is switched off by its own site's teardown row.
+        addRecord.active = false
+        if VehicleSystem.addVehicle == ourAdd then
+            VehicleSystem.addVehicle = predecessorAdd
+        end
+    end)
+    return true
+end
+
+--- Register one later-vehicle route on this install's wrap.
+---@param name string    the site, for the log
+---@param fn function    fn(vehicle), run for every vehicle added successfully
+---@return table|nil route { name, fn, active }, whose active the site's teardown
+---                        clears; nil when the wrap is not installed
+function HookManager:addVehicleRoute(name, fn)
+    local routes = self._vehicleRoutes
+    if routes == nil or type(fn) ~= "function" then return nil end
+    local route = { name = name, fn = fn, active = true }
+    routes[#routes + 1] = route
+    return route
+end
+
+--- The teardown row of one site: its route off, then every slot it wrapped or
+--- reactivated released (still ours, restored; otherwise inactive and kept), then
+--- `releaseMore` for the site's copied instance functions, when it has any.
+---@param releaseMore function|nil () -> restored, leftInPlace
+function HookManager:registerSiteTeardown(site, route, activated, functionName, releaseMore)
+    self:registerCleanup(functionName .. " work-area slots (" .. site .. ")", function()
+        if route ~= nil then route.active = false end
+        local restored, left = HookManager.releaseActivatedSlots(activated, functionName)
+        local fnRestored, fnLeft = 0, 0
+        if releaseMore ~= nil then fnRestored, fnLeft = releaseMore() end
+        SoilLogger.debug("[%s] teardown: %d slot(s) restored, %d left in place inactive; "
+            .. "%d instance function(s) restored, %d left in place", site, restored, left, fnRestored, fnLeft)
+    end)
+end
+
+-- =========================================================
+-- THE PERMANENT SPRAYER GATE (RSF-F226 item 3)
+-- =========================================================
+-- The overlap block used to SWAP the captured processSprayerArea pointer for a
+-- stub at the window start and swap it back in the end append. That shape had a
+-- state the permanent gate cannot have: a processor error inside the work-area
+-- loop skips the end event (WorkArea.lua:183 has no pcall, the end event is raised
+-- only at :206), so the stub survived into the next tick while the next start
+-- cleared the flag. One tick on fresh ground then painted nothing and drained
+-- nothing while the nutrient hook credited and billing charged. Its unconditional
+-- restore also erased any foreign wrap made during the window, and it was not
+-- server-gated.
+--
+-- The gate is installed ONCE per sprayer work area, on the captured slot, and
+-- never moved. It reads the flag on every call, and the flag is cleared at every
+-- window start (WorkArea.lua:126 raises the start event unconditionally), so a
+-- stale block cannot outlive its window. Where the flag is not set it is a pure
+-- pass-through: one dot call to the exact predecessor, every return forwarded,
+-- errors propagate. It never writes nil, a class function or a type function into
+-- a slot.
+--
+-- WHY IT DELEGATES TO THE SAVED PREDECESSOR and never to Sprayer.processSprayerArea:
+-- with Precision Farming installed the captured pointer is already PF's chain
+-- (ExtendedSprayer registers processSprayerArea through registerOverwrittenFunction),
+-- so the predecessor is the only PF-safe thing to call.
+
+HookManager.SPRAYER_GATE_SITE = "sprayer overlap gate"
+
+-- One-shot proof lines, per session. An install count is never evidence a
+-- work-area wrapper runs (RSF-F226's own history); these are. Held on the table,
+-- not as file locals: the bench loads every source into one chunk, which is at
+-- Lua 5.1's 200-local ceiling. installSprayerOverlapGate resets both flags, so each
+-- savegame in one game process logs its own first execution and refusal.
+HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }
+
+--- The gate wrapper for one captured processSprayerArea slot.
+--- Matches wrapWorkAreaProcessing's makeWrapper contract: (predecessor, record).
+---@return function
+function HookManager.makeSprayerGate(predecessor, record)
+    return function(vehicleSelf, workArea, dt, ...)
+        local logged = HookManager._sprayerGateLogged
+        if not logged.firstRun then
+            logged.firstRun = true
+            -- THE ARMED STATE GOES IN THE SAME LINE (RSF-F226 item 2: "with the
+            -- effect's armed state"), read at this pass the way the overlap prepend
+            -- reads it: with overlap prevention off the prepend returns before any flag
+            -- is set, so this gate runs and never refuses. A line saying only that the
+            -- gate ran would read as success next to a block that can never come.
+            local sfm = g_SoilFertilityManager
+            local armed = sfm ~= nil and not (sfm.settings and sfm.settings.overlapPrevention == false)
+            SoilLogger.info("[OverlapGate] FIRST EXECUTION: the sprayer gate ran on a real sprayer pass "
+                .. "(RSF-F226 permanent gate). "
+                .. (armed and "Overlap prevention ON: a pass on complete coverage is refused (server only)."
+                          or "Overlap prevention OFF: this gate will not refuse any pass."))
+        end
+        if record.active and vehicleSelf ~= nil and vehicleSelf._sfOverlapBlockedPass then
+            if not logged.firstRefusal then
+                logged.firstRefusal = true
+                SoilLogger.info("[OverlapGate] FIRST REFUSAL: a pass on complete coverage was refused "
+                    .. "at the processor; nothing painted, nothing drained.")
+            end
+            -- The same pair native returns for its own refusals (Sprayer.lua:318,
+            -- :321, :327); WorkArea.lua:184 needs a number first.
+            return 0, 0
+        end
+        return predecessor(vehicleSelf, workArea, dt, ...)
+    end
+end
+
+--- Does this sprayer carry at least one ACTIVE Soil gate on a processSprayerArea
+--- area? Read from the identity record (HookManager.workAreaRecords).
+---@return boolean
+function HookManager.hasActiveSprayerGate(sprayer)
+    if type(sprayer) ~= "table" or sprayer.spec_sprayer == nil then return false end
+    local waSpec = sprayer.spec_workArea
+    if waSpec == nil or type(waSpec.workAreas) ~= "table" then return false end
+    for _, workArea in pairs(waSpec.workAreas) do
+        if type(workArea) == "table" and workArea.functionName == "processSprayerArea" then
+            local record = HookManager.workAreaRecord(workArea, "processSprayerArea")
+            if type(record) == "table" and record.active
+               and record.site == HookManager.SPRAYER_GATE_SITE then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+--- RSF-F226e: did the gate refuse this sprayer's pass for overlap? The ONE predicate
+--- for all three readers: the nutrient skip (installSprayerAreaHook), the external-fill
+--- billing skip, and SF-73 (TargetApplication.lua:466).
+---
+--- BOTH halves are required. The flag alone is not enough: a Sprayer-spec vehicle
+--- whose drain comes from another processor (a fertilizing seeder or cultivator sets
+--- the sprayer's isActive from processSowingMachineArea / processCultivatorArea,
+--- FertilizingSowingMachine.lua:105, FertilizingCultivator.lua:74) has no
+--- processSprayerArea area to gate, so nothing refuses its pass. It drains and must
+--- be credited and billed as before. The prepend already sets the flag only where a
+--- gate exists; this predicate says so again for every reader.
+---@return boolean
+function HookManager.isOverlapBlockedPass(sprayer)
+    if type(sprayer) ~= "table" or not sprayer._sfOverlapBlockedPass then return false end
+    return HookManager.hasActiveSprayerGate(sprayer)
+end
+
+--- Install the gate: one route on the later-vehicle wrap (installVehicleRoutes) for
+--- sprayers bought later, then the vehicles already present.
+---
+--- installAll calls this right after installVehicleRoutes. Its position among the
+--- other routes no longer matters: no hook writes the instance field
+--- vehicleSystem.addVehicle any more (MAINTENANCE row 172), so nothing can shadow
+--- the class wrap the routes ride on.
+---
+--- No VehicleSystem check of its own (MAINTENANCE row 188): without addVehicle,
+--- installVehicleRoutes says so once and addVehicleRoute returns nil, so only the
+--- sprayers bought later go ungated, as for every other route.
+---@return boolean success
+function HookManager:installSprayerOverlapGate()
+    if not Sprayer or type(Sprayer.processSprayerArea) ~= "function" then
+        SoilLogger.warning("[OverlapGate] Sprayer.processSprayerArea not available - skipping")
+        return false
+    end
+
+    local SITE = HookManager.SPRAYER_GATE_SITE
+    -- The one-shot proof lines are per install, as the tedder's is: a second
+    -- savegame in the same game process logs its own first execution and refusal.
+    HookManager._sprayerGateLogged = { firstRun = false, firstRefusal = false }
+    -- Every slot this install wrapped or reactivated, for its own teardown.
+    -- Weak keys: a sold sprayer's work areas are not kept alive by this set.
+    local activated = setmetatable({}, { __mode = "k" })
+
+    local function gateVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_sprayer", "processSprayerArea",
+            HookManager.makeSprayerGate, SITE, activated)
+    end
+
+    -- 1. Sprayers bought later: one route on the later-vehicle wrap. It runs only on a
+    -- successful add (true, VehicleSystem.lua:178); a failed add wraps nothing.
+    local route = self:addVehicleRoute(SITE, gateVehicle)
+
+    -- 2. THEN THE VEHICLES ALREADY PRESENT.
+    local gated = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do
+            gated = gated + gateVehicle(vehicle)
+        end
+    end
+
+    -- 3. The gate's teardown: its route off, the slots still-ours restored,
+    -- otherwise inactive-and-kept.
+    self:registerSiteTeardown(SITE, route, activated, "processSprayerArea")
+
+    SoilLogger.info(
+        "[OK] Sprayer overlap gate installed on %d work area(s). This is an INSTALL count, not proof it runs; "
+        .. "watch for the first-execution line during an actual sprayer pass.", gated)
+    return true
+end
+
+-- =========================================================
 -- HOOK 1e: Tedder (hay drying acceleration - SF-44 "THE HAY BET")
 -- =========================================================
 --- Instance-level delegating wrapper on Tedder.processTedderArea.
 --- Applies the hay bet's one-time drying delta and enqueues a
 --- corrective pass at end of frame. Never a class-level assignment
 --- (the brief rules it explicitly) - each existing tedder instance
---- is patched at install time, and VehicleSystem.addVehicle is
---- hooked to catch new spawns.
+--- is patched at install time, and new spawns reach it through its
+--- route on the later-vehicle wrap (installVehicleRoutes).
 ---@return boolean success
 function HookManager:installTedderHook()
     if not Tedder or type(Tedder.processTedderArea) ~= "function" then
@@ -3003,9 +4799,31 @@ function HookManager:installTedderHook()
 
     local hookMgrRef = self
 
-    --- Build a bounding-box polygon from a single work area's
-    --- start/width/height nodes. Returns {minX,minZ, maxX,minZ,
-    --- maxX,maxZ, minX,maxZ} or nil.
+    -- One call, every return: the native processing call must run exactly once.
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- RSF-F208 section 2: the native-cell observer the ground-condition carrier
+    -- records through. Idempotent, server only, and inert unless a carrier frame
+    -- for the calling vehicle is open.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[TedderHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            -- This install wrapped the primitive, so this manager owns its removal.
+            -- uninstall restores the native function only while ours is current.
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
+        end
+    end
+
+    --- [RSF-F211] The work area's own parallelogram from its start/width/height
+    --- nodes: start, width, width + height - start, height. The old axis-aligned
+    --- box around those corners took in ground a turned tedder never touched.
+    --- {x=,z=} objects, the store contract; nil for a degenerate area.
     local function singleWAPoly(workArea)
         if not workArea
            or not workArea.start
@@ -3017,29 +4835,86 @@ function HookManager:installTedderHook()
         local xw, _, zw = getWorldTranslation(workArea.width)
         local xh, _, zh = getWorldTranslation(workArea.height)
         if not xs or not xw or not xh then return nil end
-        local x4 = xw + xh - xs
-        local z4 = zw + zh - zs
-        local minX = math.min(xs, xw, xh, x4)
-        local maxX = math.max(xs, xw, xh, x4)
-        local minZ = math.min(zs, zw, zh, z4)
-        local maxZ = math.max(zs, zw, zh, z4)
-        -- {x=,z=} objects, the store contract. See buildWorkAreaPolygon at the top of
-        -- this file for what a flat array costs.
+        local cross = (xw - xs) * (zh - zs) - (zw - zs) * (xh - xs)
+        if math.abs(cross) < 1e-9 then return nil end
         return {
-            { x = minX, z = minZ },
-            { x = maxX, z = minZ },
-            { x = maxX, z = maxZ },
-            { x = minX, z = maxZ },
+            { x = xs,           z = zs },
+            { x = xw,           z = zw },
+            { x = xw + xh - xs, z = zw + zh - zs },
+            { x = xh,           z = zh },
         }
     end
 
     --- Create a delegating wrapper for one tedder instance.
     --- DELEGATES fully (superFunc first), then applies the
     --- hay bet's drying delta and enqueues the correction pass.
+    -- ONE-SHOT PROOF THAT THE WRAPPER ACTUALLY RAN. The install count above was
+    -- non-zero for months while this body never executed, so "patched" can never
+    -- be the acceptance again. This fires once per session, on the first real
+    -- pass, and it is the line an in-game check should look for.
+    local firstRunLogged = false
+
     local function makeWrapper(realFn)
         return function(tedderSelf, workArea, dt)
-            -- DELEGATE fully: original processTedderArea first
-            local results = { realFn(tedderSelf, workArea, dt) }
+            if not firstRunLogged then
+                firstRunLogged = true
+                -- THE ARMED STATE GOES IN THE SAME LINE, and that is the whole
+                -- point of it. This log sits ABOVE the hayBet:isArmed() gate
+                -- below, so it fires whether or not any drying can follow. Saying
+                -- only "the wrapper ran" would hand a tester on default settings a
+                -- line that looks like success next to a drying effect that never
+                -- comes, and they would report the repair as broken when it is
+                -- working and the FAMILY is simply gated off.
+                --
+                -- The ground-material family sits behind the ground_material
+                -- release gate, so on an ordinary save HayBet is inert and the
+                -- honest answer is "the wrapper runs, and there is nothing behind
+                -- it yet". Reading this one line tells you which of the two
+                -- states you are in without opening the settings panel.
+                local hb = g_SoilFertilityManager
+                    and g_SoilFertilityManager.soilSystem
+                    and g_SoilFertilityManager.soilSystem.hayBet
+                local armed = hb ~= nil and hb.isArmed ~= nil and hb:isArmed() or false
+                SoilLogger.info(
+                    "[TedderHook] FIRST EXECUTION: the work-area wrapper ran on a real tedder pass "
+                    .. "(RSF-F226 repair confirmed live). HayBet armed: %s. %s",
+                    tostring(armed),
+                    armed
+                        and "Drying WILL be applied on this pass."
+                        or "Drying will NOT be applied: the ground-material family is gated off. "
+                           .. "Turn on Experimental Systems to see the drying effect.")
+            end
+            -- RSF-F208 SECTION 3: THE GROUND-CONDITION CARRIER, BEFORE HAYBET. The
+            -- carrier's frame is open around the native call so the observer sees
+            -- this tedder's pickups and drops in native order and projects the moved
+            -- material's age and wetness onto the cells it landed on. It must finish
+            -- BEFORE the drying below: projecting old wetness after the tedding effect
+            -- would undo legitimate drying (contract section 2, F208 :101). Inert unless
+            -- the ground-material family is armed and no StockGuard lease owns the call.
+            local carrierFrame = nil
+            if tedderSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then
+                local okBegin, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem,
+                    tedderSelf, workArea, GroundMovementCarrier.KIND_TEDDER, GroundMovementCarrier.tedderRemainder)
+                if okBegin then
+                    carrierFrame = frameOrErr
+                else
+                    SoilLogger.warning("[TedderHook] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+                end
+            end
+
+            -- DELEGATE fully: original processTedderArea first. Protected ONLY so the
+            -- carrier frame closes whether the native call returned or raised; a raised
+            -- error is re-raised unchanged below.
+            local packed = packAll(pcall(realFn, tedderSelf, workArea, dt))
+            if carrierFrame ~= nil then
+                local okFinish, errFinish = pcall(GroundMovementCarrier.finish, carrierFrame)
+                if not okFinish then
+                    SoilLogger.warning("[TedderHook] ground-condition carrier failed to finish (%s)", tostring(errFinish))
+                end
+            end
+            if not packed[1] then error(packed[2], 0) end
+            local results = { unpack(packed, 2, packed.n) }
 
             -- HAY BET: apply drying delta + enqueue correction
             -- Server only - no client-side material logic
@@ -3072,33 +4947,287 @@ function HookManager:installTedderHook()
         end
     end
 
-    -- PATCH existing tedder instances (placed on map at load)
+    -- INSTALL ON THE SLOT THE ENGINE ACTUALLY CALLS (RSF-F226).
+    --
+    -- This used to assign vehicle.processTedderArea, the instance copy, which
+    -- WorkArea:onLoad had already read from at WorkArea.lua:266. The engine then
+    -- called its own captured pointer and never looked at ours again, so this
+    -- wrapper had never run once, and HayBet tedder drying has never fired in a
+    -- shipped game. See the wrap-slot note above wrapWorkAreaProcessing.
+    --
+    -- The TIMING here was always right and is unchanged: both sweeps happen after
+    -- a vehicle has finished loading, which is exactly when spec_workArea.workAreas
+    -- exists. Only the target moved.
+    local SITE = "tedder"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makeWrapper)
+    local function tedderVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_tedder", "processTedderArea", wrapSlot, SITE, activated)
+    end
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            if vehicle.spec_tedder
-               and type(vehicle.processTedderArea) == "function" then
-                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
-                patchedCount = patchedCount + 1
-            end
+            patchedCount = patchedCount + tedderVehicle(vehicle)
         end
     end
 
-    -- HOOK VehicleSystem.addVehicle to patch future tedder spawns
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(self, vehicle, ...)
-            if vehicle
-               and vehicle.spec_tedder
-               and type(vehicle.processTedderArea) == "function" then
-                vehicle.processTedderArea = makeWrapper(vehicle.processTedderArea)
-            end
-            return origAdd(self, vehicle, ...)
+    -- Tedders bought later: one route on the later-vehicle wrap (installVehicleRoutes).
+    local route = self:addVehicleRoute(SITE, tedderVehicle)
+    self:registerSiteTeardown(SITE, route, activated, "processTedderArea")
+
+    -- A COUNT OF PATCHED WORK AREAS IS NOT EVIDENCE THE WRAPPER RUNS, and saying
+    -- so here is the point. This exact line reported a non-zero count for months
+    -- while nothing behind it ever executed, which is what hid the defect. The
+    -- wrapper logs its FIRST REAL EXECUTION separately (see makeWrapper), and that
+    -- line, not this one, is what proves the repair.
+    SoilLogger.info(
+        "[OK] Tedder hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
+        .. "watch for the first-execution line during an actual tedder pass.", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e1: Windrower (RSF-F208 section 3, the ground-condition carrier)
+-- =========================================================
+--- The windrower rakes material into a windrow: it picks up along its work area and
+--- drops the CURRENT pickup on its drop line (Windrower.lua:309-384). The carrier's
+--- frame is open around the native call so the observer records both, in native
+--- order, and the moved material's age and wetness land where it landed. Nothing else
+--- runs in this wrapper; SF had no windrower hook before this one.
+---
+--- SAME SLOT AS THE TEDDER (RSF-F226): the captured work-area pointer the engine calls
+--- (WorkArea.lua:266), never the instance copy, swept over the existing vehicles and
+--- over every vehicle VehicleSystem.addVehicle registers later.
+---@return boolean success
+function HookManager:installWindrowerHook()
+    if not Windrower or type(Windrower.processWindrowerArea) ~= "function" then
+        SoilLogger.warning("[WindrowerHook] Windrower.processWindrowerArea not available - skipping")
+        return false
+    end
+
+    -- One call, every return: the native processing call must run exactly once.
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- The same observer the tedder hook installs. Whichever hook wraps the primitive
+    -- first owns its removal; the other finds it ALREADY installed and registers none.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[WindrowerHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
         end
     end
 
-    SoilLogger.info("[OK] Tedder hook installed (instance-level, %d existing tedders patched)", patchedCount)
+    local function makeWrapper(realFn)
+        return function(windrowerSelf, workArea, dt)
+            local carrierFrame = nil
+            if windrowerSelf.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then
+                local okBegin, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem,
+                    windrowerSelf, workArea, GroundMovementCarrier.KIND_WINDROWER, nil)
+                if okBegin then
+                    carrierFrame = frameOrErr
+                else
+                    SoilLogger.warning("[WindrowerHook] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+                end
+            end
+            -- Protected ONLY so the carrier frame closes whether the native call
+            -- returned or raised; a raised error is re-raised unchanged.
+            local packed = packAll(pcall(realFn, windrowerSelf, workArea, dt))
+            if carrierFrame ~= nil then
+                local okFinish, errFinish = pcall(GroundMovementCarrier.finish, carrierFrame)
+                if not okFinish then
+                    SoilLogger.warning("[WindrowerHook] ground-condition carrier failed to finish (%s)", tostring(errFinish))
+                end
+            end
+            if not packed[1] then error(packed[2], 0) end
+            return unpack(packed, 2, packed.n)
+        end
+    end
+
+    local SITE = "windrower"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makeWrapper)
+    local function windrowerVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_windrower", "processWindrowerArea", wrapSlot, SITE, activated)
+    end
+    local patchedCount = 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            patchedCount = patchedCount + windrowerVehicle(vehicle)
+        end
+    end
+    -- Windrowers bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, windrowerVehicle)
+    self:registerSiteTeardown(SITE, route, activated, "processWindrowerArea")
+
+    SoilLogger.info(
+        "[OK] Windrower hook installed on %d work area(s). This is an INSTALL count, not proof it runs; "
+        .. "the ground-condition carrier logs its first observed pass separately.", patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e2: Mower carrier (RSF-F208 section 3, the ground-condition carrier)
+-- =========================================================
+--- A mower spans TWO calls over one shared drop area (Mower.lua): each work area's cut
+--- (processMowerArea :328, the CAPTURED work-area pointer, mechanism 1) adds to
+--- dropArea.litersToDrop, and the end of processing drops each drop area through
+--- self:processDropArea (:565, the INSTANCE copy, mechanism 2). The carrier opens a
+--- frame around each: the cut frame records the old windrow picked up under the cut and
+--- the fresh output (GroundMovementCarrier.mowerCut), the drop frame projects the drop
+--- area's mixture where it lands.
+---
+--- WHY THE INSTANCE COPY AND NOT A CLASS FRAME AROUND onEndWorkAreaProcessing: the end
+--- drops EVERY drop area in one call, and a frame carries one account. Wrapping
+--- processDropArea gives each drop area its own frame over its own account. It is
+--- recognised by identity against Mower.processDropArea (the tedder and windrower copy
+--- functions of the same name), and a foreign replacement is left alone.
+---
+--- SF's existing mower birth (installMowerHook) appends to the class end, so it runs
+--- after the drop. RSF-F212 stands it down while this carrier owns the mower's
+--- deposits (GroundMovementCarrier.handledThisFrame, stamped by every begin), so it
+--- writes only when the ground family is not armed, exactly as before the family.
+---@return boolean success
+function HookManager:installMowerCarrierHook()
+    if not Mower or type(Mower.processMowerArea) ~= "function" or type(Mower.processDropArea) ~= "function" then
+        SoilLogger.warning("[MowerCarrier] Mower.processMowerArea/processDropArea not available - skipping")
+        return false
+    end
+    local nativeDrop = Mower.processDropArea
+
+    -- One call, every return: the native call must run exactly once.
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- The same observer the tedder and windrower hooks install; whichever wraps the
+    -- primitive first owns its removal.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[MowerCarrier] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
+        end
+    end
+
+    local function carrierOn(vehicle)
+        return vehicle.isServer and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+            and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled
+    end
+    local function begin(vehicle, area, dropArea)
+        local ok, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem, vehicle, area,
+            GroundMovementCarrier.KIND_MOWER, GroundMovementCarrier.mowerRemainder, dropArea)
+        if ok then return frameOrErr end
+        SoilLogger.warning("[MowerCarrier] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+        return nil
+    end
+    local function finish(frame)
+        local ok, err = pcall(GroundMovementCarrier.finish, frame)
+        if not ok then SoilLogger.warning("[MowerCarrier] ground-condition carrier failed to finish (%s)", tostring(err)) end
+    end
+
+    -- The cut: the captured processMowerArea pointer.
+    local function makeCutWrapper(realFn)
+        return function(mowerSelf, workArea, dt)
+            local frame, dropArea, before = nil, nil, 0
+            if carrierOn(mowerSelf) then
+                dropArea = GroundMovementCarrier.mowerDropArea(mowerSelf, workArea)
+                -- No drop area: the direct-to-FillUnit branch, not a ground deposit.
+                if dropArea ~= nil then
+                    before = tonumber(workArea.pickedUpLiters) or 0
+                    frame = begin(mowerSelf, workArea, dropArea)
+                end
+            end
+            -- Protected ONLY so the frame closes whether the native call returned or
+            -- raised; a raised error is re-raised unchanged.
+            local packed = packAll(pcall(realFn, mowerSelf, workArea, dt))
+            if frame ~= nil then
+                if packed[1] then
+                    local fresh = (tonumber(workArea.pickedUpLiters) or 0) - before
+                    -- The converter's output type is the drop area's after the cut
+                    -- (Mower.lua:359): the fresh-grass profile only for GRASS_WINDROW.
+                    local okCut, errCut = pcall(GroundMovementCarrier.mowerCut, frame, fresh, dropArea.fillType)
+                    if not okCut then SoilLogger.warning("[MowerCarrier] fresh output not recorded (%s)", tostring(errCut)) end
+                end
+                finish(frame)
+            end
+            if not packed[1] then error(packed[2], 0) end
+            return unpack(packed, 2, packed.n)
+        end
+    end
+
+    -- The drop: the instance copy of processDropArea, one frame per drop area. The
+    -- wrapper is recorded beside the original, for the still-owned teardown.
+    local dropWrapped = setmetatable({}, { __mode = "k" })
+    local function makeDropWrapper(real)
+        return function(mowerSelf, dropArea, dt)
+            -- The end of processing drops every drop area every frame; one with nothing
+            -- pending drops nothing (:385), so it opens no frame and runs no barrier.
+            local frame = nil
+            if carrierOn(mowerSelf) and type(dropArea) == "table" and (tonumber(dropArea.litersToDrop) or 0) > 0 then
+                frame = begin(mowerSelf, dropArea, dropArea)
+            end
+            local packed = packAll(pcall(real, mowerSelf, dropArea, dt))
+            if frame ~= nil then finish(frame) end
+            if not packed[1] then error(packed[2], 0) end
+            return unpack(packed, 2, packed.n)
+        end
+    end
+    local function wrapDrop(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_mower == nil then return 0 end
+        -- Only over the native drop: a foreign replacement is left alone.
+        if rawget(vehicle, "processDropArea") ~= nativeDrop then return 0 end
+        if not HookManager.wrapInstanceFunction(vehicle, "_sfMowerDropWrap", "processDropArea", makeDropWrapper) then
+            return 0
+        end
+        dropWrapped[vehicle] = true
+        return 1
+    end
+
+    local SITE = "mower carrier"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapCutSlot = HookManager.passThroughWhenInactive(makeCutWrapper)
+    local function wrapCut(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_mower", "processMowerArea", wrapCutSlot, SITE, activated)
+    end
+
+    local patchedCount, dropCount = 0, 0
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    if vs and vs.vehicles then
+        for _, vehicle in pairs(vs.vehicles) do
+            patchedCount = patchedCount + wrapCut(vehicle)
+            dropCount = dropCount + wrapDrop(vehicle)
+        end
+    end
+    -- Mowers bought later: one route on the later-vehicle wrap, the cut and the drop.
+    local route = self:addVehicleRoute(SITE, function(vehicle)
+        wrapCut(vehicle)
+        wrapDrop(vehicle)
+    end)
+    self:registerSiteTeardown(SITE, route, activated, "processMowerArea", function()
+        local restored, left = 0, 0
+        for vehicle in pairs(dropWrapped) do
+            local r, l = HookManager.releaseInstanceWraps(vehicle, "_sfMowerDropWrap")
+            restored, left = restored + r, left + l
+            dropWrapped[vehicle] = nil
+        end
+        return restored, left
+    end)
+
+    SoilLogger.info(
+        "[OK] Mower carrier installed on %d work area(s) and %d drop call(s). This is an INSTALL count, not proof "
+        .. "it runs; the ground-condition carrier logs its first observed pass separately.", patchedCount, dropCount)
     return true
 end
 
@@ -3117,10 +5246,13 @@ end
 -- registration, so assigning `Combine.processCombineSwathArea` here would patch a
 -- table nobody reads and the hook would silently never run.
 --
--- THE RETURN VALUE IS THE EVIDENCE. The engine returns dropped litres
--- (Combine.md:2692-2714), so a birth is recorded only when material actually landed.
--- No litres, no record: that is a stronger gate than any flag, because it is the
--- outcome rather than an intention.
+-- THE LANDED LITRES ARE THE EVIDENCE (MAINTENANCE rows 104 and 145). The engine returns
+-- 1, 1 whenever the swath is active with litres to drop and 0, 0 otherwise
+-- (Combine.lua:731-758); the tip's own droppedLiters stays local (:746). So the generic
+-- birth opens a litres-only GroundNativeObserver frame around the native call and reads
+-- the litres the tip actually dropped: a birth is recorded only when material actually
+-- landed. No litres, no record; and no observer, no record (an unknown amount is not a
+-- request to guess from).
 ---@return boolean success
 function HookManager:installCombineSwathHook()
     if not Combine or type(Combine.processCombineSwathArea) ~= "function" then
@@ -3150,16 +5282,106 @@ function HookManager:installCombineSwathHook()
         return ft and ft.name or nil
     end
 
+    -- RSF-F212 (contract section 4): the straw's birth is the ground-condition
+    -- carrier's, through a STRAW frame around the native call: the settlement barrier
+    -- first, the observer recording the swath's own tipToGroundAroundLine, the produced
+    -- litres (the native tip request, Combine.lua:733) entering the one-call account
+    -- born at the deposit with the fresh-straw profile before the drop is handled, and
+    -- the drop projected where it landed, combined with what survived there. The
+    -- generic no-record birth below runs only while the carrier does not own this
+    -- combine's deposits this frame (the ground family not armed), as it always has.
+    if GroundNativeObserver ~= nil then
+        local okObs, whyObs = GroundNativeObserver.install()
+        if not okObs and whyObs ~= "CLIENT" then
+            SoilLogger.warning("[SwathHook] ground-condition observer not installed (%s)", tostring(whyObs))
+        elseif okObs and whyObs == nil then
+            self:registerCleanup("DensityMapHeightUtil.tipToGroundAroundLine (ground-condition observer)", function()
+                GroundNativeObserver.uninstall()
+            end)
+        end
+    end
+    local function strawCarrierOn(combine)
+        local sfm = g_SoilFertilityManager
+        return combine.isServer and GroundMovementCarrier ~= nil and sfm ~= nil and sfm.settings ~= nil and sfm.settings.enabled
+    end
+    local function beginStraw(combineSelf, workArea)
+        local spec = combineSelf.spec_combine
+        local params = spec ~= nil and spec.workAreaParameters or nil
+        -- The native gate (Combine.lua:737): no active swath, or nothing to drop, is
+        -- no deposit and opens no frame.
+        if params == nil or not spec.isSwathActive or (tonumber(params.litersToDrop) or 0) <= 0 then return nil end
+        local ok, frameOrErr = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem, combineSelf, workArea,
+            GroundMovementCarrier.KIND_STRAW, nil)
+        if ok then return frameOrErr end
+        SoilLogger.warning("[SwathHook] ground-condition carrier failed to begin (%s) - native work unaffected", tostring(frameOrErr))
+        return nil
+    end
+    local function finishStraw(frame)
+        local ok, err = pcall(GroundMovementCarrier.finish, frame)
+        if not ok then SoilLogger.warning("[SwathHook] ground-condition carrier failed to finish (%s)", tostring(err)) end
+    end
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+
+    -- ONE-SHOT PROOF THAT THE WRAPPER ACTUALLY RAN, with the armed state in the
+    -- SAME LINE. The install count above was non-zero for this hook's entire life
+    -- while this body never executed once, so "patched" can never be the
+    -- acceptance again.
+    --
+    -- The armed state is in the line for the reason it was added to the tedder
+    -- hook at aa9e61f8: straw birth sits behind the ground_material release gate
+    -- (materialDown arms at SoilFertilitySystem.lua:294, and the check below
+    -- returns early when it has not), so on an ordinary save this wrapper runs and
+    -- NOTHING FOLLOWS IT. A line that reads like success above a gate that is
+    -- closed is exactly how a tester gets sent hunting an effect that cannot
+    -- appear, and how a working repair gets reported as broken.
+    local firstRunLogged = false
+
     local function makeWrapper(realFn)
         return function(combineSelf, workArea, ...)
-            -- DELEGATE FIRST, always, and forward every return: the engine's own
-            -- caller reads the dropped-litres value.
-            local results = { realFn(combineSelf, workArea, ...) }
+            -- The STRAW frame opens before the native call (RSF-F212, above) and
+            -- closes whether that call returned or raised; a raised error is re-raised
+            -- unchanged and every return is forwarded to the engine's own caller.
+            local frame = nil
+            if strawCarrierOn(combineSelf) then frame = beginStraw(combineSelf, workArea) end
+            -- MAINTENANCE row 145: with no STRAW frame, a litres-only observer frame learns
+            -- what the swath's tip actually dropped, for the generic birth below.
+            local light = nil
+            if frame == nil and combineSelf.isServer and GroundNativeObserver ~= nil and GroundNativeObserver.isInstalled() then
+                light = GroundNativeObserver.open({ owner = combineSelf, litresOnly = true, litres = 0 })
+            end
+            local packed = packAll(pcall(realFn, combineSelf, workArea, ...))
+            if frame ~= nil then finishStraw(frame) end
+            if light ~= nil then GroundNativeObserver.close(light) end
+            if not packed[1] then error(packed[2], 0) end
+            -- The native returns, forwarded whole at the end of this wrapper.
+            local results = { unpack(packed, 2, packed.n) }
+
+            if not firstRunLogged then
+                firstRunLogged = true
+                local mdNow = g_SoilFertilityManager
+                    and g_SoilFertilityManager.soilSystem
+                    and g_SoilFertilityManager.soilSystem.materialDown
+                local armed = mdNow ~= nil and mdNow.isArmed ~= nil and mdNow:isArmed() or false
+                local observed = GroundNativeObserver ~= nil and GroundNativeObserver.isInstalled()
+                SoilLogger.info(
+                    "[SwathHook] FIRST EXECUTION: the work-area wrapper ran on a real combine pass "
+                    .. "(RSF-F226 combine half confirmed live). MaterialDown armed: %s. %s",
+                    tostring(armed),
+                    not armed
+                        and "No straw birth will be recorded: the ground-material family is gated off. "
+                           .. "Turn on Experimental Systems to see straw birth."
+                        or not observed
+                        and "No straw birth will be recorded: the ground observer is not installed, so the litres a pass lands cannot be read."
+                        or "A straw birth WILL be recorded when this pass lands litres on a field.")
+            end
 
             if not combineSelf.isServer then return unpack(results) end
 
-            -- Nothing landed on the ground, so there is nothing to remember.
-            local droppedLiters = results[1]
+            -- Nothing landed on the ground (or there was no light frame to learn it): nothing to
+            -- remember (MAINTENANCE row 145; results[1] is only the engine's request flag).
+            local droppedLiters = light ~= nil and light.litres or 0
             if type(droppedLiters) ~= "number" or droppedLiters <= 0 then
                 return unpack(results)
             end
@@ -3168,6 +5390,14 @@ function HookManager:installCombineSwathHook()
                or not g_SoilFertilityManager.soilSystem
                or not g_SoilFertilityManager.settings
                or not g_SoilFertilityManager.settings.enabled then
+                return unpack(results)
+            end
+
+            -- RSF-F212: while the ground-condition carrier owns this combine's deposits
+            -- this frame (the family armed, its frame above or a StockGuard lease), the
+            -- straw's birth is the carrier's and this generic no-record birth stands down.
+            if GroundMovementCarrier ~= nil and type(GroundMovementCarrier.handledThisFrame) == "function"
+               and GroundMovementCarrier.handledThisFrame(combineSelf) then
                 return unpack(results)
             end
 
@@ -3193,7 +5423,7 @@ function HookManager:installCombineSwathHook()
                 -- claim to check. A NAMED but untracked material is refused there.
                 local name = windrowFillTypeName(combineSelf)
                 if md:noteMaterialAt(poly, fieldId, name) then
-                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, %.1fL dropped",
+                    SoilLogger.debug("[SwathHook] straw birth: field %d, %s, %.1fL landed",
                         fieldId, tostring(name), droppedLiters)
                 end
             end)
@@ -3202,31 +5432,99 @@ function HookManager:installCombineSwathHook()
         end
     end
 
-    -- Patch combines already in the world.
+    -- INSTALL ON THE SLOT THE ENGINE ACTUALLY CALLS (RSF-F226, the combine half).
+    --
+    -- This used to assign vehicle.processCombineSwathArea, the instance copy that
+    -- WorkArea:onLoad had already read from at WorkArea.lua:266, so the engine
+    -- called its own captured pointer and never looked at ours again. Straw birth
+    -- has therefore never been recorded from a combine swath in a shipped game,
+    -- dead for exactly the same reason the tedder hook was.
+    --
+    -- The comment above this function already knew the class table was wrong. It
+    -- just stopped one copy short: the instance copy is ALSO upstream of the
+    -- captured pointer. Getting trap 3 right and trap 4 wrong looks identical from
+    -- the log, because both produce a healthy non-zero patched count.
+    --
+    -- processCombineSwathArea has zero direct callers anywhere in the engine, the
+    -- same as processTedderArea and processWindrowerArea, which is what confirms it
+    -- is reached only through the work-area slot.
+    local SITE = "combine swath"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makeWrapper)
+    local function swathVehicle(vehicle)
+        return HookManager.wrapWorkAreaProcessing(vehicle, "spec_combine", "processCombineSwathArea", wrapSlot, SITE, activated)
+    end
     local patchedCount = 0
     local vs = g_currentMission and g_currentMission.vehicleSystem
     if vs and vs.vehicles then
         for _, vehicle in pairs(vs.vehicles) do
-            if vehicle.spec_combine and type(vehicle.processCombineSwathArea) == "function" then
-                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
-                patchedCount = patchedCount + 1
-            end
+            patchedCount = patchedCount + swathVehicle(vehicle)
         end
     end
 
-    -- And any that spawn later, the same way the tedder and harvest hooks do.
-    if vs and type(vs.addVehicle) == "function" then
-        local origAdd = vs.addVehicle
-        vs.addVehicle = function(self, vehicle, ...)
-            if vehicle and vehicle.spec_combine
-               and type(vehicle.processCombineSwathArea) == "function" then
-                vehicle.processCombineSwathArea = makeWrapper(vehicle.processCombineSwathArea)
-            end
-            return origAdd(self, vehicle, ...)
-        end
-    end
+    -- And combines bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, swathVehicle)
+    self:registerSiteTeardown(SITE, route, activated, "processCombineSwathArea")
 
-    SoilLogger.info("[OK] Combine swath hook installed (instance-level, %d existing combines patched)", patchedCount)
+    -- A COUNT OF PATCHED WORK AREAS IS NOT EVIDENCE THE WRAPPER RUNS. The tedder
+    -- hook's equivalent line reported a non-zero count for its entire life while
+    -- nothing behind it executed once, and that is the whole reason F226 went
+    -- unnoticed. The wrapper logs its FIRST REAL EXECUTION separately, with the
+    -- armed state in the same line, and THAT is what proves the repair.
+    SoilLogger.info(
+        "[OK] Combine swath hook installed on %d work area(s). This is an INSTALL count, not proof it "
+        .. "runs; watch for the first-execution line during an actual combine pass with the swath on.",
+        patchedCount)
+    return true
+end
+
+-- =========================================================
+-- HOOK 1e3: Indoor mask lifecycle (RSF-F213, contract section 5)
+-- =========================================================
+-- The engine paints its indoor mask per placeable area through
+-- IndoorMask:setStateByArea (environment/IndoorMask.lua:101-109): INDOOR from
+-- PlaceableIndoorAreas:onFinalizePlacement (:67) after the placeable's own paint,
+-- OUTDOOR from onDelete (:39). The shelter read caches an exposed fraction per Soil
+-- cell, so a paint must drop the cells it touched. The wrap goes on the MISSION'S
+-- INSTANCE (the class is shared engine code and the instance field shadows it for
+-- exactly this mission), runs the original first and reports afterwards under
+-- pcall: a paint that raised, or an area we cannot place, drops the whole cache.
+-- Native PLACEABLE_ADDED/REMOVED messages fire BEFORE the paint and are not
+-- subscribed here; the daily invalidation stays as the backstop for writers this
+-- wrap does not see.
+---@return boolean success
+function HookManager:installIndoorMaskHook()
+    local mission = g_currentMission
+    local mask = mission ~= nil and mission.indoorMask or nil
+    if mask == nil or type(mask.setStateByArea) ~= "function" then
+        SoilLogger.warning("[IndoorMask] g_currentMission.indoorMask:setStateByArea not available - shelter invalidation relies on the daily backstop")
+        return false
+    end
+    if rawget(mask, "_sfShelterWrap") ~= nil then return true end
+    local original = mask.setStateByArea
+    local function packAll(...)
+        return { n = select("#", ...), ... }
+    end
+    local wrapper = function(maskSelf, area, indoor, ...)
+        local packed = packAll(pcall(original, maskSelf, area, indoor, ...))
+        local sfm = g_SoilFertilityManager
+        local mw = sfm ~= nil and sfm.soilSystem ~= nil and sfm.soilSystem.materialWetness or nil
+        if mw ~= nil and type(mw.onIndoorMaskChanged) == "function" then
+            local okInv, errInv = pcall(mw.onIndoorMaskChanged, mw, area, indoor, packed[1] == true)
+            if not okInv then SoilLogger.warning("[IndoorMask] shelter invalidation failed (%s)", tostring(errInv)) end
+        end
+        if not packed[1] then error(packed[2], 0) end
+        return unpack(packed, 2, packed.n)
+    end
+    rawset(mask, "setStateByArea", wrapper)
+    rawset(mask, "_sfShelterWrap", { original = original, wrapper = wrapper })
+    self:registerCleanup("IndoorMask.setStateByArea (shelter invalidation)", function()
+        if rawget(mask, "setStateByArea") == wrapper then
+            rawset(mask, "setStateByArea", nil)
+        end
+        rawset(mask, "_sfShelterWrap", nil)
+    end)
+    SoilLogger.info("[OK] Indoor mask lifecycle hook installed on the mission's indoor mask")
     return true
 end
 
@@ -3254,6 +5552,45 @@ local function getArmedYardLadder()
     return yl
 end
 
+--- One bale's birth into the yard ladder: its node, fill type, level, capacity and
+--- farm read off the live bale, and `birth` when a baler's creation frame supplies it
+--- (RSF-F211). Shared by the generic Bale.register door and BalerCollection.
+function HookManager.baleBirth(baleSelf, birth)
+    local yl = getArmedYardLadder()
+    if yl == nil or baleSelf == nil then return end
+    local nodeId = baleSelf.nodeId
+    if nodeId == nil then return end
+
+    local ftName = "UNKNOWN"
+    if baleSelf.getFillType ~= nil and g_fillTypeManager ~= nil then
+        local ftIdx = baleSelf:getFillType()
+        if ftIdx ~= nil and ftIdx > 0 then
+            local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
+            if ft ~= nil then ftName = ft.name end
+        end
+    end
+
+    local fillLevel = 0
+    if baleSelf.getFillLevel ~= nil then
+        fillLevel = baleSelf:getFillLevel() or 0
+    end
+
+    -- Capacity is a REAL getter (PackedBale.md:207), and it matters: it is one third of
+    -- the re-attach heuristic key, so a fill-level stand-in would make the key drift
+    -- every time a bale was partly used.
+    local capacity = fillLevel
+    if baleSelf.getCapacity ~= nil then
+        capacity = baleSelf:getCapacity() or fillLevel
+    end
+
+    local farmId = 0
+    if baleSelf.getOwnerFarmId ~= nil then
+        farmId = baleSelf:getOwnerFarmId() or 0
+    end
+
+    yl:onBaleCreated(nodeId, baleSelf, ftName, fillLevel, farmId, capacity, birth)
+end
+
 --- Hooks Bale.register for the yard ladder's per-bale condition rows. Catches every
 --- door a bale enters the world through: baler spawn, packed-bale unpacking, console
 --- creation, PlaceableObjectStorage retrieval, and savegame load.
@@ -3269,44 +5606,16 @@ function HookManager:installBaleBirthHook()
         -- DELEGATE FIRST, always. The bale must be fully registered before we read a
         -- thing off it, and our failure must never be able to stop a bale existing.
         local results = { origRegister(baleSelf, ...) }
-
-        local yl = getArmedYardLadder()
-        if yl ~= nil then
-            pcall(function()
-                local nodeId = baleSelf.nodeId
-                if nodeId == nil then return end
-
-                local ftName = "UNKNOWN"
-                if baleSelf.getFillType ~= nil and g_fillTypeManager ~= nil then
-                    local ftIdx = baleSelf:getFillType()
-                    if ftIdx ~= nil and ftIdx > 0 then
-                        local ft = g_fillTypeManager:getFillTypeByIndex(ftIdx)
-                        if ft ~= nil then ftName = ft.name end
-                    end
-                end
-
-                local fillLevel = 0
-                if baleSelf.getFillLevel ~= nil then
-                    fillLevel = baleSelf:getFillLevel() or 0
-                end
-
-                -- Capacity is a REAL getter (PackedBale.md:207), and it matters: it is
-                -- one third of the re-attach heuristic key, so a fill-level stand-in
-                -- would make the key drift every time a bale was partly used.
-                local capacity = fillLevel
-                if baleSelf.getCapacity ~= nil then
-                    capacity = baleSelf:getCapacity() or fillLevel
-                end
-
-                local farmId = 0
-                if baleSelf.getOwnerFarmId ~= nil then
-                    farmId = baleSelf:getOwnerFarmId() or 0
-                end
-
-                yl:onBaleCreated(nodeId, baleSelf, ftName, fillLevel, farmId, capacity)
-            end)
+        -- [RSF-F211] Inside a Baler's creation frame the frame binds this object when
+        -- createBale returns; the generic birth waits for it.
+        local deferred = false
+        if BalerCollection ~= nil and type(BalerCollection.deferRegistration) == "function" then
+            local okD, d = pcall(BalerCollection.deferRegistration, baleSelf)
+            deferred = okD and d == true
         end
-
+        if not deferred then
+            pcall(HookManager.baleBirth, baleSelf, nil)
+        end
         return unpack(results)
     end
 
@@ -3352,72 +5661,190 @@ end
 --- rule, and why the accumulator is ours rather than the engine's, is in YardLadder.
 ---@return boolean success
 function HookManager:installBalerPickupHook()
-    if Baler == nil or type(Baler.processBalerArea) ~= "function"
-        or type(Baler.createBale) ~= "function" then
-        SoilLogger.warning("[BalePickup] Baler.processBalerArea/createBale not available - birth sampling skipped")
+    -- [RSF-F211 part 2a] THE BALER COLLECTION. The old hook replaced Baler.processBalerArea
+    -- and Baler.createBale on the CLASS table: a work area captures its processing
+    -- pointer at load (WorkArea.lua:182-183) and every registered function is copied
+    -- into the instance (SpecializationUtil.copyTypeFunctionsInto, :141-145), so neither
+    -- replacement was ever reached. Now: the captured pickup pointer and the instance
+    -- finishBale/createBale on every existing and newly added baler, and the class
+    -- listeners the engine looks up at call time (SpecializationUtil.raiseEvent) for the
+    -- collection context, the active add and the fill-change acceptance.
+    if Baler == nil or type(Baler.processBalerArea) ~= "function" or BalerCollection == nil
+       or type(Baler.onStartWorkAreaProcessing) ~= "function" or type(Baler.onEndWorkAreaProcessing) ~= "function"
+       or type(Baler.onFillUnitFillLevelChanged) ~= "function" then
+        SoilLogger.warning("[BalerCollection] Baler listeners or the collection module not available - bale births stay unknown")
         return false
     end
 
-    -- readCondition takes litres ONLY as a sanity gate: it refuses a non-positive
-    -- quantity (MaterialWetness.lua:753-754), and the percent it returns is a
-    -- mass-weighted mean over the cells that carry material, independent of the number
-    -- passed (:767-774). A pass's real litres are not knowable until the delegate has
-    -- run and eaten the material, so a positive probe stands in for the gate and the
-    -- real litres do the weighting afterwards.
-    local PROBE_LITRES = 1
+    local function packAll(...) return { n = select("#", ...), ... } end
 
-    local origProcess = Baler.processBalerArea
-    Baler.processBalerArea = function(balerSelf, workArea, ...)
-        -- THE SAMPLE HAS TO HAPPEN FIRST. Once the delegate returns, the material this
-        -- pass measured has been eaten and the layer reads NO_MATERIAL, which is
-        -- exactly why every baled bale recorded an unknown wetness before this clause.
-        --
-        -- SERVER ONLY, and that gate is OURS: processBalerArea is not server-gated by
-        -- the engine. Its only early-out is a client DISTANCE check (Baler.lua:1865),
-        -- and the engine's own accumulation at :1908 sits outside any isServer branch.
-        local pct, sampled = nil, false
-        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
-        if yl ~= nil then
-            local mw = yl.materialWetness
-            if mw ~= nil and mw:isArmed() then
-                pcall(function()
-                    local verts = pickupPolygonFromWorkArea(workArea)
-                    if verts == nil then return end
-                    sampled = true
-                    local c = mw:readCondition(verts, PROBE_LITRES)
-                    if c ~= nil and c.status == MaterialWetness.RESULT.OK then
-                        pct = c.pct
-                    end
-                end)
+    -- The class listeners (the engine reads spec[eventName] at call time).
+    -- MAINTENANCE row 189 (RSF-F211 v1.1 :58, "restore only still-owned wrappers"): the
+    -- teardown row below turns them inactive, and restores each original only while the
+    -- live method is still ours. Under a later wrap (a StockGuard Baler wrap installed
+    -- after ours) ours stays in that chain as a pure pass-through, so the later wrap is
+    -- never erased while its owner still counts on it.
+    local origStart = Baler.onStartWorkAreaProcessing
+    local origEnd = Baler.onEndWorkAreaProcessing
+    local origFill = Baler.onFillUnitFillLevelChanged
+    local origTick = Baler.onUpdateTick
+    local listeners = { active = true }
+    local owned = {}
+    owned[#owned + 1] = { key = "onStartWorkAreaProcessing", original = origStart, wrapper = function(balerSelf, ...)
+        if not listeners.active then return origStart(balerSelf, ...) end
+        local r = packAll(origStart(balerSelf, ...))
+        pcall(BalerCollection.onStart, balerSelf)
+        return unpack(r, 1, r.n)
+    end }
+    owned[#owned + 1] = { key = "onEndWorkAreaProcessing", original = origEnd, wrapper = function(balerSelf, ...)
+        if not listeners.active then return origEnd(balerSelf, ...) end
+        return BalerCollection.aroundEnd(balerSelf, origEnd, ...)
+    end }
+    owned[#owned + 1] = { key = "onFillUnitFillLevelChanged", original = origFill, wrapper = function(balerSelf, ...)
+        if not listeners.active then return origFill(balerSelf, ...) end
+        return BalerCollection.aroundFillChange(balerSelf, origFill, ...)
+    end }
+    -- [part 2b] The non-stop buffer's transfer into the chamber runs in onUpdateTick.
+    if type(origTick) == "function" then
+        owned[#owned + 1] = { key = "onUpdateTick", original = origTick, wrapper = function(balerSelf, ...)
+            if not listeners.active then return origTick(balerSelf, ...) end
+            return BalerCollection.aroundTick(balerSelf, origTick, ...)
+        end }
+    end
+    for _, o in ipairs(owned) do Baler[o.key] = o.wrapper end
+    self:registerCleanup("Baler collection listeners (still-owned restore)", function()
+        listeners.active = false
+        local restored, left = 0, 0
+        for _, o in ipairs(owned) do
+            if Baler[o.key] == o.wrapper then
+                Baler[o.key] = o.original
+                restored = restored + 1
+            else
+                left = left + 1
             end
         end
+        SoilLogger.debug("[BalerCollection] teardown: %d class listener(s) restored, %d left in place inactive",
+            restored, left)
+    end)
 
-        local pickedUpLiters, second = origProcess(balerSelf, workArea, ...)
-
-        if sampled and type(pickedUpLiters) == "number" and pickedUpLiters > 0 then
-            -- pickedUpLiters carries the engine's additive bonus, up to 5%
-            -- (Baler.lua:1894). Left in deliberately: it is a per-pass scale factor
-            -- that all but cancels in a ratio, and taking it out would mean inventing
-            -- a correction nobody ruled.
-            pcall(function() yl:noteBalerPickup(balerSelf, pct, pickedUpLiters) end)
+    -- The captured pickup pointer: a carrier frame per call, the collection's handler.
+    local function makePickupWrapper(original)
+        return function(balerSelf, workArea, ...)
+            local ctx = (g_server ~= nil and balerSelf.isServer) and BalerCollection.currentContext(balerSelf) or nil
+            local frame = nil
+            if ctx ~= nil and GroundMovementCarrier ~= nil and g_SoilFertilityManager ~= nil
+               and g_SoilFertilityManager.settings ~= nil and g_SoilFertilityManager.settings.enabled then
+                local okBegin, f = pcall(GroundMovementCarrier.begin, g_SoilFertilityManager.soilSystem,
+                    balerSelf, workArea, GroundMovementCarrier.KIND_BALER)
+                if okBegin and f ~= nil then
+                    f.handler = BalerCollection.handler
+                    f.collection = { sources = {}, unexplained = 0, raw = 0 }
+                    frame = f
+                elseif not okBegin then
+                    SoilLogger.warning("[BalerCollection] pickup frame failed to begin (%s) - native work unaffected", tostring(f))
+                end
+            end
+            local packed = packAll(pcall(original, balerSelf, workArea, ...))
+            if frame ~= nil then pcall(GroundMovementCarrier.finish, frame) end
+            if not packed[1] then error(packed[2], 0) end
+            if ctx ~= nil then
+                pcall(BalerCollection.closeCall, ctx, frame ~= nil and frame.collection or { sources = {}, unexplained = 0, raw = 0 }, packed[2])
+            end
+            return unpack(packed, 2, packed.n)
         end
-
-        return pickedUpLiters, second
     end
 
-    local origCreate = Baler.createBale
-    Baler.createBale = function(balerSelf, ...)
-        -- Close the chamber BEFORE delegating. Bale.register fires SYNCHRONOUSLY
-        -- inside createBale (Baler.lua:1478-1490), and our Bale.register hook is what
-        -- consumes the pending sample.
-        local yl = (g_server ~= nil) and getArmedYardLadder() or nil
-        if yl ~= nil then
-            pcall(function() yl:closeBalerChamber(balerSelf) end)
+    local SITE = "baler collection"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(makePickupWrapper)
+    local fnWrapped = setmetatable({}, { __mode = "k" })
+    local function wrapBaler(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_baler == nil then return 0 end
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_baler", "processBalerArea", wrapSlot, SITE, activated)
+        -- The copied instance functions, each recorded beside its original for the
+        -- still-owned teardown (RSF-F211 :58, :106).
+        if type(vehicle.finishBale) == "function" and type(vehicle.createBale) == "function" then
+            local a = HookManager.wrapInstanceFunction(vehicle, "_sfBalerWraps", "finishBale", function(own)
+                return function(v, ...) return BalerCollection.aroundFinish(v, own, ...) end
+            end)
+            local b = HookManager.wrapInstanceFunction(vehicle, "_sfBalerWraps", "createBale", function(own)
+                return function(v, ...) return BalerCollection.aroundCreate(v, own, ...) end
+            end)
+            -- [part 2b] The partial round bale's pad scope.
+            local c = HookManager.wrapInstanceFunction(vehicle, "_sfBalerWraps", "setIsUnloadingBale", function(own)
+                return function(v, ...) return BalerCollection.aroundUnloading(v, own, ...) end
+            end)
+            if a or b or c then
+                fnWrapped[vehicle] = true
+                n = n + 1
+            end
         end
-        return origCreate(balerSelf, ...)
+        return n
     end
 
-    SoilLogger.info("[OK] Baler pickup hook installed (birth wetness sampled at the pickup)")
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    local patched = 0
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapBaler(vehicle) end
+    end
+    -- Balers bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, wrapBaler)
+    self:registerSiteTeardown(SITE, route, activated, "processBalerArea", function()
+        local restored, left = 0, 0
+        for vehicle in pairs(fnWrapped) do
+            local r, l = HookManager.releaseInstanceWraps(vehicle, "_sfBalerWraps")
+            restored, left = restored + r, left + l
+            fnWrapped[vehicle] = nil
+        end
+        return restored, left
+    end)
+
+    SoilLogger.info("[OK] Baler collection installed (captured pickup pointer, fill-change acceptance, bale binding; %d existing wrap(s))", patched)
+    return true
+end
+
+--- [RSF-F211 part 2b] THE FORAGE WAGON COLLECTION: the captured processForageWagonArea
+--- pointer and the instance fillForageWagon, on every existing and newly added wagon
+--- (both are registered functions copied into the instance, ForageWagon.lua:25-29).
+function HookManager:installForageWagonCollectionHook()
+    if ForageWagon == nil or type(ForageWagon.processForageWagonArea) ~= "function" or ForageWagonCollection == nil then
+        SoilLogger.warning("[ForageWagonCollection] ForageWagon or the collection module not available - wagon loads stay unknown")
+        return false
+    end
+    local SITE = "forage wagon collection"
+    local activated = setmetatable({}, { __mode = "k" })
+    local wrapSlot = HookManager.passThroughWhenInactive(ForageWagonCollection.makePickupWrapper)
+    local fnWrapped = setmetatable({}, { __mode = "k" })
+    local function wrapWagon(vehicle)
+        if type(vehicle) ~= "table" or vehicle.spec_forageWagon == nil then return 0 end
+        local n = HookManager.wrapWorkAreaProcessing(vehicle, "spec_forageWagon", "processForageWagonArea", wrapSlot, SITE, activated)
+        -- The copied fillForageWagon, recorded beside its original for the still-owned
+        -- teardown (RSF-F211 :58).
+        if HookManager.wrapInstanceFunction(vehicle, "_sfForageWagonWraps", "fillForageWagon", function(own)
+            return function(v, ...) return ForageWagonCollection.aroundFill(v, own, ...) end
+        end) then
+            fnWrapped[vehicle] = true
+            n = n + 1
+        end
+        return n
+    end
+    local vs = g_currentMission and g_currentMission.vehicleSystem
+    local patched = 0
+    if vs and type(vs.vehicles) == "table" then
+        for _, vehicle in pairs(vs.vehicles) do patched = patched + wrapWagon(vehicle) end
+    end
+    -- Wagons bought later: one route on the later-vehicle wrap.
+    local route = self:addVehicleRoute(SITE, wrapWagon)
+    self:registerSiteTeardown(SITE, route, activated, "processForageWagonArea", function()
+        local restored, left = 0, 0
+        for vehicle in pairs(fnWrapped) do
+            local r, l = HookManager.releaseInstanceWraps(vehicle, "_sfForageWagonWraps")
+            restored, left = restored + r, left + l
+            fnWrapped[vehicle] = nil
+        end
+        return restored, left
+    end)
+    SoilLogger.info("[OK] ForageWagon collection installed (captured pickup pointer, fill acceptance; %d existing wrap(s))", patched)
     return true
 end
 
@@ -3439,13 +5866,43 @@ function HookManager:installBaleDeleteHook()
         local yl = getArmedYardLadder()
         if yl ~= nil then
             pcall(function()
-                if baleSelf.nodeId ~= nil then yl:onBaleRemoved(baleSelf.nodeId) end
+                if baleSelf.nodeId ~= nil then yl:onBaleRemoved(baleSelf.nodeId, baleSelf) end
             end)
         end
         return origDelete(baleSelf, ...)
     end
 
     SoilLogger.info("[OK] Bale delete hook installed (Bale.delete)")
+    return true
+end
+
+--- [RSF-F215] An object storage takes a bale in by deleting it (a bale that is not
+--- fermenting) or by deleting it and re-creating it unregistered (a fermenting one):
+--- AbstractBaleObject:addToStorage, PlaceableObjectStorage.lua:931-960. Either way the
+--- bale keeps its native unique id and comes back out with it (:961-985). The class is
+--- local there and reachable only as PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME
+--- ["Bale"] (:881-889); the storage calls addToStorage on an instance whose metatable is
+--- that class (:428-431), so patching the class reaches it. Inside it, the bale's delete
+--- is a move into storage (the yard ladder's REBIND to STORED), not a death.
+---@return boolean success
+function HookManager:installBaleStorageFrame()
+    local reg = PlaceableObjectStorage ~= nil and PlaceableObjectStorage.ABSTRACT_OBJECTS_BY_CLASS_NAME or nil
+    local cls = reg ~= nil and reg["Bale"] or nil
+    if cls == nil or type(cls.addToStorage) ~= "function" then
+        SoilLogger.warning("[BaleStorage] the object storage's bale class is not available - a stored bale's row retires instead of waiting")
+        return false
+    end
+    local original = cls.addToStorage
+    cls.addToStorage = function(abstractObject, storage, object, loadedFromSavegame, ...)
+        local yl = getArmedYardLadder()
+        local framed = yl ~= nil and object ~= nil and not loadedFromSavegame
+        if framed then pcall(yl.beginStoring, yl, object) end
+        local packed = { pcall(original, abstractObject, storage, object, loadedFromSavegame, ...) }
+        if framed then pcall(yl.endStoring, yl, object) end
+        if not packed[1] then error(packed[2], 0) end
+        return unpack(packed, 2)
+    end
+    SoilLogger.info("[OK] Bale storage frame installed (the object storage's bale class)")
     return true
 end
 
@@ -3477,6 +5934,13 @@ function HookManager:installSprayerAreaHook()
             -- Server only
             if not self.isServer then return end
 
+            -- MAINTENANCE row 169: clear the multi-tank coverage hold at the start of every
+            -- tick, so a throw inside a previous tick's secondary loop can never leave it set
+            -- (the same clear-at-start discipline as RSF-F226d's _sfOverlapBlockedPass).
+            if g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilSystem ~= nil then
+                g_SoilFertilityManager.soilSystem._multiTankCoverageHold = nil
+            end
+
             if not g_SoilFertilityManager or
                not g_SoilFertilityManager.soilSystem or
                not g_SoilFertilityManager.settings.enabled then
@@ -3485,6 +5949,28 @@ function HookManager:installSprayerAreaHook()
 
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
+
+            -- [SF-73] Close the target cycle's record before anything touches the tank
+            -- (the #764 snap below included). A target cycle that put no target product
+            -- down (refused, priming, held, zero dose, or never processed by native)
+            -- finishes here: nothing is bought, drawn or credited by this hook.
+            local sf73TA = hookMgrRef:getTargetApplication()
+            local sf73Cycle = sf73TA ~= nil and sf73TA:endCycle(self) or nil
+            local sf73Plan = sf73Cycle ~= nil and sf73Cycle.committed or nil
+            if sf73Cycle ~= nil then
+                local spent = sf73Plan.dose == true and ((sf73Cycle.physical or 0) > 0 or sf73Cycle.short == true)
+                if not spent then
+                    local okF, errF = pcall(sf73TA.finishWithoutCredit, sf73TA, self, sf73Cycle)
+                    if not okF then SoilLogger.warning("[SF-73] cycle finish failed: %s", tostring(errF)) end
+                    return
+                end
+                if (sf73Cycle.physical or 0) <= 0 then
+                    -- a dose native processed that drew nothing: a short removal, no litres to enter
+                    local okC, errC = pcall(sf73TA.commit, sf73TA, self, sf73Cycle, false)
+                    if not okC then SoilLogger.warning("[SF-73] cycle commit failed: %s", tostring(errC)) end
+                    return
+                end
+            end
 
             -- Issue #764: after vanilla's drain the tank can sit at a tiny residual
             -- (0 < level < 0.0005) that displays as 0.000 but never crosses the
@@ -3502,13 +5988,57 @@ function HookManager:installSprayerAreaHook()
                     local okLvl, level = pcall(function() return self:getFillUnitFillLevel(fuIdx) end)
                     local okTy, fillTy = pcall(function() return self:getFillUnitFillType(fuIdx) end)
                     if okLvl and okTy and level and level > 0 and level < 0.001
-                            and fillTy and fillTy ~= FillType.UNKNOWN then
+                            and fillTy and fillTy ~= FillType.UNKNOWN
+                            -- RSF-F196 R3c: this negative delta reaches the purchase
+                            -- intercept, which in buy mode charges it and stamps the
+                            -- vehicle, and outside buy mode physically removes it. For a
+                            -- product the start append just refused, either way moves
+                            -- money or material in the same frame the dose was zeroed.
+                            -- So consume the refusal on the fillTy already read above and
+                            -- skip the snap entirely. A valid product keeps the incumbent
+                            -- #764 behaviour unchanged, intermittency and AI stop included.
+                            and not hookMgrRef:isRefusedProduct(fillTy) then
                         local okFarm, farmId = pcall(function() return self:getOwnerFarmId() end)
                         pcall(function()
                             self:addFillUnitFillLevel(farmId, fuIdx, -level, fillTy, ToolType.UNDEFINED)
                         end)
                     end
                 end
+            end
+
+            -- RSF-F226d: a pass whose work-area processing WE blocked for overlap
+            -- put nothing on the ground, so it must credit nothing here.
+            --
+            -- Why the guards below do not already catch it: this hook gates on
+            -- sprayFillLevel > 0 and usage > 0, and BOTH are computed inside native
+            -- onStartWorkAreaProcessing (the function begins at Sprayer.lua:855,
+            -- usage is computed at :928), which runs before any work area's
+            -- processingFunction and is untouched by our block. So on a blocked
+            -- overlapping pass every guard below still passes, no product leaves
+            -- the tank, and the nutrients land anyway. Free fertiliser for driving
+            -- back over ground you already sprayed. #959 shipped that ungated into
+            -- every ordinary save, with no error and nothing in the log.
+            --
+            -- DO NOT REPLACE THIS WITH A GATE ON isActive. Read the note directly
+            -- below first. On an already-fertilised field the vanilla density map
+            -- returns changedArea 0, so isActive stays false while product genuinely
+            -- IS consumed; gating there drops every real application and
+            -- reintroduces #764 exactly, which is the trap that note was written to
+            -- prevent.
+            --
+            -- The overlap flag is the right signal precisely because it is set only
+            -- when we refused the pass ourselves. Read through the ONE predicate the
+            -- billing skip and SF-73 use (RSF-F226 finding 2): the flag AND an active
+            -- gate, so a vehicle that drains through another processor is credited.
+            if HookManager.isOverlapBlockedPass(self) then
+                local _now = (g_currentMission and g_currentMission.time) or 0
+                if not self._sfOverlapSkipLogAt or (_now - self._sfOverlapSkipLogAt) > 3000 then
+                    self._sfOverlapSkipLogAt = _now
+                    SoilLogger.debug(
+                        "SprayerHook SKIP [overlap]: veh=%s - work area blocked for overlap, no nutrients, no coverage, no billing",
+                        tostring(self.id))
+                end
+                return
             end
 
             -- Guard: sprayer must have a valid fill type and consumed product this frame.
@@ -3534,6 +6064,15 @@ function HookManager:installSprayerAreaHook()
             -- together. The tank only wins when it holds a valid non-UNKNOWN type, so
             -- external-fill BUY mode (empty tank → keep wap value) is preserved.
             fillTypeIndex = SoilUtils.resolveSprayerFillTypeIndex(self, fillTypeIndex)
+
+            -- [SF-73] A target dose enters the consequence path ONCE, with the actual
+            -- physical litres (the applied delta, the bought litres or the station's
+            -- removal), never the planned figure, and with the product it planned.
+            if sf73Cycle ~= nil then
+                fillTypeIndex  = sf73Plan.fillType
+                liters         = sf73Cycle.physical
+                sprayFillLevel = sf73Cycle.physical
+            end
 
             -- wap.isActive is vanilla's own "I painted terrain and drained product this
             -- frame" flag: reset to false at the end of every onStartWorkAreaProcessing and
@@ -3608,12 +6147,11 @@ function HookManager:installSprayerAreaHook()
             -- would never be set. getExternalFill (Hook 9) relies on this field to identify
             -- the intended product when fillType arrives as UNKNOWN - without it, Hook 9
             -- falls through to original and no money is ever charged (issue #205).
-            do
-                local _hm = hookMgrRef
-                if _hm and _hm.customFillTypePrices and _hm.customFillTypePrices[fillTypeIndex] then
-                    self._soilLastCustomFillType = fillTypeIndex
-                end
-            end
+            -- RSF-F196 R1b: the _soilLastCustomFillType stamp that used to be written
+            -- here is retired as an identity authority. Every consumer now resolves
+            -- intent through HookManager:resolveCustomProductIntent, whose third step
+            -- is the engine's own synced lastValidFillType, so the empty-tank answer no
+            -- longer depends on a private field this hook happened to set on the server.
 
             -- AI-1: an AI helper spraying in buy mode currently leaves the ground
             -- untouched. Buy mode ships zero usage and zero sprayFillLevel (the tank
@@ -3630,7 +6168,19 @@ function HookManager:installSprayerAreaHook()
             -- protection and it keys on that field staying nil on the external-fill
             -- path. isInBuyMode is scoped inside installPurchaseRefillHook, so the
             -- detection is mirrored inline (same three mission flags, same AI paths).
-            if (liters == nil or liters <= 0) and (sprayFillLevel == nil or sprayFillLevel <= 0) then
+            -- RSF-F196 R3b: AI-1's entry condition is both dose fields being zero or
+            -- nil, which is exactly what R2 leaves behind for a refused product, so a
+            -- numeric refusal is indistinguishable from an empty buy-mode tank here
+            -- and the `or 1` litres-per-second fallback below would fabricate a dose
+            -- for a product with no registered spray type. Ask the refused table by
+            -- name, BEFORE the injection, so that fallback is never reached. The
+            -- direct candidate is the post-native work-area fill type, which covers
+            -- an attached source; the resolver's tank steps cover loaded and empty
+            -- buy-mode tanks on server and client.
+            local _refusedPass = hookMgrRef:isRefusedProduct(
+                hookMgrRef:resolveCustomProductIntent(self, spec.workAreaParameters.sprayFillType))
+            if (liters == nil or liters <= 0) and (sprayFillLevel == nil or sprayFillLevel <= 0)
+                    and not _refusedPass then
                 local isAI = false
                 local okAIb, resAIb = pcall(function() return self:getIsAIActive() end)
                 if okAIb and resAIb then isAI = true end
@@ -3722,7 +6272,7 @@ function HookManager:installSprayerAreaHook()
                     if rootSpd > _spd then _spd = rootSpd end
                 end
             end
-            if _spd < 0.5 then
+            if _spd < 0.5 and sf73Cycle == nil then
                 _sfApplySkipLog(string.format("tooSlow spd=%.2f", _spd))
                 return
             end
@@ -3750,9 +6300,8 @@ function HookManager:installSprayerAreaHook()
                                 _ftName, _wapFillType.name)
                             fillTypeIndex = _wapFT
                             fillType = _wapFillType
-                            if hookMgrRef and hookMgrRef.customFillTypePrices and hookMgrRef.customFillTypePrices[_wapFT] then
-                                self._soilLastCustomFillType = _wapFT
-                            end
+                            -- RSF-F196 R1b: the stamp write that used to follow here is
+                            -- retired; see the note at the primary resolution above.
                         end
                     end
                 end
@@ -3776,7 +6325,7 @@ function HookManager:installSprayerAreaHook()
                 -- and are routed through applyFertilizer → on*Applied internally.
                 -- We must NOT also call on*Applied directly from here, or they would be
                 -- double-applied. Only use the direct path for products NOT in FERTILIZER_PROFILES
-                -- (e.g. vanilla HERBICIDE / PESTICIDE fill types that have no profile entry).
+                -- (e.g. the base game's HERBICIDE, or a mod's PESTICIDE: fill types with no profile entry).
                 local herbOnlyDirect = herbEffectiveness and not isFertilizer
                 local pestOnlyDirect = pestEffectiveness and not isFertilizer
                 local diseaseOnlyDirect = diseaseEffectiveness and not isFertilizer
@@ -3796,7 +6345,8 @@ function HookManager:installSprayerAreaHook()
                 -- (queried before the field was registered, e.g. freshly-purchased land),
                 -- fall through to the live g_fieldManager slow-path query rather than
                 -- returning nil and silently dropping the fertilizer application.
-                local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
+                local fieldId = (sf73Cycle ~= nil) and sf73Plan.fieldId
+                    or hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
 
                 -- Fallback: try the midpoints of work areas on attached implements
                 if not fieldId or fieldId <= 0 then
@@ -3840,7 +6390,22 @@ function HookManager:installSprayerAreaHook()
                 local _root = self.rootVehicle
                 local _rateVehId = (_root and _root ~= self) and (_root.id or 0) or (self.id or 0)
                 local rateMultiplier = (rm ~= nil) and rm:getMultiplier(_rateVehId) or 1.0
+                if sf73Cycle ~= nil then
+                    -- [SF-73] the target dose is its own rate: physical litres over the
+                    -- machine's measured 1x capacity on the same footprint
+                    local cap = sf73Plan.capacity or 0
+                    rateMultiplier = (cap > 0) and (liters / cap) or 1.0
+                end
                 local effectiveLiters = liters
+
+                -- [#1063] The litres per hectare this pass put down, which the litre
+                -- coverage estimate divides out so a covered field reads covered at any
+                -- rate: the native rate of the product credited, from the terms Soil's
+                -- usage formula uses, times the multiplier the start hook actually
+                -- applied (rateMultiplier above misses SF-79's pH factor).
+                local _wapCov = spec.workAreaParameters
+                local coverageLitersPerHa = HookManager.getNativeSprayRatePerHa(self, fillTypeIndex)
+                    * ((_wapCov and _wapCov.sfRateMult) or 1.0)
 
                 -- Section Control double-penalty fix (Issue #345):
                 -- wap.usage already reflects section shutoff (VariableWorkWidth.getIsWorkAreaActive
@@ -3848,38 +6413,46 @@ function HookManager:installSprayerAreaHook()
                 -- Do NOT multiply by coverageFraction again, otherwise we quadratically penalize the dosage.
 
                 -- ── Coverage tracking ──────────────────────────────────────────────
-                -- updateFractions=false: markBoomCells (called below) owns coverage for
-                -- fertilizers via spatial cell deduplication. trackSprayerCoverage here
-                -- only records the product name for the HUD label.
-                -- Crop protection direct paths (herbicide/insecticide/fungicide) have no
-                -- boomPoints, so coverage must be tracked via the liter-based fallback
-                -- (updateFractions=true). Fertilizers use markBoomCells for spatial
-                -- deduplication and must pass false to avoid double-counting.
-                -- HOWEVER: dual-purpose products (fertilizer + crop protection, e.g.
-                -- PROPICONAZOLE) applied on sprayers without VWW sections hit a gap:
-                -- markBoomCells runs in overlayOnly mode (no coverage update) and
-                -- trackSprayerCoverage returns early (updateFractions=false). Force the
-                -- liter-based fallback for dual-purpose products so coverage tracks.
-                local _hasCropProt = herbEffectiveness or pestEffectiveness or diseaseEffectiveness
-                local _useLitCov = (not isFertilizer) or (isFertilizer and _hasCropProt)
+                -- Crop protection that is NOT a fertilizer profile (herbicide, PESTICIDE,
+                -- PROPICONAZOLE and the other named fungicides) has no fertilizer credit, so
+                -- its coverage is counted here from the litres (updateFractions=true).
+                -- Every fertilizer profile, the profile-plus-protection ones (SF's INSECTICIDE
+                -- and FUNGICIDE) included, passes false here and is counted ONCE: by
+                -- markBoomCells on a VWW rig, or by the litre track after the credit on a rig
+                -- without VWW sections, and in both only when the credit's result is true
+                -- (RSF-F196 V7, DESIGN-CHECK row 70).
+                -- MAINTENANCE row 170: this used to be
+                -- `(not isFertilizer) or (isFertilizer and _hasCropProt)`, which is nil, not
+                -- false, for a plain fertilizer and truthy for a dual-purpose one, so both
+                -- counted their litres here and again after the credit, and a pass the V7
+                -- gate refused still counted here. The gap it was added for (#753, coverage
+                -- stuck on a sprayer without VWW sections) is cured by that commit's
+                -- _geometricCoverageOwner flag (and the later F61 clear below), and PROPICONAZOLE is not a profile, so
+                -- `not isFertilizer` already counts it.
+                local _useLitCov = not isFertilizer
+                -- #1039: whether this pass is governed by its VWW sections. The one answer
+                -- for the section credit and both stamp choices below: a sprayer with
+                -- sections whose active spray type does not use them (lime on the
+                -- Streumaster) is a pass without sections, like the Bredal K105.
+                local sectioned = hookMgrRef:_isSectionedPass(self)
                 if g_SoilFertilityManager.soilSystem then
-                    local _vwwEarly = self.spec_variableWorkWidth
-                    local _hasVWWEarly = _vwwEarly and _vwwEarly.sections and #_vwwEarly.sections > 0
                     -- F61: for non-VWW implements using liter-based coverage, clear stale
                     -- _geometricCoverageOwner so a previous VWW session's guard does not
                     -- block the liter path (line 5123 in trackSprayerCoverage).
-                    if not _hasVWWEarly and g_SoilFertilityManager.soilSystem.fieldData
+                    if not sectioned and g_SoilFertilityManager.soilSystem.fieldData
                        and g_SoilFertilityManager.soilSystem.fieldData[fieldId] then
                         g_SoilFertilityManager.soilSystem.fieldData[fieldId]._geometricCoverageOwner = nil
                     end
-                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov)
+                    g_SoilFertilityManager.soilSystem:trackSprayerCoverage(fieldId, liters, fillType.name, _useLitCov, coverageLitersPerHa)
                 end
 
                 -- ── Sub-field section attribution (issue #300) ────────────────────
-                -- When VariableWorkWidth is present, distribute the nutrient credit
+                -- When the pass is sectioned, distribute the nutrient credit
                 -- across active section nodes so that boundary passes only affect the
                 -- portion of the field the boom is actually spraying.
-                -- Falls back to the rootNode single-field path when VWW is absent.
+                -- Falls back to the rootNode single-field path otherwise (#1039: every
+                -- section of a lime pass is active at full width, so a midpoint up to
+                -- 10.5 m out could credit a field the spreader never reached).
                 local rootX, _, rootZ = getWorldTranslation(self.rootNode)
                 local vww = self.spec_variableWorkWidth
                 local soilSys = g_SoilFertilityManager.soilSystem
@@ -3894,7 +6467,26 @@ function HookManager:installSprayerAreaHook()
                 local scratchN = 0
                 local vrSectionRates = nil
                 local vrWeightSum = 0.0
+                local herbAreaFraction = 1
 
+                -- RSF-F905: for a lime / organic amendment, capture THIS tick's boom points
+                -- before the application so the burn can be metered against the ground the
+                -- boom actually covered, not one sample point. Pure read, nothing marked; the
+                -- markBoomCells sweep further down keeps its own later capture and purpose.
+                local burnBoomPts = nil
+                if soilSys and isFertilizer and soilSys.computeCoveredBurnShare then
+                    local prof = SoilConstants.FERTILIZER_PROFILES[fillType.name]
+                    if prof and ((prof.pH and prof.pH > 0) or prof.OM) then
+                        burnBoomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                    end
+                end
+
+                -- RSF-F196 V7: the application's result. The fertilizer-specific effects
+                -- below and after the section loop require it to be exactly true. It
+                -- starts true and any section's application that returns anything else
+                -- clears it; refusal is per product, so every section of a pass agrees.
+                -- Crop-protection-only products never set it and are never gated by it.
+                local fertResult = true
                 local function applySingle(fId, sectionLiters, spx, spz)
                     if not fId or fId <= 0 then return end
                     if soilSys then
@@ -3904,19 +6496,21 @@ function HookManager:installSprayerAreaHook()
                     SoilLogger.debug("Sprayer/Spreader hook: Field %d, %s, %.4fL (x%.2f rate)",
                         fId, fillType.name, sectionLiters, rateMultiplier)
                     if isFertilizer then
-                        soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters)
+                        if soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters, burnBoomPts) ~= true then
+                            fertResult = false
+                        end
                     end
                     if herbOnlyDirect and soilSys.onHerbicideAppliedDirect then
-                        soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters)
+                        soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters * herbAreaFraction)
                     end
                     if pestOnlyDirect and soilSys.onInsecticideAppliedDirect then
-                        soilSys:onInsecticideAppliedDirect(fId, pestEffectiveness, sectionLiters)
+                        soilSys:onInsecticideAppliedDirect(fId, pestEffectiveness, sectionLiters, fillType.name)
                     end
                     if diseaseOnlyDirect and soilSys.onFungicideAppliedDirect then
                         soilSys:onFungicideAppliedDirect(fId, diseaseEffectiveness, sectionLiters, fillType.name)
                     end
                     local entry = SoilConstants.FERTILIZER_PROFILES[fillType.name]
-                    if entry and (entry.N or entry.P or entry.K) and
+                    if fertResult and entry and (entry.N or entry.P or entry.K) and
                        rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                         soilSys:applyBurnEffect(fId, rateMultiplier)
                     end
@@ -3925,10 +6519,14 @@ function HookManager:installSprayerAreaHook()
                     -- (SULFUR / COPPER_HYDROXIDE take the fungicide branch above and
                     -- would never reach a guarded line). The HEAT_SENSITIVITY probe
                     -- inside applyScorchEffect is the whole cost when absent.
-                    soilSys:applyScorchEffect(fId, fillType.name)
+                    -- RSF-F196 V7: a fertilizer product's scorch requires result == true;
+                    -- a crop-protection-only product is not gated and keeps its scorch.
+                    if not isFertilizer or fertResult then
+                        soilSys:applyScorchEffect(fId, fillType.name)
+                    end
                 end
 
-                if vww and vww.sections and #vww.sections > 0 then
+                if sf73Cycle == nil and sectioned then
                     SoilLogger.debug("SprayerHook: VWW path - %d total sections for %s", #vww.sections, fillType.name)
                     -- Collect active sections into pre-allocated scratch table (avoids per-tick allocation).
                     -- Assigns the hoisted vars (declared above) so the multi-tank block can reuse them.
@@ -3941,6 +6539,7 @@ function HookManager:installSprayerAreaHook()
                         end
                     end
                     for i = scratchN + 1, #scratch do scratch[i] = nil end
+                    herbAreaFraction = scratchN / #vww.sections
 
                     if scratchN > 0 then
                         -- Variable Rate (System 3): look up per-section weights if active
@@ -4004,7 +6603,10 @@ function HookManager:installSprayerAreaHook()
                         soilSys._lastSprayX = rootX
                         soilSys._lastSprayZ = rootZ
                     end
+                    -- [SF-73] name the target field for applyFertilizer's N/P/K hand-off
+                    if sf73Cycle ~= nil and soilSys then soilSys._sf73TargetField = fieldId end
                     applySingle(fieldId, effectiveLiters, rootX, rootZ)
+                    if soilSys then soilSys._sf73TargetField = nil end
                 end
 
                 -- ── Multi-tank application (secondary fill units) ─────────────────
@@ -4016,12 +6618,47 @@ function HookManager:installSprayerAreaHook()
                 -- once per tank. Each secondary tank is drained by the same liters so the
                 -- mod does not hand out free fertilizer.
                 do
-                    local multiTankEnabled = hookMgrRef and hookMgrRef._settings and hookMgrRef._settings.multiTankApplication
-                    if multiTankEnabled ~= false then
+                    -- #1030: the player's Multi-tank application setting. This used to read
+                    -- hookMgrRef._settings, which nothing assigns, so it was always nil and
+                    -- the secondary tanks drained even with the setting off. The entry
+                    -- guard above has already read g_SoilFertilityManager.settings. A save
+                    -- with no key reads nil, and nil ~= false keeps the schema default (on).
+                    local multiTankEnabled = g_SoilFertilityManager.settings.multiTankApplication
+                    -- [SF-73] a target cycle's product is its one plan: no secondary replay
+                    if multiTankEnabled ~= false and sf73Cycle == nil then
                         local spraySpec = self.spec_sprayer
                         local fuSpec    = self.spec_fillUnit
                         if spraySpec and fuSpec and fuSpec.fillUnits then
-                            local activeFui = spraySpec.workAreaParameters.sprayFillUnitIndex
+                            -- RSF-F196 U5b: exclude the DRIVING unit by identity, using fields
+                            -- the engine actually writes. This used to read
+                            -- workAreaParameters.sprayFillUnitIndex, a field nothing assigns
+                            -- (native writes sprayVehicleFillUnitIndex, Sprayer.lua:859-931 in
+                            -- our tree), so the exclusion was always nil, every local unit
+                            -- passed it, and a single-tank custom pass was enumerated again as
+                            -- its own secondary: drained and credited TWICE. Split on where the
+                            -- product comes from (Sprayer.lua:863-865, :874-881, :895-896):
+                            --   sprayVehicle == self : the machine draws from its own tank. The
+                            --     driving unit is the one native named AND the one the resolver
+                            --     reads (getSprayerFillUnitIndex, :581); both local, both excluded.
+                            --   another vehicle or nil: its index numbers a unit over THERE and can
+                            --     collide with an unrelated local secondary, so nothing local is
+                            --     excluded by index, and the stale local getSprayerFillUnitIndex
+                            --     reading is not used either (SoilUtils.lua:76-78 prefers the
+                            --     work-area fill type on that path for the same reason).
+                            -- Identity only: one physical unit is counted once. Two distinct
+                            -- tanks holding the same product remain the open question the brief
+                            -- names, and the name dedup below is unchanged.
+                            local wapU5b   = spraySpec.workAreaParameters
+                            local excluded = {}
+                            if wapU5b and wapU5b.sprayVehicle == self then
+                                if wapU5b.sprayVehicleFillUnitIndex ~= nil then
+                                    excluded[wapU5b.sprayVehicleFillUnitIndex] = true
+                                end
+                                local okOwn, ownFui = pcall(function() return self:getSprayerFillUnitIndex() end)
+                                if okOwn and type(ownFui) == "number" and fuSpec.fillUnits[ownFui] ~= nil then
+                                    excluded[ownFui] = true
+                                end
+                            end
                             local profileSet = {}
                             for _, fu in ipairs(fuSpec.fillUnits) do
                                 if fu.fillLevel > 0 and fu.fillType and fu.fillType > 0 then
@@ -4032,8 +6669,20 @@ function HookManager:installSprayerAreaHook()
                                 end
                             end
 
+                            -- MAINTENANCE row 169: one pass covers its ground once, however many
+                            -- tanks spray it, and the active tank's product is the pass's identity.
+                            -- While the secondaries replay, their coverage tracks (the fertilizer
+                            -- one below and the direct routes' name-only ones) must change nothing:
+                            -- a secondary's different name tripped the #442 product reset every
+                            -- tick and wiped the session, and its area was not new ground. Their
+                            -- drain, credit, reductions, grants and cell marks all still run.
+                            if soilSys then soilSys._multiTankCoverageHold = true end
                             for fuIdx, fu in ipairs(fuSpec.fillUnits) do
-                                if fuIdx ~= activeFui and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0 then
+                                -- RSF-F196 R3d: a secondary unit holding a refused product
+                                -- costs only that unit. No drain, no credit, no coverage for
+                                -- it; every other unit, the driving one included, is unaffected.
+                                if not excluded[fuIdx] and fu.fillLevel > 0 and fu.fillType and fu.fillType > 0
+                                        and not hookMgrRef:isRefusedProduct(fu.fillType) then
                                     local ft = g_fillTypeManager:getFillTypeByIndex(fu.fillType)
                                     local ftName = ft and ft.name or nil
                                     if ftName then
@@ -4057,6 +6706,17 @@ function HookManager:installSprayerAreaHook()
                                                 end
 
                                                 local secFillTypeIndex = fu.fillType
+                                                -- RSF-F905: same pre-application boom capture as the
+                                                -- primary path, for an amendment in a secondary tank.
+                                                local burnBoomPts2 = nil
+                                                if soilSys and isFert2 and soilSys.computeCoveredBurnShare then
+                                                    local prof2 = SoilConstants.FERTILIZER_PROFILES[ftName]
+                                                    if prof2 and ((prof2.pH and prof2.pH > 0) or prof2.OM) then
+                                                        burnBoomPts2 = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                                                    end
+                                                end
+                                                -- RSF-F196 V7, the secondary's copy of the result gate.
+                                                local fertResult2 = true
                                                 local function applyMulti(fId2, sLiters2, spx2, spz2)
                                                     if not fId2 or fId2 <= 0 then return end
                                                     if soilSys then
@@ -4066,23 +6726,28 @@ function HookManager:installSprayerAreaHook()
                                                     SoilLogger.debug("SprayerHook multi-tank: Field %d, %s, %.4fL",
                                                         fId2, ftName, sLiters2)
                                                     if isFert2 then
-                                                        soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2)
+                                                        if soilSys:onFertilizerApplied(fId2, secFillTypeIndex, sLiters2, burnBoomPts2) ~= true then
+                                                            fertResult2 = false
+                                                        end
                                                     end
                                                     if herbOnly2 and soilSys.onHerbicideAppliedDirect then
-                                                        soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2)
+                                                        soilSys:onHerbicideAppliedDirect(fId2, herbE, sLiters2 * herbAreaFraction)
                                                     end
                                                     if pestOnly2 and soilSys.onInsecticideAppliedDirect then
-                                                        soilSys:onInsecticideAppliedDirect(fId2, pestE, sLiters2)
+                                                        soilSys:onInsecticideAppliedDirect(fId2, pestE, sLiters2, ftName)
                                                     end
                                                     if disOnly2 and soilSys.onFungicideAppliedDirect then
                                                         soilSys:onFungicideAppliedDirect(fId2, disE, sLiters2, ftName)
                                                     end
-                                                    if rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
+                                                    if (not isFert2 or fertResult2)
+                                                            and rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
                                                         soilSys:applyBurnEffect(fId2, rateMultiplier)
                                                     end
-                                                    -- CD-14 heat scorch: unconditional,
-                                                    -- beside the burn branch (see applySingle).
-                                                    soilSys:applyScorchEffect(fId2, ftName)
+                                                    -- CD-14 heat scorch beside the burn branch (see applySingle);
+                                                    -- RSF-F196 V7 gates it for a fertilizer product only.
+                                                    if not isFert2 or fertResult2 then
+                                                        soilSys:applyScorchEffect(fId2, ftName)
+                                                    end
                                                 end
 
                                                 if vww and vww.sections and #vww.sections > 0 and scratchN > 0 then
@@ -4113,24 +6778,25 @@ function HookManager:installSprayerAreaHook()
                                                     applyMulti(fieldId, effectiveLiters, rootX, rootZ)
                                                 end
 
-                                                if soilSys and fieldId and fieldId > 0 then
-                                                    local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                                                if soilSys and fieldId and fieldId > 0 and (not isFert2 or fertResult2) then
+                                                    local boomPts = burnBoomPts2 or burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                                                     -- RSF-836: the true boom line (tip to tip, in the vehicle's frame),
                                                     -- NOT the ends of the cell sweep array.
                                                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                                                     if boomPts then
-                                                        if vww and vww.sections and #vww.sections > 0 then
-                                                            soilSys:markBoomCells(fieldId, boomPts)
+                                                        if sectioned then
+                                                            soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
                                                         else
-                                                            soilSys:markBoomCells(fieldId, boomPts, true)
+                                                            soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)
                                                         end
+                                                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
                                                             soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
                                                         end
                                                     end
                                                     if drainLiters > 0 and isFert2 then
-                                                        soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true)
+                                                        soilSys:trackSprayerCoverage(fieldId, drainLiters, ftName, true, coverageLitersPerHa)
                                                     end
                                                 end
 
@@ -4151,6 +6817,7 @@ function HookManager:installSprayerAreaHook()
                                     end
                                 end
                             end
+                            if soilSys then soilSys._multiTankCoverageHold = nil end
                         end
                     end
                 end
@@ -4170,10 +6837,11 @@ function HookManager:installSprayerAreaHook()
                 --     solids onto this path; the reliable liter-based estimate (#454) has no
                 --     polygon dependency, so we use it for the counter and let markBoomCells
                 --     stamp the visual overlay only.
-                if soilSys and fieldId and fieldId > 0 then
-                    local vww = self.spec_variableWorkWidth
-                    local hasVWW = vww and vww.sections and #vww.sections > 0
-                    local boomPts = hookMgrRef:getBoomCellPositions(self, rootX, rootZ)
+                -- RSF-F196 V7: boom paint and litre coverage for a fertilizer product
+                -- require result == true; a crop-protection-only pass is not gated.
+                if soilSys and fieldId and fieldId > 0 and (not isFertilizer or fertResult) then
+                    local hasVWW = sectioned   -- #1039: a lime pass on the Streumaster is not sectioned
+                    local boomPts = burnBoomPts or hookMgrRef:getBoomCellPositions(self, rootX, rootZ)  -- RSF-F905: reuse this tick's capture
                     -- RSF-836: the true boom line, never the ends of the cell sweep.
                     local boomLine = hookMgrRef:getBoomLineEndpoints(self, rootX, rootZ)
                     -- REFINED: paint the real boom-width strip into the per-pixel
@@ -4182,11 +6850,13 @@ function HookManager:installSprayerAreaHook()
                         soilSys:paintBoomStrip(fieldId, boomPts, fillType.name, boomLine)
                     end
                     if hasVWW and boomPts then
-                        soilSys:markBoomCells(fieldId, boomPts)
+                        soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
+                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
                     else
                         -- Broadcast / dry spreader (or any vehicle with no spanning boom).
                         if boomPts then
-                            soilSys:markBoomCells(fieldId, boomPts, true)  -- overlay only
+                            soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)  -- overlay only
+                            hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
                         end
                         -- Fertilizers advance the counter here via the liter estimate. Crop
                         -- protection products already did so in the trackSprayerCoverage call
@@ -4197,9 +6867,17 @@ function HookManager:installSprayerAreaHook()
                             if soilSys.fieldData and soilSys.fieldData[fieldId] then
                                 soilSys.fieldData[fieldId]._geometricCoverageOwner = nil
                             end
-                            soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true)
+                            soilSys:trackSprayerCoverage(fieldId, liters, fillType.name, true, coverageLitersPerHa)
                         end
                     end
+                end
+
+                -- [SF-73] The target dose's consequences ran once above with its actual
+                -- litres; its N/P/K now goes down through the frozen polygon writer. The
+                -- backup refill below is a second money writer, never for a target cycle.
+                if sf73Cycle ~= nil then
+                    sf73TA:commit(self, sf73Cycle, fertResult == true)
+                    return
                 end
 
                 -- BUY mode backup refill (issue #125).
@@ -4227,7 +6905,11 @@ function HookManager:installSprayerAreaHook()
                 local hookMgr = hookMgrRef
                 local buyPrices = hookMgr and hookMgr.customFillTypePrices
                 local pricePerLiter = buyPrices and buyPrices[fillTypeIndex]
-                if pricePerLiter then
+                -- RSF-F196 V12/R1b: identity is catalogue membership, price is only the
+                -- charge. A custom product whose price is late used to fall silently to
+                -- native here. No refusal gate is needed (R3e): a refused driving product
+                -- had its usage zeroed by R2 and never reaches this block.
+                if pricePerLiter and hookMgr and hookMgr:isCustomProduct(fillTypeIndex) then
                     -- Courseplay-aware AI detection (mirrors isInBuyMode above).
                     -- getIsAIActive() returns false for CP-driven vehicles; we must also
                     -- check CP's own spec and legacy vehicle.cp flag.
@@ -4334,6 +7016,14 @@ function HookManager:installSprayerAreaHook()
                 end
             end)
 
+            local ssClear = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+            if ssClear then ssClear._sf73TargetField = nil end
+            if not success and sf73Cycle ~= nil and not sf73Cycle.commitStarted then
+                -- product was spent and the consequence path threw: record the failure
+                -- (target stops, anchor cleared) rather than let the next cycle re-dose
+                pcall(sf73TA.commit, sf73TA, self, sf73Cycle, false)
+            end
+
             if not success then
                 SoilLogger.error("Sprayer area hook failed: %s", tostring(errorMsg))
             end
@@ -4349,7 +7039,9 @@ end
 -- =========================================================
 -- g_farmlandManager.fieldOwnershipChanged does not exist in FS25.
 -- The correct pattern is g_messageCenter:subscribe(MessageType.FARMLAND_OWNER_CHANGED, cb, target).
--- Callback receives: farmlandId, farmId, loadFromSavegame
+-- Callback receives: target, farmlandId, farmId, loadFromSavegame. With a target the
+-- engine calls callback(target, ...) (MessageCenter.lua:100-101); the publish is
+-- (farmlandId, farmId, loadFromSavegame) (FarmlandManager.lua:320).
 -- loadFromSavegame=true fires for every field on game load; we skip those to avoid
 -- resetting existing soil data on a fresh load.
 ---@return boolean success True if hook installed successfully
@@ -4359,7 +7051,10 @@ function HookManager:installOwnershipHook()
         return false
     end
 
-    local function onOwnerChanged(farmlandId, farmId, loadFromSavegame)
+    -- #1031: the leading target parameter. Without it every argument arrived one slot
+    -- early, loadFromSavegame received the farm id (1 on a buy, 0 on a sell, both
+    -- truthy in Lua), and every live ownership change returned here unhandled.
+    local function onOwnerChanged(_target, farmlandId, farmId, loadFromSavegame)
         if loadFromSavegame then return end  -- skip initial population on load
         if not g_SoilFertilityManager or
            not g_SoilFertilityManager.soilSystem or
@@ -4567,11 +7262,13 @@ function HookManager:installNativeFieldInfoHook()
 
     --- Maps which native hook call each buildFieldInfoLines() row group is appended after --
     --- "early" rows land right after the native Farmland/Owned by rows (fieldAddFarmland),
-    --- "late" rows land right after the native Crop type/Growth rows (fieldAddFruit). Must be
-    --- declared before onFieldAddFarmland below, since it's captured as an upvalue there.
+    --- "late" rows land right after the native Crop type/Growth/Yield bonus rows
+    --- (fieldAddField, PlayerHUDUpdater.lua:272-307). FS25 has no fieldAddFruit, the FS22
+    --- name this slot used to carry, so the late rows never showed. Must be declared before
+    --- onFieldAddFarmland below, since it's captured as an upvalue there.
     local GROUP_FOR_SOURCE = {
         fieldAddFarmland = "early",
-        fieldAddFruit    = "late",
+        fieldAddField    = "late",
     }
 
     local function onFieldAddFarmland(sourceFnName, hudUpdater, data, box, ...)
@@ -4652,18 +7349,19 @@ function HookManager:installNativeFieldInfoHook()
         end
 
         local lines = g_SoilFertilityManager.soilHUD:buildFieldInfoLines(info)
-        -- Skip our own deficit-style "Yield" row here -- when the native-row override
-        -- above (see installFieldInfoFn) successfully matched and replaced the vanilla
-        -- "Yield bonus" row, that row already shows our number; a second appended Yield
-        -- row would just be confusing duplicate information. If the override could not
-        -- find a native row to replace (e.g. unmatched language string), we still show
-        -- this row as a fallback so the data is not lost entirely.
-        local yieldRowLabel = g_i18n:getText("sf_fieldinfo_yield") or "Yield"
+        -- Skip our own "Yield" row here when the native-row override (see installFieldInfoFn)
+        -- replaced the vanilla "Yield bonus" row's value with our number in this same
+        -- fieldAddField call: one yield row, not two. The engine adds that row only for a
+        -- growing crop (PlayerHUDUpdater.lua:298-302), so on a cut or empty field our own row
+        -- shows instead. It is a "late" row, appended after the override has run in the same
+        -- call, which is what keeps this gate current.
+        local yieldRowLabel = SoilL10n.tr("sf_fieldinfo_yield", "Yield")
         -- Only add the subset of rows that belong at this insertion point -- the native box
-        -- updates an existing label in place rather than re-inserting it, so a row's on-screen
-        -- position is fixed by whichever call first creates it. "early" rows go right after
-        -- Farmland/Owned by (this is the fieldAddFarmland pass); "late" rows go right after
-        -- Crop type/Growth (the fieldAddFruit pass). See GROUP_FOR_SOURCE below.
+        -- draws its rows in the order addLine is called (InfoDisplayKeyValueBox.lua:130-144),
+        -- so a row's on-screen position is fixed by the native call it is appended after.
+        -- "early" rows go right after Farmland/Owned by (the fieldAddFarmland pass); "late"
+        -- rows go right after Crop type/Growth/Yield bonus (the fieldAddField pass), before the
+        -- weed and field-action rows. See GROUP_FOR_SOURCE above.
         local expectedGroup = GROUP_FOR_SOURCE[sourceFnName]
         for _, line in ipairs(lines) do
             if (expectedGroup == nil or line.group == expectedGroup)
@@ -4673,62 +7371,20 @@ function HookManager:installNativeFieldInfoHook()
         end
     end
 
-    --- Heuristic fragments used to spot the vanilla "Yield bonus" row by its (already
-    --- localized) label text. We do not have the base game l10n keys for every language,
-    --- so this is matched case-insensitively as a substring rather than an exact key.
-    --- If your client language is not matching, enable debug logging: the first ~20
-    --- unmatched row labels seen by the hook get logged so you can add the right
-    --- fragment for your language here.
-    local YIELD_LABEL_FRAGMENTS = {
-        "yield",        -- en
-        "ertrag",       -- de
-        "rendement",    -- fr / nl
-        "rendimiento",  -- es
-        "resa",         -- it
-        "rendimento",   -- pt / br
-        "plon",         -- pl
-        "vynos",        -- cz / sk (ascii fallback for "výnos")
-        "hozam",        -- hu
-        "urodzaj",      -- pl (alt)
-        "skord",        -- sv (ascii fallback for "skörd")
-        "avling",       -- no / da
-    }
+    --- The two native rows the hook acts on, matched by the engine's own text for their l10n
+    --- keys, the exact label the engine draws (PlayerHUDUpdater.lua:301 and :305). A mod's
+    --- g_i18n reads through to the base game's texts (mods.lua:506, I18N.lua:149-158), so
+    --- this matches in every language with no list of fragments, and never matches another
+    --- row, so the yield replacement happens only in fieldAddField, the one function that adds
+    --- that row. The vanilla "Yield bonus" row shows our number; the vanilla "Fertilized" row
+    --- is dropped from the FIELD INFO box entirely, per user preference.
+    local YIELD_BONUS_KEY = "fieldInfo_yieldBonus"
+    local FERTILIZED_KEY  = "ui_growthMapFertilized"
 
-    local function isYieldBonusLabel(label)
-        if type(label) ~= "string" then return false end
-        local lower = string.lower(label)
-        for _, frag in ipairs(YIELD_LABEL_FRAGMENTS) do
-            if string.find(lower, frag, 1, true) then
-                return true
-            end
-        end
-        return false
-    end
-
-    --- Heuristic fragments used to spot (and suppress) the vanilla "Fertilized" row by its
-    --- (already localized) label text, same approach as YIELD_LABEL_FRAGMENTS above. Per
-    --- user preference this row is dropped from the FIELD INFO box entirely.
-    local FERTILIZED_LABEL_FRAGMENTS = {
-        "fertili",      -- en / fr (fertilisé) / es (fertilizado) / it (fertilizzato) / pt (fertilizado)
-        "gedungt",      -- de (ascii fallback for "gedüngt")
-        "bemest",       -- nl
-        "nawoz",        -- pl (nawożenie / nawożone)
-        "pohnojen",     -- cz / sk
-        "tragya",       -- hu (ascii fallback for "trágyázott")
-        "godsl",        -- sv (ascii fallback for "gödslad")
-        "gjods",        -- no (ascii fallback for "gjødslet")
-        "godet",        -- da
-    }
-
-    local function isFertilizedLabel(label)
-        if type(label) ~= "string" then return false end
-        local lower = string.lower(label)
-        for _, frag in ipairs(FERTILIZED_LABEL_FRAGMENTS) do
-            if string.find(lower, frag, 1, true) then
-                return true
-            end
-        end
-        return false
+    local function isEngineLabel(label, key)
+        if type(label) ~= "string" or g_i18n == nil then return false end
+        local ok, text = pcall(g_i18n.getText, g_i18n, key)
+        return ok and text == label
     end
 
     --- Wraps a single PlayerHUDUpdater function (by name) so we can intercept the box
@@ -4788,12 +7444,12 @@ function HookManager:installNativeFieldInfoHook()
                         restoreAddLine = function() realBox.addLine = origAddLine end
 
                         realBox.addLine = function(selfBox, label, value, ...)
-                            if replacementText ~= nil and matchedLabel == nil and isYieldBonusLabel(label) then
+                            if replacementText ~= nil and matchedLabel == nil and isEngineLabel(label, YIELD_BONUS_KEY) then
                                 matchedLabel = label
                                 SoilLogger.debug("Native field info hook: overriding native yield row '%s' (%s -> %s)",
                                     tostring(label), tostring(value), replacementText)
                                 value = replacementText
-                            elseif isFertilizedLabel(label) then
+                            elseif isEngineLabel(label, FERTILIZED_KEY) then
                                 -- Drop the base game's own "Fertilized" row entirely (per user
                                 -- preference) -- skip calling origAddLine so it never appears.
                                 SoilLogger.debug("Native field info hook: suppressing native Fertilized row '%s' (%s)",
@@ -4821,13 +7477,10 @@ function HookManager:installNativeFieldInfoHook()
 
             if restoreAddLine then restoreAddLine() end
 
-            if replacementText ~= nil then
-                if matchedLabel ~= nil then
-                    hookManagerSelf._nativeYieldRowOverridden = true
-                elseif hookManagerSelf._nativeYieldNoMatchWarned ~= true then
-                    hookManagerSelf._nativeYieldNoMatchWarned = true
-                    SoilLogger.warning("Native field info hook (%s): no native yield-bonus row matched our label heuristic -- it will keep showing vanilla's own number until YIELD_LABEL_FRAGMENTS is extended for your language. Enable debug logging to see the row labels actually seen.", functionName)
-                end
+            -- No match is normal: the engine adds the yield row only for a growing crop
+            -- (PlayerHUDUpdater.lua:298-302), and our own "Yield" row shows instead.
+            if replacementText ~= nil and matchedLabel ~= nil then
+                hookManagerSelf._nativeYieldRowOverridden = true
             end
 
             -- Append our remaining soil rows (Soil Grade, N/P/K, pH, OM, Needs, etc.) -- only
@@ -4847,29 +7500,23 @@ function HookManager:installNativeFieldInfoHook()
         return true
     end
 
-    -- fieldAddFarmland owns the ownership rows (Farmland/Owned by); fieldAddFruit owns the
-    -- crop/yield-state rows (Crop type/Growth/Yield-bonus/Weed/Needs lime) - the
-    -- ones our soil data is actually relevant alongside. A confirmed working reference
-    -- (FS22_CropRotation, github.com/bodzio528/FS22_CropRotation) hooks fieldAddFruit
-    -- specifically for this kind of row, with the identical (updater, data, box) signature.
-    -- We hook both: harmless if one is a no-op for this box, and avoids re-guessing again
-    -- if a future base-game patch moves things around.
+    -- fieldAddFarmland owns the ownership rows (Farmland/Owned by); fieldAddField owns the
+    -- crop rows (Crop type, Growth, Yield bonus, Fertilized; PlayerHUDUpdater.lua:272-307),
+    -- the ones our soil data is relevant alongside. showFieldInfo calls fieldAddFarmland,
+    -- fieldAddField, fieldAddWeed and fieldAddFieldActions in that order (:235-238).
     local farmlandHookOk = installFieldInfoFn("fieldAddFarmland", true)
-    local fruitHookOk    = installFieldInfoFn("fieldAddFruit", true)
+    local fieldHookOk    = installFieldInfoFn("fieldAddField", true)
 
-    -- The native "Fertilized" row isn't guaranteed to come from fieldAddFruit on every FS25
-    -- build -- that assumption was ported from an FS22 mod and may not hold here. Rather than
-    -- guess another exact function name, scan PlayerHUDUpdater for every other function whose
-    -- name looks like it's part of building this same FIELD INFO box (starts with "field") and
-    -- wrap it too, purely to catch/suppress native rows via the addLine override above (no
-    -- extra rows of our own are appended through these -- see appendRows=false). This makes
-    -- the Fertilized suppression resilient to whichever function actually adds that row.
+    -- Every other PlayerHUDUpdater function whose name starts with "field" (fieldAddWeed and
+    -- fieldAddFieldActions in FS25) is wrapped too, purely so the Fertilized suppression
+    -- holds if a later build moves that row. No rows of our own are appended through these
+    -- (appendRows=false).
     local extraHookCount = 0
     if type(PlayerHUDUpdater) == "table" then
         local extraNames = {}
         for key, value in pairs(PlayerHUDUpdater) do
             if type(key) == "string" and type(value) == "function"
-                and key ~= "fieldAddFarmland" and key ~= "fieldAddFruit"
+                and key ~= "fieldAddFarmland" and key ~= "fieldAddField"
                 and string.find(string.lower(key), "^field") then
                 table.insert(extraNames, key)
             end
@@ -4886,7 +7533,7 @@ function HookManager:installNativeFieldInfoHook()
         end
     end
 
-    return farmlandHookOk or fruitHookOk or extraHookCount > 0
+    return farmlandHookOk or fieldHookOk or extraHookCount > 0
 end
 
 -- =========================================================
@@ -5018,13 +7665,11 @@ function HookManager:installPlowingHook()
                     local cropBiomass = cultivatorSelf._sfCropBiomass or 0
 
                     if isPlowingTool then
-                        g_SoilFertilityManager.soilSystem._lastTillageX = x
-                        g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                        hookMgrRef:_recordTillagePoint(cultivatorSelf, x, z, farmlandId)
                         g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, isAlsoSprayer, cropBiomass)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
                     else
-                        g_SoilFertilityManager.soilSystem._lastTillageX = x
-                        g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                        hookMgrRef:_recordTillagePoint(cultivatorSelf, x, z, farmlandId)
                         g_SoilFertilityManager.soilSystem:onCultivation(farmlandId, areaHa, isAlsoSprayer, cropBiomass)
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
@@ -5128,8 +7773,7 @@ function HookManager:installDedicatedPlowHook()
                 if farmlandId and farmlandId > 0 then
                     -- #674: green-manure biomass sampled (pre-clear) by the crop-biomass probe.
                     local cropBiomass = plowSelf._sfCropBiomass or 0
-                    g_SoilFertilityManager.soilSystem._lastTillageX = x
-                    g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                    hookMgrRef:_recordTillagePoint(plowSelf, x, z, farmlandId)
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, false, cropBiomass)
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
@@ -5348,8 +7992,7 @@ function HookManager:installMulcherHook()
                 local areaHa  = (speedMs * dtSec * widthM) / 10000
                 if areaHa <= 0 then return end
 
-                g_SoilFertilityManager.soilSystem._lastTillageX = x
-                g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                hookMgrRef:_recordTillagePoint(mulcherSelf, x, z, farmlandId)
                 g_SoilFertilityManager.soilSystem:onMulching(farmlandId, areaHa, biomass)
             end)
             if not success then
@@ -5418,8 +8061,7 @@ function HookManager:installWeederHook()
                 SoilLogger.debug("[WeederHook] pos=(%.1f,%.1f) farmlandId=%s grassland=%s",
                     x, z, tostring(farmlandId), tostring(spec.isGrasslandWeeder))
                 if farmlandId and farmlandId > 0 then
-                    mgr.soilSystem._lastTillageX = x
-                    mgr.soilSystem._lastTillageZ = z
+                    hookMgrRef:_recordTillagePoint(weederSelf, x, z, farmlandId)
                     if doWeed then
                         mgr.soilSystem:onCultivation(farmlandId, areaHa)
                         SoilLogger.debug("[WeederHook] Field %d: mechanical weed removal applied", farmlandId)
@@ -5468,6 +8110,24 @@ function HookManager:installRidgeTillerHook()
     return true
 end
 
+-- SF-75: soil-class seed-rate factor. Mirrors SpatialNutrients:textureWeight
+-- probe order (getFieldSoilType, then getSoilType); neutral 1.0 when SCS absent.
+function HookManager:_seedRateSoilFactor(fieldId)
+    local tbl = SoilConstants.SEED_RATE_BY_SOIL
+    if not tbl then return 1.0 end
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    if not csMgr then return 1.0 end
+    local soilClass
+    local ok, a = pcall(function() return csMgr:getFieldSoilType(fieldId) end)
+    if ok and type(a) == "string" then soilClass = a end
+    if soilClass == nil then
+        local ok2, b = pcall(function() return csMgr:getSoilType(fieldId) end)
+        if ok2 and type(b) == "string" then soilClass = b end
+    end
+    if soilClass == nil then return 1.0 end
+    return tbl[string.lower(soilClass)] or 1.0
+end
+
 -- =========================================================
 -- HOOK 6: Sowing / planting (SowingMachine)
 -- =========================================================
@@ -5485,8 +8145,36 @@ function HookManager:installSowingHook()
 
     local hookMgrRef = self
     local original = SowingMachine.onEndWorkAreaProcessing
+
+    -- SF-75: wrap original to scale seed usage by soil type BEFORE the drain.
+    -- seedUsageScale is modified before the game code computes `usage`, then
+    -- restored after the original returns. Neutral 1.0 = no-op (ships LOCKED).
+    local seedRateWrapped = function(sowingSelf, dt, hasProcessed)
+        local savedScale = nil
+        local spec75 = sowingSelf.spec_sowingMachine
+        if sowingSelf.isServer and spec75
+           and g_SoilFertilityManager and g_SoilFertilityManager.settings
+           and g_SoilFertilityManager.settings.enabled then
+            local okPos, x75, _, z75 = pcall(getWorldTranslation, sowingSelf.rootNode)
+            if okPos and x75 then
+                local fid75 = hookMgrRef:getFieldIdAtWorldPosition(x75, z75)
+                if fid75 and fid75 > 0 then
+                    local soilFactor = hookMgrRef:_seedRateSoilFactor(fid75)
+                    if soilFactor ~= 1.0 then
+                        savedScale = spec75.seedUsageScale
+                        spec75.seedUsageScale = savedScale * soilFactor
+                    end
+                end
+            end
+        end
+        original(sowingSelf, dt, hasProcessed)
+        if savedScale ~= nil and spec75 then
+            spec75.seedUsageScale = savedScale
+        end
+    end
+
     SowingMachine.onEndWorkAreaProcessing = Utils.appendedFunction(
-        original,
+        seedRateWrapped,
         function(sowingSelf, dt, hasProcessed)
             -- Note: do NOT fast-exit on hasProcessed=false here.
             -- SowingMachine.onEndWorkAreaProcessing also ignores hasProcessed
@@ -5517,16 +8205,24 @@ function HookManager:installSowingHook()
 
                 local statsArea = spec.workAreaParameters.lastStatsArea or spec.workAreaParameters.lastChangedArea or 0
                 if statsArea <= 0 then return end
-                -- Convert density-map pixels → hectares (same as plow/cultivator/mower hooks).
-                -- Passing raw pixels directly caused factor = pixels/fieldAreaHa, exploding
-                -- NPK to max in the first sowing tick (same bug fixed for plow in 51083e7).
                 if not g_currentMission or type(g_currentMission.getFruitPixelsToSqm) ~= "function" then return end
                 local areaHa = MathUtil.areaToHa(statsArea, g_currentMission:getFruitPixelsToSqm())
                 if areaHa <= 0 then return end
-                g_SoilFertilityManager.soilSystem._lastTillageX = x
-                g_SoilFertilityManager.soilSystem._lastTillageZ = z
+                hookMgrRef:_recordTillagePoint(sowingSelf, x, z, fieldId)
                 local cropBiomass = sowingSelf._sfCropBiomass or 0
                 g_SoilFertilityManager.soilSystem:onSowing(fieldId, areaHa, spec.workAreaParameters.seedsFruitType, cropBiomass)
+
+                -- [SF-14 One Ground] Clear only the matching polygon-fruit
+                -- receipts at the exact sowing work-area coordinates. A machine
+                -- root position is not crop-cycle identity; an unprovable polygon
+                -- leaves unrelated frozen receipts untouched.
+                local zy = g_SoilFertilityManager.zoneYield
+                if zy and type(zy.onSowingWorkArea) == "function"
+                   and sowingSelf.spec_workArea and sowingSelf.spec_workArea.workAreas then
+                    for _, wa in ipairs(sowingSelf.spec_workArea.workAreas) do
+                        pcall(function() zy:onSowingWorkArea(wa) end)
+                    end
+                end
             end)
 
             if not ok then
@@ -5564,9 +8260,15 @@ function HookManager:installFillUnitHookEarly()
     local manureCompatNames  = {"COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE"}
     -- GYPSUM is physically applied the same way as lime; inject it into dedicated lime spreaders
     local limeCompatNames    = {"GYPSUM"}
+    local hookMgrRef = self
 
     local original = FillUnit.onPostLoad
     FillUnit.onPostLoad = Utils.prependedFunction(original, function(vehicleSelf)
+        -- RSF-F196 V12c: a vehicle loading after installAll carries raw copies of its
+        -- type's functions (Vehicle.lua:486, before this event at :905). Give it
+        -- exactly one owned-layer wrapper per installed layer; a copy that already
+        -- IS a layer wrapper (its type was patched first) gets nothing.
+        hookMgrRef:ensureOwnedLayers(vehicleSelf)
         local fm = g_fillTypeManager
         if not fm then return end
         local fertIdx    = fm:getFillTypeIndexByName("FERTILIZER")
@@ -5918,12 +8620,31 @@ end
 -- On dedicated servers, fill types from fillTypes.xml may not be registered in
 -- g_fillTypeManager at the time installFillUnitHook runs (inside loadMission00Finished).
 -- This results in empty solidIndices/liquidIndices and a no-op retroactive patch.
--- SoilFertilityManager:update() calls this once _sprayTypesComplete is false, after
--- a small delay, to re-resolve indices and re-patch vehicles once fill types are available.
+-- SoilFertilityManager:_updateDeferredInit() calls this every tick until it returns
+-- true, to re-resolve indices and re-patch vehicles once fill types are available.
+--
+-- The RETURN VALUE is half of that caller's completion test, so it has to mean
+-- something: false is "not done, call me again", true is "indices resolved and
+-- vehicles patched". It is not a success/failure report about the mod. The caller
+-- previously ignored it entirely and keyed completion on _sprayTypesComplete alone,
+-- which is how the deferred init could consider itself finished while this function
+-- had never once succeeded.
 function HookManager:reapplyFillUnitPatch()
+    -- EVERY warning in this function is one-shot, and that is load-bearing rather than
+    -- tidiness. Before this PR the deferred loop reached here exactly once per load, so
+    -- an unguarded warning could not repeat. The loop now runs every tick until the work
+    -- actually completes, which is the point of the fix, and that turns each unguarded
+    -- warning into one line PER FRAME for as long as the condition holds. On a dedicated
+    -- server with late fill types, which is #431 and the whole reason this retry exists,
+    -- that is thousands of identical lines burying the give-up message that carries the
+    -- real diagnostics. The frequency of these messages must not change just because the
+    -- call frequency did.
     local fm = self._fuFm or g_fillTypeManager
     if not fm then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: g_fillTypeManager not available")
+        if not self._loggedFuNoFillTypeManager then
+            self._loggedFuNoFillTypeManager = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: g_fillTypeManager not available")
+        end
         return false
     end
 
@@ -5932,10 +8653,31 @@ function HookManager:reapplyFillUnitPatch()
     local manureIdx  = self._fuManureIndex  or fm:getFillTypeIndexByName("MANURE")
     local limeIdx    = self._fuLimeIndex    or fm:getFillTypeIndexByName("LIME")
 
+    -- NOT `self._fuSolidNames or {}`. That substitution is why this function used to
+    -- report a diagnosis it had never made.
+    --
+    -- _fuSolidNames is assigned from a 13-name literal in installFillUnitHook, so once
+    -- that has run it is never legitimately empty. Before it runs the field is nil, the
+    -- `or {}` made the loop body execute zero times, and `found` stayed 0 with
+    -- missingNames empty. The `found == 0` test below then announced "custom fill types
+    -- still unavailable (missing: )" with nothing after the colon, which is zero names
+    -- CHECKED being reported as zero names FOUND.
+    --
+    -- Those are different facts and only one of them is a problem. Returning early here
+    -- keeps the `found == 0` branch meaning what it says: we looked, and nothing we
+    -- expected was registered.
+    if self._fuSolidNames == nil then
+        if not self._loggedFuHookPending then
+            self._loggedFuHookPending = true
+            SoilLogger.debug("[DeferredInit] reapplyFillUnitPatch: installFillUnitHook has not run yet, so there is nothing to re-patch (this is normal during load)")
+        end
+        return false
+    end
+
     local solidIdxs, liquidIdxs, manureIdxs, limeIdxs = {}, {}, {}, {}
     local found, missing = 0, 0
     local missingNames = {}
-    for _, name in ipairs(self._fuSolidNames or {}) do
+    for _, name in ipairs(self._fuSolidNames) do
         local idx = fm:getFillTypeIndexByName(name)
         if idx then table.insert(solidIdxs, idx); found = found + 1
         else missing = missing + 1; table.insert(missingNames, name) end
@@ -5954,13 +8696,28 @@ function HookManager:reapplyFillUnitPatch()
     end
 
     if found == 0 then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch: custom fill types still unavailable (missing: %s)", table.concat(missingNames, ", "))
+        -- A plain one-shot, deliberately, after trying to be cleverer than this.
+        --
+        -- The first attempt keyed the guard on the missing SET, so that a shrinking set
+        -- could speak again while an unchanging one stayed quiet. The bar proved that
+        -- state is unreachable: this branch runs only when `found == 0`, meaning NOTHING
+        -- in _fuSolidNames resolved, so missingNames is always the complete list. The
+        -- moment a single name resolves, found is non-zero and this warning is not
+        -- reached at all. There is exactly one possible set here, and keying on it was
+        -- sophistication that could never fire.
+        if not self._loggedFuAllMissing then
+            self._loggedFuAllMissing = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch: custom fill types still unavailable (missing: %s)", table.concat(missingNames, ", "))
+        end
         return false  -- still not available
     end
 
     local vehicleSystem = g_currentMission and g_currentMission.vehicleSystem
     if not vehicleSystem or not vehicleSystem.vehicles then
-        SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: no vehicleSystem.vehicles")
+        if not self._loggedFuNoVehicles then
+            self._loggedFuNoVehicles = true
+            SoilLogger.warning("[DeferredInit] reapplyFillUnitPatch skipped: no vehicleSystem.vehicles")
+        end
         return false
     end
 
@@ -6223,7 +8980,7 @@ end
 -- If fill types weren't in g_fillTypeManager at install time (dedi server),
 -- the remap table is sparsely populated. Since it's a Lua table reference,
 -- we can add missing entries directly - the closures automatically see them.
--- Called by SoilFertilityManager:update() alongside reapplyFillUnitPatch().
+-- Called by SoilFertilityManager:_updateDeferredInit() alongside reapplyFillUnitPatch().
 function HookManager:reapplyEffectTypeRemap()
     local remap = self._effectTypeRemap
     if not remap then return end
@@ -6293,6 +9050,10 @@ end
 -- this - checking spec_sprayer or fillUnit reloadState is incorrect.
 ---@return boolean success
 function HookManager:installPurchaseRefillHook()
+    -- RSF-F196: the FillUnit wrapper below needs the manager for catalogue identity.
+    -- Captured explicitly, the way installSprayerAreaHook does, rather than leaning
+    -- on `self` as an implicit upvalue from inside a function that has no self.
+    local hookMgrRef = self
     if not FillUnit or type(FillUnit.addFillUnitFillLevel) ~= "function" then
         SoilLogger.warning("Purchase refill hook: FillUnit.addFillUnitFillLevel not available - skipping")
         return false
@@ -6307,56 +9068,23 @@ function HookManager:installPurchaseRefillHook()
     -- Build a lookup table: fillTypeIndex → pricePerLiter for all our custom types.
     -- Prices come from Constants (authoritative single source) and fall back to
     -- the fillTypes.xml economy values via FillTypeManager if a type isn't in Constants.
-    local ALL_CUSTOM_NAMES = {
-        -- Liquid
-        "UAN32", "UAN28", "ANHYDROUS", "STARTER", "LIQUIDLIME",
-        "INSECTICIDE", "FUNGICIDE", "PROPICONAZOLE", "AZOXYSTROBIN", "BOSCALID", "MANCOZEB", "METALAXYL", "TEBUCONAZOLE", "SULFUR", "COPPER_HYDROXIDE",
-        "LIQUID_UREA", "LIQUID_AMS", "LIQUID_MAP", "LIQUID_DAP", "LIQUID_POTASH",
-        -- Solid
-        "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
-        "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE", "GYPSUM",
-    }
-    SoilBlends.appendNames(ALL_CUSTOM_NAMES)   -- CD-12
-
-    -- Prices from Constants (already defined there)
-    local PRICE_OVERRIDES = {}
-    if SoilConstants and SoilConstants.PURCHASABLE_SINGLE_NUTRIENT then
-        for name, data in pairs(SoilConstants.PURCHASABLE_SINGLE_NUTRIENT) do
-            if data.pricePerLiter then
-                PRICE_OVERRIDES[string.upper(name)] = data.pricePerLiter
-            end
-        end
-    end
-    -- Fallback prices match fillTypes.xml economy entries
-    local FALLBACK_PRICES = {
-        UAN32 = 1.60, UAN28 = 1.50, ANHYDROUS = 1.85, STARTER = 1.70,
-        LIQUIDLIME = 1.20, INSECTICIDE = 1.20, FUNGICIDE = 1.30,
-        -- Physical named fungicides (6-chemical kit): premium anchors, balance pass owns finals
-        PROPICONAZOLE = 1.40, AZOXYSTROBIN = 1.60, BOSCALID = 1.85,
-        MANCOZEB = 0.90, METALAXYL = 1.45, TEBUCONAZOLE = 1.55,
-        -- Organic-approved preventatives (OM-209): cheap, priced below the synthetic six
-        SULFUR = 0.40, COPPER_HYDROXIDE = 0.55,
-        LIQUID_UREA = 1.70, LIQUID_AMS = 1.45, LIQUID_MAP = 2.00, LIQUID_DAP = 1.80, LIQUID_POTASH = 1.85,
-        UREA = 1.65, AN = 1.55, AMS = 1.40, MAP = 1.95, DAP = 1.75, POTASH = 1.80, POLIFOSKA = 1.35,
-        COMPOST = 0.60, BIOSOLIDS = 0.55, CHICKEN_MANURE = 0.50,
-        PELLETIZED_MANURE = 0.70, GYPSUM = 0.35,  -- reduced: amendment, not plant food ($525/ha vs $1200)
-    }
-
-    -- customPrices[fillTypeIndex] = pricePerLiter
-    local customPrices = {}
-    for _, name in ipairs(ALL_CUSTOM_NAMES) do
-        local idx = fm:getFillTypeIndexByName(name)
-        if idx then
-            local price = PRICE_OVERRIDES[name] or FALLBACK_PRICES[name]
-            if price then
-                customPrices[idx] = price
-            end
-        end
-    end
+    -- RSF-F196 V12b/X1: ONE name population (HookManager.buildCustomNamePopulation)
+    -- and ONE price source (HookManager.customPriceFor), both read by the one
+    -- rebuild. The population used to be a second copy of the same list living
+    -- beside a price table that lived only here, which is how identity and price
+    -- could drift apart without anything failing, and how a product resolving
+    -- after this install never got a price at all (X1: the rebuild now runs on
+    -- every registration attempt).
+    --
+    -- customPrices[fillTypeIndex] = pricePerLiter, read here only to count and log
+    -- what this install saw. The owned layer below does NOT capture it: every wrapper
+    -- reads self.customFillTypePrices at CALL time (V12a's wrapper half, landed with
+    -- V12c in #987), so a product priced after this install is billed too.
+    self:rebuildCustomPriceMap()
+    local customPrices = self.customFillTypePrices
 
     if not next(customPrices) then
-        SoilLogger.warning("Purchase refill hook: no custom fill types with prices found - skipping")
-        return false
+        SoilLogger.warning("Purchase refill hook: no custom fill types with prices found yet - the layer installs anyway and reads the live map at call time (V12a)")
     end
 
     local count = 0
@@ -6446,54 +9174,68 @@ function HookManager:installPurchaseRefillHook()
 
     -- FS25 real signature: FillUnit:addFillUnitFillLevel(farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
     -- When replaced as a class method, 'vehicle' is the implicit self (the vehicle with FillUnit spec).
-    local original = FillUnit.addFillUnitFillLevel
-    FillUnit.addFillUnitFillLevel = function(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        -- Only intercept consumption (negative delta) of our custom types
-        if fillLevelDelta >= 0 then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+    -- RSF-F196 V12c + V13. The FillUnit layer, one wrapper per reference (class,
+    -- every fillUnit type, every live instance, late instances via onPostLoad),
+    -- each around the function ACTUALLY in its slot. A delta is billed here ONLY
+    -- when it carries the V13 token native's drain set on this vehicle a moment
+    -- ago and the exact call matches; then, in BUY mode with a resolved, unrefused
+    -- product that has a price, the farm is charged and the predecessor is NOT
+    -- called (the tank is untouched, native's drain becomes a purchase). Every
+    -- other delta, positive or negative, tokened or not, delegates: -math.huge,
+    -- emptyAllFillUnits, the settings drain, the residual snap, stream sync and
+    -- SoilDrainVehicle all reach the chain that was there. Prices and identity are
+    -- read from the manager at CALL time (V12a's wrapper half), never captured, so
+    -- a product that resolved after install is billable.
+    local function makeFillUnitWrapper(predecessor)
+        return function(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+            local token = type(vehicle) == "table" and vehicle._sfF196DrainToken or nil
+            if token ~= nil and HookManager.drainTokenMatches(token, fillUnitIndex, fillLevelDelta, fillTypeIndex) then
+                vehicle._sfF196DrainToken = nil   -- consumed, billed or not
+                -- [SF-73] the actual physical litres of a target dose are the magnitude of
+                -- what this call applies (FillUnit.lua addFillUnitFillLevel returns it)
+                local sf73Cycle = token.sf73Cycle
+                local prices = hookMgrRef.customFillTypePrices
+                local resolved = hookMgrRef:resolveCustomProductIntent(vehicle, fillTypeIndex)
+                local pricePerLiter = (resolved ~= nil and prices ~= nil) and prices[resolved] or nil
+                if resolved ~= nil and not hookMgrRef:isRefusedProduct(resolved) and pricePerLiter ~= nil
+                   and isInBuyMode(vehicle, fillUnitIndex, fillTypeIndex) then
+                    local litersConsumed = -fillLevelDelta
+                    local cost = litersConsumed * pricePerLiter
+                    local chargeFarmId = (farmId and farmId > 0) and farmId
+                        or vehicle.ownerFarmId
+                        or (vehicle.spec_enterable and vehicle.spec_enterable.activeFarmId)
+                    if chargeFarmId and chargeFarmId > 0 and g_currentMission then
+                        pcall(function()
+                            g_currentMission:addMoney(-cost, chargeFarmId, MoneyType.PURCHASE_FERTILIZER, true, true)
+                        end)
+                    end
+                    if g_currentMission then
+                        vehicle._soilBuyHandledAt = g_currentMission.time
+                    end
+                    hookMgrRef._f196LayerCharges = (hookMgrRef._f196LayerCharges or 0) + 1
+                    SoilLogger.debug("BUY SUCCESS (F196 FillUnit layer): veh=%d, type=%d, liters=%.2f, cost=%.2f",
+                        vehicle.id or 0, fillTypeIndex, litersConsumed, cost)
+                    if sf73Cycle ~= nil and TargetApplication ~= nil then
+                        TargetApplication.recordApplied(sf73Cycle, fillLevelDelta)
+                    end
+                    return fillLevelDelta
+                end
+                local applied = predecessor(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
+                if sf73Cycle ~= nil and TargetApplication ~= nil then
+                    TargetApplication.recordApplied(sf73Cycle, applied)
+                end
+                return applied
+            end
+            return predecessor(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
         end
-
-        local pricePerLiter = customPrices[fillTypeIndex]
-        if not pricePerLiter then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        end
-
-        -- Check BUY mode
-        if not isInBuyMode(vehicle, fillUnitIndex, fillTypeIndex) then
-            return original(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
-        end
-
-        -- |fillLevelDelta| is the liters consumed this frame (negative value).
-        local litersConsumed = -fillLevelDelta
-        local cost = litersConsumed * pricePerLiter
-
-        -- Charge the owning farm (use the farmId arg - it is the authoritative owner)
-        local chargeFarmId = (farmId and farmId > 0) and farmId
-            or vehicle.ownerFarmId
-            or (vehicle.spec_enterable and vehicle.spec_enterable.activeFarmId)
-        if chargeFarmId and chargeFarmId > 0 and g_currentMission then
-            pcall(function()
-                g_currentMission:addMoney(-cost, chargeFarmId, MoneyType.PURCHASE_FERTILIZER, true, true)
-            end)
-        end
-
-        -- Stamp this vehicle so the sprayer-hook backup knows we already handled this frame.
-        if g_currentMission then
-            vehicle._soilBuyHandledAt = g_currentMission.time
-        end
-        -- Return the original delta so sprayer logic continues, but skip calling original
-        -- so the physical fill level is never subtracted.
-        SoilLogger.debug("BUY SUCCESS (FillUnit hook): veh=%d, type=%d, liters=%.2f, cost=%.2f",
-            vehicle.id or 0, fillTypeIndex, litersConsumed, cost)
-        return fillLevelDelta
     end
+    self:installOwnedRegisteredFunctionLayer(FillUnit, "addFillUnitFillLevel", makeFillUnitWrapper, "fillUnit",
+        "FillUnit.addFillUnitFillLevel (F196 purchase layer)")
 
-    self:registerCleanup("FillUnit.addFillUnitFillLevel (purchase refill)", function()
-        FillUnit.addFillUnitFillLevel = original
-    end)
-
-    -- Share the price table with the sprayer hook (used as a reliable backup path)
-    self.customFillTypePrices = customPrices
+    -- The live price table the sprayer hook, the backup refill and the layer above
+    -- read at CALL time is self.customFillTypePrices, assigned by rebuildCustomPriceMap
+    -- above and replaced on every registration attempt (X1); the owned layer's cleanup
+    -- is registered by installOwnedRegisteredFunctionLayer, nothing to share here.
 
     SoilLogger.info("[OK] Purchase refill hook installed - BUY mode enabled for %d custom fill types", count)
     return true
@@ -6517,6 +9259,9 @@ end
 --   • Buy mode active → charge our price (1.5× AI premium), return our custom type.
 --   • Buy mode inactive → return (UNKNOWN, 0) so the AI stops rather than falling
 --     through to vanilla FERTILIZER.
+--
+-- RSF-F226e: a pass WE blocked for overlap is not billed, at any of the six places
+-- that charge for external fill. See the wrapper at the bottom of this function.
 ---@return boolean success
 function HookManager:installExternalFillHook()
     if not Sprayer or type(Sprayer.getExternalFill) ~= "function" then
@@ -6527,9 +9272,11 @@ function HookManager:installExternalFillHook()
     -- Capture HookManager instance (see note in installSprayerAreaHook).
     local hookMgrRef = self
 
-    local original = Sprayer.getExternalFill
-
-    Sprayer.getExternalFill = function(sprayerSelf, fillType, dt)
+    -- Everything that bills for external fill: our own custom-type charge below,
+    -- and the original, which holds the other five. RSF-F196 V12c: `original` is
+    -- the PREDECESSOR the owned layer hands each wrapper (class, type or instance),
+    -- not a captured class pointer, so the chain present in the slot is what runs.
+    local function billedExternalFill(original, sprayerSelf, fillType, dt)
         local hookMgr = hookMgrRef
         local prices  = hookMgr and hookMgr.customFillTypePrices
 
@@ -6537,35 +9284,40 @@ function HookManager:installExternalFillHook()
             return original(sprayerSelf, fillType, dt)
         end
 
-        -- Identify the intended custom product.
-        -- Priority order (issue #205 STARTER → LIQUIDFERTILIZER fix):
-        --   1. fillType arg is already one of our custom types (direct match).
-        --   2. Ask the tank what it actually holds (authoritative on a full/partial tank).
-        --   3. Fall back to _soilLastCustomFillType (stamp set by the Sprayer-area hook;
-        --      covers the empty-tank AI case where tank fill type is UNKNOWN).
-        -- Step 2 is what prevents the "STARTER loaded but vanilla picks LIQUIDFERTILIZER"
-        -- bug: when the caller passes fillType=UNKNOWN, the tank's real contents win over
-        -- vanilla's allowLiquidFertilizer/allowFertilizer/allowHerbicide cascade.
-        local customIdx = nil
-        if fillType and fillType ~= FillType.UNKNOWN and prices[fillType] then
-            customIdx = fillType
-        else
-            -- Step 2: read actual tank contents
-            local okFui, sprayFui = pcall(function() return sprayerSelf:getSprayerFillUnitIndex() end)
-            if okFui and sprayFui then
-                local okTankFt, tankFt = pcall(function() return sprayerSelf:getFillUnitFillType(sprayFui) end)
-                if okTankFt and tankFt and tankFt ~= FillType.UNKNOWN and prices[tankFt] then
-                    customIdx = tankFt
-                end
-            end
-            -- Step 3: empty-tank stamp fallback
-            if not customIdx and sprayerSelf._soilLastCustomFillType and prices[sprayerSelf._soilLastCustomFillType] then
-                customIdx = sprayerSelf._soilLastCustomFillType
-            end
-        end
+        -- Identify the intended custom product (the issue #205 shape: a STARTER tank
+        -- must never let vanilla's allowLiquidFertilizer/allowFertilizer/allowHerbicide
+        -- cascade pick LIQUIDFERTILIZER when the caller passes fillType=UNKNOWN).
+        -- RSF-F196 R3a: identity comes from the ONE resolver, never from the price
+        -- table. The three steps that lived here (direct argument, tank contents,
+        -- the _soilLastCustomFillType stamp) were keyed on prices[], which is V12's
+        -- defect: a product whose price arrived late was not a product at all, and
+        -- the stamp was a private server-side field standing in for the engine's own
+        -- synced lastValidFillType. The resolver's third step reads that engine field,
+        -- so the empty-tank AI case that step 3 existed for is covered by the engine.
+        --
+        -- This runs from inside native onStartWorkAreaProcessing (Sprayer.lua:889),
+        -- BEFORE native's final assignment that R2 follows, which is why it is the
+        -- first consumer the engine reaches and must refuse on its own.
+        local customIdx = hookMgr:resolveCustomProductIntent(sprayerSelf, fillType)
 
         if not customIdx then
+            -- No catalogue member in reach: native owns this fill entirely.
             return original(sprayerSelf, fillType, dt)
+        end
+
+        -- A catalogue member IS in reach, so native is never delegated to from here:
+        -- delegating would let vanilla's allowFertilizer cascade pick FERTILIZER for
+        -- a tank that holds UREA (the #205 shape). Three refusals, each UNKNOWN, 0:
+        if hookMgr:isRefusedProduct(customIdx) then
+            -- a refused rate contract. No paint, no drain, no money for this frame.
+            return FillType.UNKNOWN, 0
+        end
+        if prices[customIdx] == nil or prices[customIdx] <= 0 then
+            -- an absent or invalid current price. The `or 1.0` that used to sit at the
+            -- charge below fabricated a price here; V17 says a source failure is not a
+            -- product refusal, so this is UNKNOWN, 0 and the loaded tank stays on its
+            -- native path, not a charge at a made-up rate.
+            return FillType.UNKNOWN, 0
         end
 
         local mi = g_currentMission and g_currentMission.missionInfo
@@ -6601,7 +9353,13 @@ function HookManager:installExternalFillHook()
         -- so consumption truly scales with area covered, not with the speed dial setting.
         -- Formula: scale × litersPerSecond × actualSpeed_km/h × workWidth_m × dt_ms × 0.001
         local usage
-        do
+        -- [SF-73] a target cycle buys exactly its one quantity, asked through the
+        -- vehicle's own usage slot; everything else keeps the formula below
+        local sf73Quote = nil
+        local sf73TA = hookMgr:getTargetApplication()
+        if sf73TA ~= nil then sf73Quote = sf73TA:externalQuote(sprayerSelf, customIdx, dt) end
+        if sf73Quote ~= nil then usage = sf73Quote end
+        if usage == nil then
             local actualSpeedKmh = math.abs(sprayerSelf.lastSpeed or 0) * 3600
             if actualSpeedKmh < 0.5 then
                 -- Sprayer not moving (headland pivot, stopped).  No area covered, no charge.
@@ -6636,7 +9394,9 @@ function HookManager:installExternalFillHook()
             end
         end
         if sprayerSelf.isServer and usage > 0 then
-            local pricePerLiter = prices[customIdx] or 1.0
+            -- prices[customIdx] is known present and positive: the absent-price case
+            -- returned UNKNOWN, 0 above rather than charging at a fabricated 1.0.
+            local pricePerLiter = prices[customIdx]
             local price = usage * pricePerLiter * 1.5  -- 1.5× AI premium (matches vanilla)
             local farmId = sprayerSelf:getActiveFarm()
             local statsFarmId = farmId
@@ -6677,8 +9437,209 @@ function HookManager:installExternalFillHook()
         return customIdx, usage
     end
 
-    self:register(Sprayer, "getExternalFill", original, "Sprayer.getExternalFill")
-    SoilLogger.info("[OK] External fill hook installed (Sprayer.getExternalFill)")
+    -- RSF-F226e: A PASS WE BLOCKED FOR OVERLAP IS NOT BILLED.
+    --
+    -- #964 stopped such a pass crediting nutrients. It still cost the player,
+    -- because getExternalFill runs inside native onStartWorkAreaProcessing
+    -- (called at Sprayer.lua:889), before any work area processes, where the
+    -- block cannot reach. Six places bill from here:
+    --   - native buy-mode money: slurry :407, manure :430, helperBuyFertilizer :457
+    --   - native loading-station WITHDRAWALS, real stored product and not money:
+    --     slurry :413 and :416 (helperSlurrySource > 2), manure :436 (helperManureSource > 2)
+    --   - our own 1.5x custom-type charge in billedExternalFill above
+    -- Not calling billedExternalFill covers all six at once. A refund afterwards
+    -- could not: it cannot put product back into a station, and the usage it
+    -- would have to reverse varies with speed from frame to frame.
+    --
+    -- WHAT IT RETURNS INSTEAD, and why neither obvious answer works.
+    --
+    -- (UNKNOWN, 0), the refusal this hook already uses, makes native fall back to
+    -- the tank at :890-892. For an empty buy-mode tank that writes UNKNOWN into
+    -- wap.sprayFillType at :926, the overlap prepend reads that stale UNKNOWN at
+    -- the start of the NEXT pass and returns before its block decision, so that
+    -- pass is unblocked and billed, and the one after blocks again. Suppression on
+    -- every other frame (Bob's trace, ledger 35d0dad).
+    --
+    -- The correct type with zero usage keeps wap trackable, but computing the type
+    -- without calling the original means copying about 40 lines of engine fill-type
+    -- branching, and for the station modes the type depends on what the withdrawal
+    -- itself returns, which cannot be known without making it.
+    --
+    -- So a blocked pass repeats what this wrapper returned the last time it reached
+    -- the billing path, with zero usage. On consecutive passes that is the return
+    -- native built wap from on the pass before, so native stays on the branch it
+    -- was already on and the skip changes billing and nothing else: an external
+    -- type stays external, and a last return of UNKNOWN (nothing external found)
+    -- keeps the tank fallback, where the tank pays for anything an unswapped area
+    -- still sprays. Repeating wap's own type instead would push a tank-fallback
+    -- pass onto the external branch. No engine branching is copied, so nothing
+    -- can drift from it. A sprayer that has never reached the billing path has
+    -- nothing to repeat and returns UNKNOWN, the engine's own "nothing external".
+    --
+    -- Zero usage is safe downstream: native writes it to wap.sprayFillLevel and
+    -- wap.usage, the tank draw at :940 is gated on isActive (false on a blocked
+    -- pass), and it skips the nil sprayVehicle an external type implies (:943).
+    -- When the repeated type is a real one, an area the block did not swap (a mod
+    -- alias for processSprayerArea) sees sprayFillLevel 0 and returns at :320
+    -- without spraying, and without the out-of-fill AI stop at :316, which only
+    -- fires on an UNKNOWN type.
+    --
+    -- ONLY WHILE IT IS STILL THE SAME PRODUCT. Native writes whatever this returns
+    -- into wap.sprayFillType (:926), and the next prepend decides on that. If the
+    -- tank now holds a different product (fertiliser billed, then herbicide loaded
+    -- over ground already covered), repeating the old trackable type keeps the
+    -- prepend blocking a product the overlap rule does not track, pass after pass,
+    -- and it never goes down. So the last return is repeated only when the type
+    -- native passed in is the one the billing path last saw. On any other real
+    -- type this returns UNKNOWN, 0, and native's tank fallback (:890-892) puts the
+    -- tank's real type into wap for the next prepend to judge on its own. An
+    -- UNKNOWN argument (an empty tank, the buy-mode case) still repeats: UNKNOWN is
+    -- the stale value the repeat exists to keep out of wap, and a tank that ran dry
+    -- part way through a blocked stretch is still the same helper buying the same
+    -- product.
+    local function repeatedFill(sprayerSelf, fillType)
+        local last = sprayerSelf._sfLastExternalFillType
+        if last == nil then
+            return FillType.UNKNOWN, 0
+        end
+        if fillType ~= FillType.UNKNOWN and fillType ~= sprayerSelf._sfLastExternalFillArg then
+            return FillType.UNKNOWN, 0
+        end
+        return last, 0
+    end
+
+    local function packn(...)
+        return select("#", ...), { ... }
+    end
+
+    -- RSF-F196 V12c: one factory, three surfaces, through the owned layer. This
+    -- replaces the class assignment plus propagateExternalFillHookToLiveVehicles,
+    -- which assigned the CLASS wrapper onto types and instances and discarded any
+    -- type-level predecessor, and whose cleanup restored the class only.
+    local function makeExternalFillWrapper(original)
+        return function(sprayerSelf, fillType, dt)
+            if HookManager.isOverlapBlockedPass(sprayerSelf) then
+                return repeatedFill(sprayerSelf, fillType)
+            end
+            -- [SF-73] A target cycle's station supply is one capped request to the first
+            -- accessible stocked storage, measured on the station's own side; its bought
+            -- litres are recorded as the cycle's actual physical litres.
+            local sf73TA = self:getTargetApplication()
+            local sf73Live = sf73TA ~= nil and sf73TA:cycleFor(sprayerSelf) ~= nil
+            if sf73Live then
+                local handled, ftS, uS = sf73TA:stationFill(sprayerSelf, fillType, dt)
+                if handled then
+                    sprayerSelf._sfLastExternalFillType = ftS
+                    sprayerSelf._sfLastExternalFillArg = fillType
+                    return ftS, uS
+                end
+            end
+            local n, r = packn(billedExternalFill(original, sprayerSelf, fillType, dt))
+            sprayerSelf._sfLastExternalFillType = r[1]
+            sprayerSelf._sfLastExternalFillArg = fillType
+            if sf73Live and r[1] ~= nil and r[1] ~= FillType.UNKNOWN then
+                sf73TA:recordExternal(sprayerSelf, r[1], r[2])
+            end
+            return unpack(r, 1, n)
+        end
+    end
+    self:installOwnedRegisteredFunctionLayer(Sprayer, "getExternalFill", makeExternalFillWrapper, "sprayer",
+        "Sprayer.getExternalFill (F196 owned layer)")
+    SoilLogger.info("[OK] External fill hook installed (Sprayer.getExternalFill, owned layer)")
+    return true
+end
+
+-- =========================================================
+-- [SF-73] TARGET-ACCURATE N/P/K: the resolver's seams
+-- =========================================================
+-- One Soil-owned resolver answers a target cycle's quantity on the live
+-- getSprayerUsage path used by own, attached, helper-buy and station supply
+-- (Implementation v1.1 section 2). The seams, in the order a cycle meets them:
+--   * a PREPEND on Sprayer.onStartWorkAreaProcessing opens the cycle record;
+--   * the owned OUTER layer on getSprayerUsage (class, every sprayer type, every
+--     live instance and every later vehicle through ensureOwnedLayers) answers a
+--     target product's quote and delegates everything else to the captured
+--     predecessor, which is the actual-speed replacement installSprayerUsageHook
+--     put there (so non-target consumption is byte-identical);
+--   * the LAST start append (installTargetStartEnforcement) makes the work-area
+--     parameters say what the plan says;
+--   * the drain token, the external fill layer and the area hook record the
+--     actual litres and route the cycle (see those hooks).
+-- The controller is TargetApplication; nothing runs unless its release gate is
+-- open and the vehicle's AUTO is on.
+
+--- The target controller this manager serves, or nil.
+function HookManager:getTargetApplication()
+    local ss = self._soilSystemRef or (g_SoilFertilityManager and g_SoilFertilityManager.soilSystem)
+    return ss and ss.targetApplication or nil
+end
+
+--- The cycle-start prepend and the owned outer layer on getSprayerUsage.
+---@return boolean success
+function HookManager:installTargetApplicationHooks()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function"
+       or type(Sprayer.getSprayerUsage) ~= "function" then
+        SoilLogger.warning("[SF-73] Sprayer start/usage not available - target application not installed")
+        return false
+    end
+    local hookMgrRef = self
+
+    local origStart = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.prependedFunction(origStart, function(sprayerSelf, dt)
+        local ta = hookMgrRef:getTargetApplication()
+        if ta == nil then return end
+        local ok, err = pcall(ta.onCycleStart, ta, sprayerSelf, dt)
+        if not ok then SoilLogger.warning("[SF-73] cycle start failed: %s", tostring(err)) end
+    end)
+    self:register(Sprayer, "onStartWorkAreaProcessing", origStart,
+        "Sprayer.onStartWorkAreaProcessing (SF-73 cycle start)")
+
+    local function makeTargetUsageWrapper(predecessor)
+        return function(sprayerSelf, fillType, dt)
+            local ta = hookMgrRef:getTargetApplication()
+            if ta ~= nil and fillType ~= nil and fillType ~= FillType.UNKNOWN then
+                local ok, q = pcall(ta.quote, ta, sprayerSelf, fillType, dt, predecessor)
+                if ok and q ~= nil then return q end
+                -- a target cycle that cannot be quoted buys nothing, never the non-target rate
+                if not ok and ta:cycleFor(sprayerSelf) ~= nil then return 0 end
+            end
+            return predecessor(sprayerSelf, fillType, dt)
+        end
+    end
+    self:installOwnedRegisteredFunctionLayer(Sprayer, "getSprayerUsage", makeTargetUsageWrapper, "sprayer",
+        "Sprayer.getSprayerUsage (SF-73 owned target layer)")
+    SoilLogger.info("[OK] SF-73 target application installed (cycle start + owned usage layer; LOCKED by the release gate)")
+    return true
+end
+
+--- The last start append: a target cycle's work-area parameters say exactly what
+--- its plan says. A refused cycle keeps its resolved spray type but carries zero
+--- usage and zero fill level, so native neither paints nor raises out-of-fill
+--- (Sprayer.lua:314-321); the legacy multiplier already stood down for it.
+---@return boolean success
+function HookManager:installTargetStartEnforcement()
+    if not Sprayer or type(Sprayer.onStartWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("[SF-73] Sprayer.onStartWorkAreaProcessing not available - no target enforcement")
+        return false
+    end
+    local hookMgrRef = self
+    local original = Sprayer.onStartWorkAreaProcessing
+    Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(original, function(sprayerSelf, dt)
+        if not sprayerSelf.isServer then return end
+        local ta = hookMgrRef:getTargetApplication()
+        if ta == nil or ta:cycleFor(sprayerSelf) == nil then return end
+        local ok, err = pcall(ta.enforceStart, ta, sprayerSelf, dt)
+        if not ok then
+            -- fail closed: a target cycle that cannot be enforced spends and paints nothing
+            local wap = sprayerSelf.spec_sprayer and sprayerSelf.spec_sprayer.workAreaParameters
+            if wap ~= nil and ta:isTargetCycle(sprayerSelf) then
+                wap.usage, wap.usagePerMin, wap.sprayFillLevel = 0, 0, 0
+            end
+            SoilLogger.warning("[SF-73] start enforcement failed: %s", tostring(err))
+        end
+    end)
+    self:register(Sprayer, "onStartWorkAreaProcessing", original,
+        "Sprayer.onStartWorkAreaProcessing (SF-73 enforcement)")
     return true
 end
 
@@ -6701,28 +9662,60 @@ function HookManager:installSprayerStartHook()
         return false
     end
 
+    local hookMgrRef = self
     local original = Sprayer.onStartWorkAreaProcessing
     Sprayer.onStartWorkAreaProcessing = Utils.appendedFunction(
         original,
-        function(self, dt)
+        function(self, dt, workAreas)
             if not self.isServer then return end
             local spec = self.spec_sprayer
             if not spec or not spec.workAreaParameters then return end
+            -- [#1063] The multiplier this hook actually applied to the usage, recorded
+            -- beside it for the litre coverage estimate to divide out: SF-79's pH factor
+            -- included, and 1 on every early return and for a usage that was 0 (so a
+            -- usage another writer fills in later, AI-1's injection, reads as 1.0x).
+            local wap = spec.workAreaParameters
+            wap.sfRateMult = 1.0
             if not g_SoilFertilityManager or not g_SoilFertilityManager.sprayerRateManager then return end
+            -- [SF-73] a target cycle's one quantity is never multiplied afterwards:
+            -- the pH factor was resolved inside its plan, before the minimum
+            local ta = hookMgrRef:getTargetApplication()
+            if ta ~= nil and ta:isTargetCycle(self) then return end
 
             -- Resolve rate via rootVehicle.id so separate tanker + boom setups
             -- (where self is the boom but rate was stored on the tractor) match.
             local root = self.rootVehicle
             local rateVehId = (root and root ~= self) and (root.id or 0) or (self.id or 0)
             local mult = g_SoilFertilityManager.sprayerRateManager:getMultiplier(rateVehId)
-            if mult == 1.0 then return end
+            -- [SF-79] pH-aware AUTO whole-rate, resolved before the multiplier and
+            -- applied once together with it.
+            local phFactor = 1.0
+            local soilSystem = g_SoilFertilityManager.soilSystem
+            if soilSystem and type(soilSystem.updatePHWorkAuto) == "function" then
+                -- [SF-79 D] Hand AUTO the CURRENT work-area list: the one the engine
+                -- raised this event with (WorkArea.lua:126 passes spec.workAreas), or the
+                -- vehicle's own list. spec_sprayer has no workArea member (none in the
+                -- decompiled Sprayer.lua), so the old read here was nil on every real
+                -- vehicle: AUTO could never have sampled anything even with its own two
+                -- defects fixed. The third defect, in the caller.
+                local currentAreas = workAreas
+                if type(currentAreas) ~= "table" then
+                    currentAreas = self.spec_workArea and self.spec_workArea.workAreas
+                end
+                local okPh, f = pcall(function()
+                    return soilSystem:updatePHWorkAuto(self, dt, currentAreas)
+                end)
+                if okPh and type(f) == "number" then phFactor = f end
+            end
+            local totalMult = mult * phFactor
+            if totalMult == 1.0 then return end
 
-            local wap = spec.workAreaParameters
             if wap.usage and wap.usage ~= 0 then
-                wap.usage = wap.usage * mult
+                wap.usage = wap.usage * totalMult
+                wap.sfRateMult = totalMult
             end
             if wap.usagePerMin and wap.usagePerMin ~= 0 then
-                wap.usagePerMin = wap.usagePerMin * mult
+                wap.usagePerMin = wap.usagePerMin * totalMult
             end
         end
     )
@@ -6749,6 +9742,36 @@ end
 -- Three-layer patch required: SpecializationUtil.registerFunction (line 91 of Sprayer.lua)
 -- + copyTypeFunctionsInto means class-table patches never reach live vehicle instances.
 -- Rate multiplier is no longer applied here; see installSprayerStartHook above.
+
+--- The two per-product terms of Soil's usage formula below: the sprayer's fill-type
+--- scale (else its default scale, else 1) and the spray type's litersPerSecond (else 1,
+--- as Sprayer.lua:509-513 defaults it). One function, so the formula and the native
+--- rate cannot disagree.
+---@return number fillScale, number litersPerSecond
+function HookManager.getSprayUsageTerms(sprayer, fillTypeIndex)
+    local spec = sprayer and sprayer.spec_sprayer
+    local fillScale = 1
+    if spec and spec.usageScale then
+        local scales = spec.usageScale.fillTypeScales
+        fillScale = (scales and fillTypeIndex and scales[fillTypeIndex])
+            or spec.usageScale.default or 1
+    end
+    local spT = g_sprayTypeManager and fillTypeIndex
+        and g_sprayTypeManager:getSprayTypeByFillTypeIndex(fillTypeIndex)
+    local lps = spT and spT.litersPerSecond or 1
+    return fillScale, lps
+end
+
+--- [#1063] The litres per hectare Soil's usage formula puts down at 1.0x. A tick uses
+--- fillScale x lps x km/h x width x dt x 0.001 litres and covers km/h x width x dt / 3.6e7
+--- hectares, so the rate is fillScale x lps x 36000, whatever the speed and width
+--- (lps 0.005 is 180 L/ha, 0.006 is 216).
+---@return number litresPerHa
+function HookManager.getNativeSprayRatePerHa(sprayer, fillTypeIndex)
+    local fillScale, lps = HookManager.getSprayUsageTerms(sprayer, fillTypeIndex)
+    return fillScale * lps * 36000
+end
+
 ---@return boolean success
 function HookManager:installSprayerUsageHook()
     if not Sprayer or type(Sprayer.getSprayerUsage) ~= "function" then
@@ -6801,18 +9824,11 @@ function HookManager:installSprayerUsageHook()
                 return originalFn(sprayerSelf, fillType, dt)
             end
 
-            -- fillType-specific scale (falls back to usageScale.default, normally 1.0)
-            local fillScale = 1
-            if spec_s.usageScale then
-                local ft_scales = spec_s.usageScale.fillTypeScales
-                fillScale = (ft_scales and ft_scales[fillType])
-                    or spec_s.usageScale.default or 1
-            end
-
+            -- fillType-specific scale (falls back to usageScale.default, normally 1.0) and
             -- litersPerSecond from the spray type manager (registered for all custom types
-            -- by registerCustomSprayTypes; vanilla types are always present).
-            -- spT was already resolved above in the towed-implement check.
-            local lps = spT and spT.litersPerSecond or 1
+            -- by registerCustomSprayTypes; vanilla types are always present). The same
+            -- terms give the coverage estimate its native rate (#1063).
+            local fillScale, lps = HookManager.getSprayUsageTerms(sprayerSelf, fillType)
 
             -- Working width: prefer active spray-type's usageScale, then vehicle default.
             local usScale = spec_s.usageScale
@@ -6972,17 +9988,15 @@ function HookManager:installExternalFillOptInHook()
             local okFW, fw = pcall(function() return root:getIsFieldWorkActive() end)
             if not (okFW and fw) then return vanillaResult end
 
-            -- Identify tank contents (priority: arg fill type → tank fill type → last known custom type).
-            local fillType = nil
-            local okFui, sprayFui = pcall(function() return sprayerSelf:getSprayerFillUnitIndex() end)
-            if okFui and sprayFui then
-                local okFt, ft = pcall(function() return sprayerSelf:getFillUnitFillType(sprayFui) end)
-                if okFt and ft and ft ~= FillType.UNKNOWN then fillType = ft end
-            end
-            if (not fillType or not prices[fillType]) and sprayerSelf._soilLastCustomFillType then
-                fillType = sprayerSelf._soilLastCustomFillType
-            end
-            if not fillType or not prices[fillType] then return vanillaResult end
+            -- RSF-F196 R1b: identity through the one resolver (current tank, then the
+            -- engine's synced lastValidFillType), not through prices[] and not through
+            -- the retired _soilLastCustomFillType stamp. A refused product is not opted
+            -- in: the opt-in is what puts a tank on the external-fill path, and a
+            -- refused product must not reach that path at all.
+            local fillType = hm:resolveCustomProductIntent(sprayerSelf, nil)
+            if not fillType then return vanillaResult end
+            if hm:isRefusedProduct(fillType) then return vanillaResult end
+            if not prices[fillType] then return vanillaResult end
 
             local mi = g_currentMission and g_currentMission.missionInfo
             if not mi then return vanillaResult end
@@ -7009,115 +10023,15 @@ function HookManager:installExternalFillOptInHook()
     -- -----------------------------------------------------------------
     -- Layer 1: patch the Sprayer class table (future vehicleType loads).
     -- -----------------------------------------------------------------
-    Sprayer.getIsSprayerExternallyFilled = makeReplacement(originalClassFn)
-
-    -- -----------------------------------------------------------------
-    -- Layer 2: patch g_vehicleTypeManager.types[*].functions for every
-    -- type that has Sprayer in its specialization list.
-    -- -----------------------------------------------------------------
-    local typesPatched, typesSeen, typesSkipped = 0, 0, 0
-    local typeManager = g_vehicleTypeManager
-    if typeManager and typeManager.types then
-        for _, typeDef in pairs(typeManager.types) do
-            typesSeen = typesSeen + 1
-            local hasSprayer = false
-            if typeDef.specializationsByName and typeDef.specializationsByName.sprayer then
-                hasSprayer = true
-            elseif typeDef.specializations then
-                for _, spec in ipairs(typeDef.specializations) do
-                    if spec == Sprayer or (spec and spec.specName == "sprayer") then
-                        hasSprayer = true
-                        break
-                    end
-                end
-            end
-            if hasSprayer and typeDef.functions and typeDef.functions.getIsSprayerExternallyFilled then
-                local origTypeFn = typeDef.functions.getIsSprayerExternallyFilled
-                typeDef.functions.getIsSprayerExternallyFilled = makeReplacement(origTypeFn)
-                typesPatched = typesPatched + 1
-            elseif hasSprayer then
-                typesSkipped = typesSkipped + 1
-            end
-        end
-    end
-    SoilLogger.debug("BUY opt-in hook: vehicleType scan - seen=%d, sprayer-types patched=%d",
-        typesSeen, typesPatched)
-
-    -- -----------------------------------------------------------------
-    -- Layer 3: patch every already-live vehicle instance.
-    -- -----------------------------------------------------------------
-    local vehPatched, vehSeen = 0, 0
-    if g_currentMission and g_currentMission.vehicleSystem and g_currentMission.vehicleSystem.vehicles then
-        for _, vehicle in pairs(g_currentMission.vehicleSystem.vehicles) do
-            vehSeen = vehSeen + 1
-            if vehicle and rawget(vehicle, "getIsSprayerExternallyFilled") then
-                local origInstFn = vehicle.getIsSprayerExternallyFilled
-                vehicle.getIsSprayerExternallyFilled = makeReplacement(origInstFn)
-                vehPatched = vehPatched + 1
-            end
-        end
-    elseif g_currentMission and g_currentMission.vehicles then
-        -- Older API path fallback
-        for _, vehicle in pairs(g_currentMission.vehicles) do
-            vehSeen = vehSeen + 1
-            if vehicle and rawget(vehicle, "getIsSprayerExternallyFilled") then
-                local origInstFn = vehicle.getIsSprayerExternallyFilled
-                vehicle.getIsSprayerExternallyFilled = makeReplacement(origInstFn)
-                vehPatched = vehPatched + 1
-            end
-        end
-    end
-    SoilLogger.debug("BUY opt-in hook: live vehicle scan - seen=%d, patched=%d", vehSeen, vehPatched)
-
-    -- -----------------------------------------------------------------
-    -- Cleanup: restore only the Sprayer class reference on uninstall.
-    -- (Types/instances aren't restored - they'd already be stale.)
-    -- -----------------------------------------------------------------
-    self:register(Sprayer, "getIsSprayerExternallyFilled", originalClassFn,
-        "Sprayer.getIsSprayerExternallyFilled (class only)")
+    -- RSF-F196 V12c: the same factory on all three surfaces through the owned
+    -- layer. This replaces the inline class assignment, the vehicle-type scan and
+    -- the live-vehicle scan that lived here unowned: no records, no idempotence
+    -- guard, no late-vehicle ensure, and a cleanup that restored the class only.
+    local layer = self:installOwnedRegisteredFunctionLayer(Sprayer, "getIsSprayerExternallyFilled", makeReplacement, "sprayer",
+        "Sprayer.getIsSprayerExternallyFilled (F196 owned layer)")
+    SoilLogger.debug("BUY opt-in hook: owned layer references=%d", layer and #layer.refs or 0)
     SoilLogger.info("[OK] External fill opt-in hook installed - BUY mode should now engage for custom types")
     return true
-end
-
--- =========================================================
--- Re-apply the opt-in patch to the `getExternalFill` function too
--- (same dispatch issue - the existing installExternalFillHook patches only the
--- class table, so it never reaches live instances).  We piggy-back here to
--- patch typeDef.functions["getExternalFill"] and live instances with the
--- SAME wrapper that installExternalFillHook already built.
--- =========================================================
-function HookManager:propagateExternalFillHookToLiveVehicles()
-    if not Sprayer then return end
-    local classFn = Sprayer.getExternalFill  -- the wrapper installed by installExternalFillHook
-    if not classFn then return end
-
-    local typesPatched = 0
-    if g_vehicleTypeManager and g_vehicleTypeManager.types then
-        for typeName, typeDef in pairs(g_vehicleTypeManager.types) do
-            local hasSprayer = false
-            if typeDef.specializationsByName and typeDef.specializationsByName.sprayer then
-                hasSprayer = true
-            end
-            if hasSprayer and typeDef.functions and typeDef.functions.getExternalFill then
-                -- Only overwrite if still pointing at the original vanilla fn.
-                typeDef.functions.getExternalFill = classFn
-                typesPatched = typesPatched + 1
-            end
-        end
-    end
-
-    local vehPatched = 0
-    local vList = (g_currentMission and g_currentMission.vehicleSystem and
-                   g_currentMission.vehicleSystem.vehicles) or
-                  (g_currentMission and g_currentMission.vehicles) or {}
-    for _, vehicle in pairs(vList) do
-        if vehicle and rawget(vehicle, "getExternalFill") then
-            vehicle.getExternalFill = classFn
-            vehPatched = vehPatched + 1
-        end
-    end
-    SoilLogger.debug("getExternalFill wrapper propagated - typeDefs=%d, liveVehicles=%d",
-        typesPatched, vehPatched)
 end
 
 -- =========================================================
@@ -7565,71 +10479,19 @@ function HookManager:getBoomCellPositions(vehicle, rootX, rootZ)
     local cellSize = SoilConstants.ZONE.CELL_SIZE
     local xs, zs = {}, {}
 
-    local function addNode(node)
-        if not node then return end
+    -- #1039: the cells and the boom line come from ONE collector. This used to be an
+    -- inline copy of _collectBoomNodes, so a fix to one left the other wide.
+    for _, node in ipairs(self:_collectBoomNodes(vehicle)) do
         local ok, x, _, z = pcall(getWorldTranslation, node)
         if ok and x then table.insert(xs, x); table.insert(zs, z) end
-    end
-
-    local function collectFromObj(obj)
-        if not obj then return end
-        -- WorkArea corner nodes. FS25 work areas are defined by start/width/height nodes
-        -- (confirmed in SDK Combine/Baler/CropSensor): 'width' is the lateral boom edge,
-        -- 'height' the forward edge. The old code read start and a non-existent 'end', so a
-        -- broadcast spreader without VariableWorkWidth collapsed to the single start node -
-        -- getBoomCellPositions then returned nil and dry fertilizer never painted boom-width
-        -- coverage cells (no tracking markers, map barely changed). Issue #626.
-        if obj.spec_workArea and obj.spec_workArea.workAreas then
-            for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                addNode(wa.start)
-                addNode(wa.width)
-                addNode(wa.height)
-            end
-        end
-        -- VWW section maxWidthNodes capture the outer boom edge of each section -
-        -- workArea start/end nodes are often co-located at the centre, giving a
-        -- near-zero span and causing the function to return nil for boom sprayers.
-        local vww = obj.spec_variableWorkWidth
-        if vww and vww.sections then
-            for _, section in ipairs(vww.sections) do
-                -- Skip inactive sections (Partial Width mode): their maxWidthNodes are still
-                -- physically at the boom tip position, which would incorrectly inflate the
-                -- detected boom span and credit cells that were never sprayed (#475/#476).
-                if section.isActive ~= false and section.maxWidthNode then
-                    local ok, x, _, z = pcall(getWorldTranslation, section.maxWidthNode)
-                    if ok and x then table.insert(xs, x); table.insert(zs, z) end
-                end
-            end
-        end
-    end
-
-    collectFromObj(vehicle)
-    if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
-        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements or {}) do
-            collectFromObj(impl and impl.object)
-        end
     end
 
     if #xs < 2 then
         -- Fallback for broadcast spreaders (e.g. Bredal K105): work area nodes are
         -- co-located at the implement centre, giving a near-zero span.  Use the
-        -- implement's spec_sprayer.usageScale.workingWidth to generate a proper sweep
-        -- so coverage tracks correctly (#758).
-        local implWW = nil
-        local spec_s = vehicle.spec_sprayer
-        if spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth then
-            implWW = spec_s.usageScale.workingWidth
-        end
-        if not implWW and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
-            for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
-                local obj = impl and impl.object
-                local iss = obj and obj.spec_sprayer
-                if iss and iss.usageScale and iss.usageScale.workingWidth then
-                    implWW = iss.usageScale.workingWidth
-                    break
-                end
-            end
-        end
+        -- implement's working width to generate a proper sweep so coverage tracks
+        -- correctly (#758); the active spray type's width, like the boom line (#1039).
+        local implWW = self:_implWorkingWidth(vehicle)
         if implWW and implWW > 0 then
             local halfW = implWW * 0.5
             local pts = {}
@@ -7710,11 +10572,54 @@ end
 -- vehicle has no components array at all. The old fallback branch's
 -- getWorldRotation(vehicle.rootNode) read is not inherited.
 
+--- #1039: the spray type obj is spreading now, through the vehicle's own
+--- getActiveSprayType (Sprayer.lua:626-648: the first spray type whose fill types
+--- hold the tank's fill type, with Foldable's folding-configuration gate at
+--- Foldable.lua:1164-1176). nil for a non-sprayer or when none is active.
+function HookManager:_activeSprayType(obj)
+    if obj == nil or type(obj.getActiveSprayType) ~= "function" then return nil end
+    local ok, sprayType = pcall(obj.getActiveSprayType, obj)
+    if ok and type(sprayType) == "table" then return sprayType end
+    return nil
+end
+
+--- #1039: whether a work area belongs to the pass the active spray type makes. The
+--- engine's rule (Sprayer:getIsWorkAreaActive, Sprayer.lua:726-734): a work area that
+--- names another spray type is idle. One that names none, or a machine with no
+--- active spray type, always belongs.
+function HookManager.workAreaInPass(workArea, activeSprayType)
+    return workArea.sprayType == nil or activeSprayType == nil
+        or activeSprayType.index == workArea.sprayType
+end
+
+--- #1039: whether obj's variable-width sections govern this pass. For a spray type
+--- that does not support variable work width the engine switches the sections off
+--- and sets every one to full width (Sprayer:onSprayTypeChange, Sprayer.lua:1034-1041;
+--- VariableWorkWidth.lua:290-296), so they are all isActive and say nothing about
+--- where the product lands (lime on the Streumaster FW 212 TD Profi).
+function HookManager.sectionsInPass(obj, activeSprayType)
+    local vww = obj and obj.spec_variableWorkWidth
+    if not (vww and vww.sections and #vww.sections > 0) then return false end
+    return activeSprayType == nil or activeSprayType.supportsVariableWorkWidth ~= false
+end
+
+--- #1039: HookManager.sectionsInPass for obj's own active spray type.
+function HookManager:_isSectionedPass(obj)
+    return HookManager.sectionsInPass(obj, self:_activeSprayType(obj))
+end
+
 --- Collect the boom's spanning node references (workArea corners + active VWW
 --- section tips) from a vehicle and its attached implements. Inactive VWW sections
 --- are excluded on purpose: their nodes sit at the boom tip whether or not they are
 --- spraying, so including them would inflate the line back to full width in Partial
---- Width mode (#475/#476). Mirrors the node set getBoomCellPositions collects.
+--- Width mode (#475/#476). The one node set for both the cell sweep
+--- (getBoomCellPositions) and the boom line (getBoomLineEndpoints).
+---
+--- #1039: only the pass the active spray type makes, read per object because every
+--- attached implement has its own. A work area for another spray type is left out,
+--- and so are the sections when the spray type does not use them. Lime on the
+--- Streumaster was tracked at the fertilizer sections' 42 m instead of its own 15 m
+--- work area, and the Bredal K105 at its outermost 30 m in every configuration.
 function HookManager:_collectBoomNodes(vehicle)
     local nodes = {}
     local function addNode(node)
@@ -7722,16 +10627,24 @@ function HookManager:_collectBoomNodes(vehicle)
     end
     local function collectFromObj(obj)
         if not obj then return end
+        local activeSprayType = self:_activeSprayType(obj)
+        -- WorkArea corner nodes. FS25 work areas are defined by start/width/height nodes
+        -- (confirmed in SDK Combine/Baler/CropSensor): 'width' is the lateral boom edge,
+        -- 'height' the forward edge. Reading a non-existent 'end' collapsed a broadcast
+        -- spreader without VariableWorkWidth to the single start node (#626).
         if obj.spec_workArea and obj.spec_workArea.workAreas then
             for _, wa in ipairs(obj.spec_workArea.workAreas) do
-                addNode(wa.start)
-                addNode(wa.width)
-                addNode(wa.height)
+                if HookManager.workAreaInPass(wa, activeSprayType) then
+                    addNode(wa.start)
+                    addNode(wa.width)
+                    addNode(wa.height)
+                end
             end
         end
-        local vww = obj.spec_variableWorkWidth
-        if vww and vww.sections then
-            for _, section in ipairs(vww.sections) do
+        -- VWW section maxWidthNodes capture the outer boom edge of each section:
+        -- workArea nodes are often co-located at the centre on boom sprayers.
+        if HookManager.sectionsInPass(obj, activeSprayType) then
+            for _, section in ipairs(obj.spec_variableWorkWidth.sections) do
                 if section.isActive ~= false and section.maxWidthNode then
                     addNode(section.maxWidthNode)
                 end
@@ -7747,19 +10660,363 @@ function HookManager:_collectBoomNodes(vehicle)
     return nodes
 end
 
+-- =========================================================
+-- MAINTENANCE row 229: a switched-off section does not stamp
+-- =========================================================
+-- The cell sweep is one span from the min to the max collected node, so a section
+-- switched off in the middle of the boom lies inside it, and a work area's corners
+-- hold a switched-off edge section in it (workAreaInPass is a spray-type test only).
+-- #475/#476 (RSF-836 invariant 1) decided that a switched-off section does not stamp.
+--
+-- "Off" is the state a section had before Soil's own per-tick section logic ran: the
+-- player's width, the engine, or another mod such as CoursePlay. The section state
+-- preserver saves it at the start of the tick (_sfSavedSectionStates), and the stamp
+-- runs inside the same tick's onEndWorkAreaProcessing, before the preserver restores
+-- and clears it. So Soil's own See & Spray, Smart Sensor, overlap and boundary
+-- suppressions keep stamping as before (Tyson's ruling, 2026-10-06, Option B).
+--
+-- Only the stamp is filtered. getBoomCellPositions returns what it always did, so the
+-- boom paint and the burn metering that share its points are untouched, and with no
+-- section off nothing here runs: a full-width pass stamps exactly what it did.
+
+--- The lateral ground each section covers, in obj's own frame (local X, the engine's
+--- working-width axis, WorkArea.lua:307-314, the frame getBoomLineEndpoints uses).
+--- A work area tied to the section (workArea.sectionIndex, which the engine idles
+--- while the section is off, VariableWorkWidth.lua:377-383) gives it exactly, from its
+--- nodes. Otherwise a side section reaches from the next tip inward on its side (or
+--- the frame's centre line) out to its own maxWidthNode, and a centre section covers
+--- its tip either side. A section with neither has no known ground. Returns
+--- [sectionIndex] = { lo, hi } and [sectionIndex] = the local Z (along the travel) of
+--- the nodes that gave it: the boom line at that section.
+function HookManager.sectionLateralExtents(obj, frame, activeSprayType)
+    local sections = obj.spec_variableWorkWidth.sections
+    local fwdSum, fwdN = {}, {}
+    local function lat(node, i)
+        local ok, x, _, z = pcall(localToLocal, node, frame, 0, 0, 0)
+        if ok and type(x) == "number" then
+            if type(z) == "number" then
+                fwdSum[i] = (fwdSum[i] or 0) + z
+                fwdN[i] = (fwdN[i] or 0) + 1
+            end
+            return x
+        end
+        return nil
+    end
+    local ground = {}
+    local workAreas = obj.spec_workArea and obj.spec_workArea.workAreas
+    if workAreas then
+        for _, wa in ipairs(workAreas) do
+            local i = wa.sectionIndex
+            if i ~= nil and sections[i] ~= nil and HookManager.workAreaInPass(wa, activeSprayType) then
+                local corners = { wa.start, wa.width, wa.height }
+                for k = 1, 3 do
+                    local x = corners[k] ~= nil and lat(corners[k], i) or nil
+                    if x then
+                        local g = ground[i]
+                        if g == nil then
+                            ground[i] = { x, x }
+                        else
+                            g[1] = math.min(g[1], x)
+                            g[2] = math.max(g[2], x)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    local tips = {}
+    for i, section in ipairs(sections) do
+        if ground[i] == nil and section.maxWidthNode ~= nil then
+            local t = lat(section.maxWidthNode, i)
+            if t then tips[#tips + 1] = { i = i, t = t, centre = section.isCenter == true } end
+        end
+    end
+    local centreHalf = 0
+    for _, a in ipairs(tips) do
+        if a.centre and math.abs(a.t) > 0 then
+            centreHalf = math.max(centreHalf, math.abs(a.t))
+            ground[a.i] = { -math.abs(a.t), math.abs(a.t) }
+        end
+    end
+    for _, a in ipairs(tips) do
+        if not a.centre then
+            local reach = math.abs(a.t)
+            local inner = (centreHalf < reach) and centreHalf or 0
+            for _, b in ipairs(tips) do
+                if not b.centre and b.i ~= a.i and (b.t > 0) == (a.t > 0) then
+                    local r = math.abs(b.t)
+                    if r < reach and r > inner then inner = r end
+                end
+            end
+            local sign = (a.t > 0) and 1 or -1
+            ground[a.i] = (sign > 0) and { inner, reach } or { -reach, -inner }
+        end
+    end
+    local fwd = {}
+    for i in pairs(ground) do
+        if fwdN[i] then fwd[i] = fwdSum[i] / fwdN[i] end
+    end
+    return ground, fwd
+end
+
+--- sectionLateralExtents, with the outermost section on each side also owning
+--- everything beyond it, which is where a boom-wide work area's corners sit (the
+--- stamp's ground, MAINTENANCE row 229). Returns [sectionIndex] = { lo, hi }.
+function HookManager.sectionLateralGround(obj, frame, activeSprayType)
+    local extents = HookManager.sectionLateralExtents(obj, frame, activeSprayType)
+    local ground = {}
+    for i, e in pairs(extents) do ground[i] = { e[1], e[2] } end
+    local outer = {}   -- [1] = outermost on the +X side, [-1] = on the -X side
+    for i, g in pairs(ground) do
+        local side = (g[1] >= 0) and 1 or ((g[2] <= 0) and -1 or 0)
+        if side ~= 0 then
+            local reach = (side > 0) and g[2] or -g[1]
+            if outer[side] == nil or reach > outer[side].reach then outer[side] = { i = i, reach = reach } end
+        end
+    end
+    if outer[1] then ground[outer[1].i][2] = math.huge end
+    if outer[-1] then ground[outer[-1].i][1] = -math.huge end
+    return ground
+end
+
+-- =========================================================
+-- MAINTENANCE row 232: each section reads the ground under itself
+-- =========================================================
+-- Smart Sensor, See & Spray and Variable Rate each decided a section from one point
+-- halfway between the vehicle root and the section's tip, so an outer section read
+-- the ground inside an inner section's strip and the outer half of the boom was never
+-- read. They now read points on the boom line across the section's own width.
+HookManager.SECTION_SAMPLE_POINTS = 3
+
+--- Where the sprayer hooks read the ground under each section this tick, in world
+--- space: [sectionIndex] = { centre, then the others across its width }, each {x=, z=},
+--- spaced evenly across the section's own lateral ground on its boom line. A section
+--- whose ground is unknown gets one point, the boom-line centre (the preserver's) or
+--- the root. Cached on the sprayer per mission time and root position.
+function HookManager:sectionSamplePoints(sprayer)
+    local vww = sprayer.spec_variableWorkWidth
+    local sections = vww and vww.sections or {}
+    local now = g_currentMission and g_currentMission.time or 0
+    local rx, rz = sprayer._sfRootX, sprayer._sfRootZ
+    local cache = sprayer._sfSectionSampleCache
+    if cache and cache.t == now and cache.rx == rx and cache.rz == rz then return cache.points end
+
+    local fallback = {
+        x = sprayer._sfBoomCentreX or rx or 0,
+        z = sprayer._sfBoomCentreZ or rz or 0,
+    }
+    local points = {}
+    local frame = sprayer.components and sprayer.components[1] and sprayer.components[1].node or sprayer.rootNode
+    local extents, fwd = {}, {}
+    if frame ~= nil and #sections > 0 then
+        extents, fwd = HookManager.sectionLateralExtents(sprayer, frame, self:_activeSprayType(sprayer))
+    end
+    local n = HookManager.SECTION_SAMPLE_POINTS
+    local middle = math.floor(n / 2) + 1
+    for i = 1, #sections do
+        local e, f = extents[i], fwd[i]
+        local list = nil
+        if e and f then
+            local at = {}
+            for k = 1, n do
+                local lat = e[1] + (k - 0.5) / n * (e[2] - e[1])
+                local ok, wx, _, wz = pcall(localToWorld, frame, lat, 0, f)
+                if ok and type(wx) == "number" and type(wz) == "number" then
+                    at[k] = { x = wx, z = wz }
+                end
+            end
+            if at[middle] then
+                list = { at[middle] }
+                for k = 1, n do
+                    if k ~= middle and at[k] then list[#list + 1] = at[k] end
+                end
+            end
+        end
+        points[i] = list or { fallback }
+    end
+    sprayer._sfSectionSampleCache = { t = now, rx = rx, rz = rz, points = points }
+    return points
+end
+
+--- The lateral ground only obj's switched-off sections cover, as { frame, y, off }
+--- where off is a list of { lo, hi }; nil when none of obj's sections is off.
+function HookManager:_switchedOffGround(obj, activeSprayType)
+    local sections = obj.spec_variableWorkWidth.sections
+    local saved = obj._sfSavedSectionStates
+    local isOn, anyOff = {}, false
+    for i, section in ipairs(sections) do
+        local s = saved and saved[i]
+        if s == nil then s = section.isActive ~= false end
+        isOn[i] = s and true or false
+        if not isOn[i] then anyOff = true end
+    end
+    if not anyOff then return nil end
+    local frame = obj.components and obj.components[1] and obj.components[1].node or obj.rootNode
+    if frame == nil then return nil end
+    local ground = HookManager.sectionLateralGround(obj, frame, activeSprayType)
+    local offs, ons = {}, {}
+    for i = 1, #sections do
+        local g = ground[i]
+        if g then
+            if isOn[i] then ons[#ons + 1] = g else offs[#offs + 1] = { g[1], g[2] } end
+        elseif isOn[i] then
+            -- A spraying section whose ground is unknown could reach any of it, so
+            -- nothing is left out.
+            return nil
+        end
+    end
+    -- What only the switched-off sections cover: each off interval minus every on one.
+    local off = offs
+    for _, on in ipairs(ons) do
+        local rest = {}
+        for _, piece in ipairs(off) do
+            if on[2] < piece[1] or on[1] > piece[2] then
+                rest[#rest + 1] = piece
+            else
+                if piece[1] < on[1] then rest[#rest + 1] = { piece[1], on[1] } end
+                if on[2] < piece[2] then rest[#rest + 1] = { on[2], piece[2] } end
+            end
+        end
+        off = rest
+    end
+    if #off == 0 then return nil end
+    -- Neighbouring switched-off sections are one stretch of ground.
+    table.sort(off, function(a, b) return a[1] < b[1] end)
+    local merged = { off[1] }
+    for k = 2, #off do
+        local last, piece = merged[#merged], off[k]
+        if piece[1] <= last[2] then
+            if piece[2] > last[2] then last[2] = piece[2] end
+        else
+            merged[#merged + 1] = piece
+        end
+    end
+    off = merged
+    local ok, _, fy = pcall(getWorldTranslation, frame)
+    return { frame = frame, y = (ok and fy) or 0, off = off }
+end
+
+--- The switched-off ground of every object whose sections govern this pass (vehicle and
+--- its attached implements, each as _switchedOffGround gives it); nil when nothing is
+--- left out: no governing section is off, or a governing object with every section on
+--- keeps every point. Shared by cellsToStamp and the overlap record (MAINTENANCE 234).
+function HookManager:_switchedOffGrounds(vehicle)
+    local grounds = {}
+    local function fromObj(obj)
+        if not obj then return true end
+        local activeSprayType = self:_activeSprayType(obj)
+        if not HookManager.sectionsInPass(obj, activeSprayType) then return true end
+        local g = self:_switchedOffGround(obj, activeSprayType)
+        if g == nil then return false end   -- a boom with every section on keeps every point
+        grounds[#grounds + 1] = g
+        return true
+    end
+    if not fromObj(vehicle) then return nil end
+    if vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
+        for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
+            if not fromObj(impl and impl.object) then return nil end
+        end
+    end
+    if #grounds == 0 then return nil end
+    return grounds
+end
+
+--- MAINTENANCE row 229: the points markBoomCells may stamp. pts is the tick's cell
+--- sweep (getBoomCellPositions), an axis-aligned line through the vehicle root. A
+--- point is left out only when the sweep line's whole stretch through its 10 m cell
+--- lies on ground that only switched-off sections cover, so a cell any sprayed ground
+--- reaches is still stamped (the 10 m resolution is the zone grid's, as built), and the
+--- cells stamped are always a subset of the ones the sweep alone would stamp. Returns
+--- pts itself when no section that governs this pass is off.
+function HookManager:cellsToStamp(vehicle, pts)
+    if pts == nil or #pts < 2 or vehicle == nil then return pts end
+    local grounds = self:_switchedOffGrounds(vehicle)
+    if grounds == nil then return pts end
+
+    local cellSize = SoilConstants.ZONE.CELL_SIZE
+    local alongX = pts[1].z == pts[2].z
+    local function wholeStretchOff(g, ax, az, bx, bz)
+        local okA, la = pcall(worldToLocal, g.frame, ax, g.y, az)
+        local okB, lb = pcall(worldToLocal, g.frame, bx, g.y, bz)
+        if not (okA and okB and type(la) == "number" and type(lb) == "number") then return false end
+        local lo, hi = math.min(la, lb), math.max(la, lb)
+        for _, piece in ipairs(g.off) do
+            if lo >= piece[1] and hi <= piece[2] then return true end
+        end
+        return false
+    end
+    local out = {}
+    for _, pt in ipairs(pts) do
+        local ax, az, bx, bz
+        if alongX then
+            ax = math.floor(pt.x / cellSize) * cellSize
+            bx, az, bz = ax + cellSize, pt.z, pt.z
+        else
+            az = math.floor(pt.z / cellSize) * cellSize
+            bz, ax, bx = az + cellSize, pt.x, pt.x
+        end
+        local leaveOut = true
+        for _, g in ipairs(grounds) do
+            if not wholeStretchOff(g, ax, az, bx, bz) then leaveOut = false; break end
+        end
+        if not leaveOut then out[#out + 1] = pt end
+    end
+    return out
+end
+
+--- [SF-934] Record where a tillage / sowing tick actually worked, for the additive
+--- strip painter in SoilFertilitySystem:vmLocalBump.
+---
+--- The root node on its own is a single point: it carries no working width and no
+--- heading, so any painter seeded from it can only stamp a fixed square, which is
+--- what made the nutrient change depend on travel direction (#934). The work line is
+--- the same lateral span the sprayer painter uses, derived from the work-area
+--- start/width/height nodes that every tillage implement has, so the painted strip
+--- follows the real working width at any heading. fieldId keys the sweep anchor so a
+--- pass on one field never links to a pass on another.
+---@param vehicle table    the implement whose work area defines the span
+---@param x number         root-node world X (kept for the coarse zone-grid consumers)
+---@param z number         root-node world Z
+---@param fieldId number   the field this tick worked
+function HookManager:_recordTillagePoint(vehicle, x, z, fieldId)
+    local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if ss == nil then return end
+    ss._lastTillageX = x
+    ss._lastTillageZ = z
+    ss._lastTillageFieldId = fieldId
+    ss._lastTillageLine = self:getBoomLineEndpoints(vehicle, x, z)
+end
+
+--- #1039: obj's working width for the pass its active spray type makes, sized the
+--- way the engine sizes usage (Sprayer:getSprayerUsage, Sprayer.lua:503-523) and the
+--- usage override does: the active spray type's usageScale, else the machine's; the
+--- named work area's width when it has one, else workingWidth. nil for a non-sprayer.
+function HookManager:_sprayTypeWorkingWidth(obj)
+    local spec_s = obj and obj.spec_sprayer
+    if not spec_s then return nil end
+    local usScale = spec_s.usageScale
+    local activeSprayType = self:_activeSprayType(obj)
+    if activeSprayType and activeSprayType.usageScale then
+        usScale = activeSprayType.usageScale
+    end
+    if not usScale then return nil end
+    local ww = usScale.workingWidth
+    if usScale.workAreaIndex ~= nil and type(obj.getWorkAreaWidth) == "function" then
+        local okW, w = pcall(obj.getWorkAreaWidth, obj, usScale.workAreaIndex)
+        if okW and type(w) == "number" and w > 0 then ww = w end
+    end
+    return ww
+end
+
 --- The implement working width used by the fallback (broadcast spreader whose work
---- area nodes are co-located at the centre, so no lateral span exists).
+--- area nodes are co-located at the centre, so no lateral span exists). Both the
+--- cell sweep and the boom line fall back through here.
 function HookManager:_implWorkingWidth(vehicle)
-    local spec_s = vehicle and vehicle.spec_sprayer
-    local ww = spec_s and spec_s.usageScale and spec_s.usageScale.workingWidth
+    local ww = self:_sprayTypeWorkingWidth(vehicle)
     if not ww and vehicle and vehicle.spec_attacherJoints and vehicle.spec_attacherJoints.attachedImplements then
         for _, impl in ipairs(vehicle.spec_attacherJoints.attachedImplements) do
-            local obj = impl and impl.object
-            local iss = obj and obj.spec_sprayer
-            if iss and iss.usageScale and iss.usageScale.workingWidth then
-                ww = iss.usageScale.workingWidth
-                break
-            end
+            ww = self:_sprayTypeWorkingWidth(impl and impl.object)
+            if ww then break end
         end
     end
     return ww

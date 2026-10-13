@@ -11,7 +11,7 @@
 -- ========================================
 -- SETTING CHANGE EVENT (Client -> Server)
 -- ========================================
-SoilSettingChangeEvent = {}
+SoilSettingChangeEvent = SoilSettingChangeEvent or {}
 SoilSettingChangeEvent_mt = Class(SoilSettingChangeEvent, Event)
 
 InitEventClass(SoilSettingChangeEvent, "SoilSettingChangeEvent")
@@ -119,9 +119,126 @@ function SoilSettingChangeEvent:run(connection)
 end
 
 -- ========================================
+-- AUTHORIZATION (MAINTENANCE rows 85, 110, 111)
+-- ========================================
+-- WHICH SIDE IS THIS, AND WHO SENT IT. Three engine facts every check below rests
+-- on, read from the decompiled scripts:
+--   * A listen host is BOTH g_server and g_client (gui/MPLoadingScreen.lua:436-437),
+--     so a "g_client == nil" test cannot tell a host from a pure client. A client's
+--     event reaches the host's readStream with that client's connection
+--     (network/Server.lua:436) and readStream calls run, so a guard on g_client alone
+--     let a modified client apply forged settings and field data to the host, which
+--     then saved and rebroadcast them. The side test is the SERVER'S presence.
+--   * A pure client reads with its server connection, created with isServer = true
+--     (network/Client.lua:152); the host's connections to its clients are created
+--     with isServer = false (network/Server.lua:454); Connection:getIsServer is that
+--     flag (network/Connection.lua:146-148). The local loopback runs on stream 0
+--     with the reversed flag (Connection.lua:47, :71-74; getIsLocal :149-151).
+--   * The sender's farm is the server's own player record for the connection
+--     (FSBaseMission:getFarmId, FSBaseMission.lua:1067: nil for a connection with no
+--     player, the local player's farm for a nil connection), never a wire value and
+--     never a farm-1 fallback.
+
+--- True when a server-to-client event may apply here: this side is not a server, and
+--- the event came in on this client's server connection. A nil connection is the
+--- engine's local delivery (Connection.lua:71-74), which never carries these events.
+local function sfAppliesOnClient(connection)
+    if g_server ~= nil then return false end
+    if connection ~= nil and type(connection.getIsServer) == "function" and not connection:getIsServer() then
+        return false
+    end
+    return true
+end
+
+--- The farm acting through connection, from the server's player record; nil when the
+--- engine cannot name one (no mission, no method, no player record). Fails closed.
+function SoilNetworkEvents_ActingFarmId(connection)
+    local mission = g_currentMission
+    if mission == nil or type(mission.getFarmId) ~= "function" then return nil end
+    local ok, farmId = pcall(mission.getFarmId, mission, connection)
+    if not ok or type(farmId) ~= "number" then return nil end
+    return farmId
+end
+
+--- On the server: may the sender on connection act on vehicle? The host's own local
+--- delivery (the loopback, Connection.lua:47) is its own hand and stands as before; a
+--- remote client must be a player whose farm the ENGINE'S OWN access rule admits to
+--- the vehicle: AccessHandler:canFarmAccess (farms/AccessHandler.lua:19-34): the
+--- owner's farm, a vehicle owned by EVERYONE, or a farm contracting for the owner
+--- (canFarmAccessOtherId :35-49 through Farm:getIsContractingFor, farms/Farm.lua:476),
+--- as the engine's AnimalMoveEvent tests its own objects (:78). Owner equality alone
+--- refused contractors (Bob's blocker on #1006). Anything the engine cannot vouch
+--- for is refused.
+function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
+    if connection == nil then return true end
+    if type(connection.getIsLocal) == "function" and connection:getIsLocal() then return true end
+    local farmId = SoilNetworkEvents_ActingFarmId(connection)
+    if farmId == nil or farmId <= 0 then return false end
+    local handler = g_currentMission and g_currentMission.accessHandler
+    if handler == nil or type(handler.canFarmAccess) ~= "function" then return false end
+    local ok, allowed = pcall(handler.canFarmAccess, handler, farmId, vehicle)
+    return ok and allowed == true
+end
+
+--- [SF-73] On the server: may the sender on connection switch this vehicle's AUTO,
+--- which with the release gate open is target automatic, a money and tank mode?
+--- Beyond the access rule above (Implementation v1.1 section 6): the vehicle exists
+--- and is not being deleted (Vehicle.lua:1096, :1133), the connection resolves to a
+--- user (UserManager:getUserByConnection, users/UserManager.lua:74), the sender's
+--- farm is a real farm and not the spectator farm (FarmManager.SPECTATOR_FARM_ID = 0,
+--- farms/FarmManager.lua:5), and it is the farm ACTIVELY operating the vehicle
+--- combination (the root's getActiveFarm: Enterable's controller farm while someone
+--- drives, else the owner, Enterable.lua:1150-1157, Vehicle.lua:1905). A contractor
+--- driving the owner's machine is its active farm; another farm's player is not.
+--- The host's own hand (nil or local connection) stands as before.
+function SoilNetworkEvents_ConnectionMayToggleTarget(connection, vehicle)
+    if vehicle == nil or vehicle.isDeleted == true or vehicle.isDeleting == true then return false end
+    if connection == nil then return true end
+    if type(connection.getIsLocal) == "function" and connection:getIsLocal() then return true end
+    local mission = g_currentMission
+    local users = mission and mission.userManager
+    if users == nil or type(users.getUserByConnection) ~= "function" then return false end
+    local okU, user = pcall(users.getUserByConnection, users, connection)
+    if not okU or user == nil then return false end
+    local farmId = SoilNetworkEvents_ActingFarmId(connection)
+    if farmId == nil or farmId <= 0 then return false end
+    local root = vehicle.rootVehicle or vehicle
+    if type(root.getActiveFarm) ~= "function" then return false end
+    local okA, activeFarm = pcall(root.getActiveFarm, root)
+    return okA and activeFarm == farmId
+end
+
+-- ========================================
+-- READ BOUNDS (MAINTENANCE row 112)
+-- ========================================
+-- The server reads every registered event a client sends (network/Server.lua:436)
+-- BEFORE any guard in run, so a forged count in a readStream loop is a hang vector on
+-- every host, dedicated servers included. Two rules. A server-to-client event's
+-- readStream returns at once on the wrong side (the side test above), reading
+-- nothing. Every count is held to its WRITER'S own bound: a count above it, or a short
+-- stream (nil), is a forged stream and the event refuses: it reads no further, marks
+-- itself (self.refused) and never runs. Reading short costs nobody but the sender: the
+-- server's event branch handles one message per packet with no loop (Server.lua
+-- :413-448), and a sender puts each event on its own stream (netSendStream right after
+-- writeStream, Connection.lua:99), so the unread rest is that one packet's and no
+-- other. The engine's own bit check (Server.lua:438-446) runs only when the SENDER wrote
+-- the debug flag (read at :427; written as g_networkDebug with the size word only when
+-- set, Connection.lua:85-90): a forged stream writes false, so a refused event leaves
+-- no error line.
+local SF_MAX_SYNC_FIELDS     = 4096   -- the legacy inline header; the join sends its fields in batches today (32 each). Farmland ids on shipped maps run in the low hundreds.
+local SF_MAX_BUFFER_TYPES    = 2 ^ ((FillTypeManager and FillTypeManager.SEND_NUM_BITS) or 8)   -- a nutrient buffer is keyed by fill type index (fillTypes/FillTypeManager.lua:6, 8 bits)
+local SF_ZONE_SYNC_MAX       = 500    -- the batch writer's own cap, hoisted from its local so the readers hold the same number
+local SF_SYNC_ROWS_PER_EVENT = 16     -- rows per value-map chunk, the dispatcher's bound (hoisted from below the reader)
+
+--- A count a writer could have written: a number from 0 to its bound.
+local function sfCountWithinBound(count, bound)
+    return type(count) == "number" and count >= 0 and count <= bound
+end
+
+-- ========================================
 -- SETTING SYNC EVENT (Server -> Clients)
 -- ========================================
-SoilSettingSyncEvent = {}
+SoilSettingSyncEvent = SoilSettingSyncEvent or {}
 SoilSettingSyncEvent_mt = Class(SoilSettingSyncEvent, Event)
 
 InitEventClass(SoilSettingSyncEvent, "SoilSettingSyncEvent")
@@ -138,6 +255,7 @@ function SoilSettingSyncEvent.new(settingName, settingValue)
 end
 
 function SoilSettingSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.settingName = streamReadString(streamId)
     local valueType = streamReadUInt8(streamId)
 
@@ -168,8 +286,11 @@ function SoilSettingSyncEvent:writeStream(streamId, connection)
 end
 
 function SoilSettingSyncEvent:run(connection)
-    -- CLIENT ONLY: Receive setting update from server
-    if g_client == nil then return end
+    -- CLIENT ONLY: receive a setting from the server. The side test is the server's
+    -- absence plus the server connection (MAINTENANCE row 85, the note at the top of
+    -- the file): a g_client test passed on a listen host too, and this write has no
+    -- schema check, so a forged name could even shadow the settings' own methods.
+    if not sfAppliesOnClient(connection) then return end
 
     -- Local-only settings are never synced from server; keep each player's own value
     local def = SettingsSchema and SettingsSchema.byId and SettingsSchema.byId[self.settingName]
@@ -200,7 +321,7 @@ end
 -- ========================================
 -- FULL SYNC REQUEST (Client -> Server)
 -- ========================================
-SoilRequestFullSyncEvent = {}
+SoilRequestFullSyncEvent = SoilRequestFullSyncEvent or {}
 SoilRequestFullSyncEvent_mt = Class(SoilRequestFullSyncEvent, Event)
 
 InitEventClass(SoilRequestFullSyncEvent, "SoilRequestFullSyncEvent")
@@ -244,6 +365,12 @@ function SoilRequestFullSyncEvent:run(connection)
     -- unblocks and stops the retry timer right away.
     connection:sendEvent(SoilFullSyncEvent.new(g_SoilFertilityManager.settings, {}))
 
+    -- [SF-22] Piggyback the requesting farm's PRIVATE walked-mask FULL onto the
+    -- join handshake, so a joining client gets its own farm's mask right away and
+    -- never another farm's bytes. Sits before the field-count early return so an
+    -- empty-map join still delivers the mask. No-op for a non-ordinary farm.
+    SoilNetworkEvents_SendScoutingMaskFull(connection)
+
     -- Step 2: nothing to batch - we're done.
     if fieldCount == 0 then return end
 
@@ -272,10 +399,17 @@ function SoilRequestFullSyncEvent:run(connection)
     -- approach is kept so the UI stays responsive during large syncs.
 
     local isDedicatedServer = (g_dedicatedServer ~= nil)
+    -- MAINTENANCE row 120: with no addUpdateable (unreachable today: BaseMission:addUpdateable
+    -- always exists, BaseMission.lua:534) the same synchronous batches go out. The old
+    -- fallback sent every field as ONE batch, which the reader refuses above
+    -- FULL_SYNC_BATCH_SIZE (row 112), so a map over 32 fields synced nothing. One writer, one
+    -- reader, one number.
+    local canDrip = g_currentMission ~= nil and g_currentMission.addUpdateable ~= nil
 
-    if isDedicatedServer then
-        -- Dedicated server path: send all batches immediately in a loop.
-        SoilLogger.info("Server: Dedicated server detected - sending %d fields in synchronous batches", fieldCount)
+    if isDedicatedServer or not canDrip then
+        -- Dedicated server path (and the no-addUpdateable case): send all batches immediately in a loop.
+        SoilLogger.info("Server: %s - sending %d fields in synchronous batches",
+            isDedicatedServer and "Dedicated server detected" or "addUpdateable unavailable", fieldCount)
         for batchIndex = 1, totalBatches do
             local startIdx = (batchIndex - 1) * batchSize + 1
             local endIdx   = math.min(batchIndex * batchSize, #fieldIds)
@@ -288,7 +422,7 @@ function SoilRequestFullSyncEvent:run(connection)
             connection:sendEvent(SoilFieldBatchSyncEvent.new(batch, isLast))
             SoilLogger.debug("Server: Field batch %d/%d sent (%d fields)", batchIndex, totalBatches, endIdx - startIdx + 1)
         end
-    elseif g_currentMission and g_currentMission.addUpdateable then
+    else
         -- Listen server / local host path: drip-feed batches via addUpdateable
         -- so the render thread is not blocked for large maps (issue #212).
         local batchDispatcher = {
@@ -336,14 +470,6 @@ function SoilRequestFullSyncEvent:run(connection)
         }
         g_currentMission:addUpdateable(batchDispatcher)
         SoilLogger.info("Server: Batch dispatcher registered (%d batches of %d fields)", totalBatches, batchSize)
-    else
-        -- Fallback for edge cases: send everything at once (old blocking behaviour)
-        SoilLogger.warning("Server: addUpdateable unavailable - sending all %d fields synchronously", fieldCount)
-        local allBatch = {}
-        for _, id in ipairs(fieldIds) do
-            allBatch[id] = fieldData[id]
-        end
-        connection:sendEvent(SoilFieldBatchSyncEvent.new(allBatch, true))
     end
 
     -- REFINED: stream the per-pixel value maps after the field data
@@ -356,7 +482,7 @@ end
 -- ========================================
 -- FULL SYNC RESPONSE (Server -> Client)
 -- ========================================
-SoilFullSyncEvent = {}
+SoilFullSyncEvent = SoilFullSyncEvent or {}
 SoilFullSyncEvent_mt = Class(SoilFullSyncEvent, Event)
 
 InitEventClass(SoilFullSyncEvent, "SoilFullSyncEvent")
@@ -373,6 +499,7 @@ function SoilFullSyncEvent.new(settings, fieldData)
 end
 
 function SoilFullSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.settings = {}
 
     -- Read all non-local settings in schema order (matches writeStream iteration)
@@ -390,6 +517,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
     self.fieldData = {}
     local fieldCount = streamReadInt32(streamId)
     local corruptionDetected = false
+    if not sfCountWithinBound(fieldCount, SF_MAX_SYNC_FIELDS) then self.refused = "FIELD_COUNT" return end
 
     for i = 1, fieldCount do
         local fieldId = streamReadInt32(streamId)
@@ -399,6 +527,10 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local potassium = streamReadFloat32(streamId)
         local organicMatter = streamReadFloat32(streamId)
         local pH = streamReadFloat32(streamId)
+        -- [SF-79] pH travels as a REPORT. pHReportValid says whether the sender had
+        -- a current positional report for this field; a false flag never overwrites
+        -- local/zone/display pH as authoritative soil.
+        local pHReportValid = streamReadBool(streamId)
         local lastCrop = streamReadString(streamId)
         local lastCrop2 = streamReadString(streamId)
         local lastCrop3 = streamReadString(streamId)
@@ -415,10 +547,14 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local burnDays = streamReadInt32(streamId)
         local coverageFrac = streamReadFloat32(streamId)
         local compaction = streamReadFloat32(streamId)
+        -- RSF-F905: amendment burn pair (value + owner-written known flag).
+        local amendBurnPen   = streamReadFloat32(streamId)
+        local amendBurnKnown = streamReadBool(streamId)
 
         -- Read nutrient buffer (V1.7)
         local buffer = {}
         local bufferCount = streamReadInt32(streamId)
+        if not sfCountWithinBound(bufferCount, SF_MAX_BUFFER_TYPES) then self.refused = "BUFFER_COUNT" return end
         for j = 1, bufferCount do
             local ftIdx = streamReadInt32(streamId)
             local amount = streamReadFloat32(streamId)
@@ -437,6 +573,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         local orgBreach = streamReadInt32(streamId)
         -- CD-11 bands (consume unconditionally to keep the stream aligned)
         local resBands  = ResistanceBands.readStream(streamId)
+        local everScouted = streamReadBool(streamId)   -- CD-11 durable scout bit, right after the bands
 
         -- Validate and sanitize field data
         local function validateNumber(value, min, max, default, name)
@@ -474,6 +611,7 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 potassium = potassium,
                 organicMatter = organicMatter,
                 pH = pH,
+                pHReportValid = pHReportValid == true,
                 lastCrop = lastCrop,
                 lastCrop2 = lastCrop2,
                 lastCrop3 = lastCrop3,
@@ -489,10 +627,13 @@ function SoilFullSyncEvent:readStream(streamId, connection)
                 activeDisease = activeDisease,
                 activeDiseaseSeverity = (activeDisease and SoilDiseaseSystem) and SoilDiseaseSystem.yieldSeverity(activeDisease) or 1.0,
                 diseaseDiscovered = diseaseDiscovered or false,
+                fieldEverScouted = everScouted == true,
                 dryDayCount = dryDays,
                 burnDaysLeft = burnDays,
                 coverageFraction = math.max(0, math.min(1, coverageFrac or 0)),
                 compaction = math.max(0, math.min(100, compaction or 0)),
+                amendBurnPenalty = math.max(0, math.min(1, amendBurnPen or 0)),
+                amendBurnKnown = amendBurnKnown == true,
                 nutrientBuffer = buffer,
                 initialized = true
             }
@@ -511,8 +652,9 @@ function SoilFullSyncEvent:readStream(streamId, connection)
         end
     end
 
-    -- Notify user if corruption was detected
-    if corruptionDetected and g_currentMission and g_currentMission.hud then
+    -- Notify user if corruption was detected: on the receiving CLIENT only (row 85).
+    -- A forged stream that reaches a listen host must not blink the host's HUD.
+    if corruptionDetected and sfAppliesOnClient(connection) and g_currentMission and g_currentMission.hud then
         g_currentMission.hud:showBlinkingWarning(g_i18n:getText("sf_notify_sync_error"), 6000)
     end
 
@@ -546,6 +688,8 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
         streamWriteFloat32(streamId, field.potassium or SoilConstants.FIELD_DEFAULTS.potassium)
         streamWriteFloat32(streamId, field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter)
         streamWriteFloat32(streamId, field.pH or SoilConstants.FIELD_DEFAULTS.pH)
+        -- [SF-79] report validity beside the pH report (false = not current local soil).
+        streamWriteBool(streamId, field.pHReportValid ~= false)
         streamWriteString(streamId, field.lastCrop or "")
         streamWriteString(streamId, field.lastCrop2 or "")
         streamWriteString(streamId, field.lastCrop3 or "")
@@ -562,6 +706,10 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
         streamWriteInt32(streamId, field.burnDaysLeft or 0)
         streamWriteFloat32(streamId, field.coverageFraction or 0)
         streamWriteFloat32(streamId, field.compaction or 0)
+        -- RSF-F905: amendment burn pair. Only the owner writes this stream, so the
+        -- flag is always true and the value is authoritative, including zero.
+        streamWriteFloat32(streamId, field.amendBurnPenalty or 0)
+        streamWriteBool(streamId, true)
 
         -- Write nutrient buffer (V1.7)
         local buffer = field.nutrientBuffer or {}
@@ -586,6 +734,8 @@ function SoilFullSyncEvent:writeStream(streamId, connection)
 
         -- CD-11: per-mode resistance bands (server-computed; never a raw score).
         ResistanceBands.writeStream(streamId, field)
+        -- CD-11: the durable scout bit rides after the bands on every field delivery.
+        streamWriteBool(streamId, field.fieldEverScouted == true)
     end
 end
 
@@ -593,7 +743,10 @@ function SoilFullSyncEvent:run(connection)
     -- CLIENT ONLY: Receive settings from server.
     -- Field data is no longer bundled here; it arrives via SoilFieldBatchSyncEvent
     -- packets sent immediately after this one (issue #212 chunked-sync fix).
-    if not g_client or not g_SoilFertilityManager then return end
+    -- The side test is the server's absence plus the server connection (row 85): a
+    -- g_client test passed on a listen host, where this event replaces every setting
+    -- and, on the legacy path, the whole fieldData table the host then saves.
+    if not sfAppliesOnClient(connection) or not g_SoilFertilityManager then return end
 
     SoilLogger.info("Client: Received full sync header from server (settings + %d legacy fields)", self:getFieldCount())
 
@@ -643,7 +796,7 @@ end
 -- The server sends one of these per batch of fields after the initial
 -- SoilFullSyncEvent (which carries settings + signals sync start).
 -- isLast=true on the final batch so the client can finalise.
-SoilFieldBatchSyncEvent = {}
+SoilFieldBatchSyncEvent = SoilFieldBatchSyncEvent or {}
 SoilFieldBatchSyncEvent_mt = Class(SoilFieldBatchSyncEvent, Event)
 
 InitEventClass(SoilFieldBatchSyncEvent, "SoilFieldBatchSyncEvent")
@@ -675,6 +828,8 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         streamWriteFloat32(streamId, field.potassium          or SoilConstants.FIELD_DEFAULTS.potassium)
         streamWriteFloat32(streamId, field.organicMatter      or SoilConstants.FIELD_DEFAULTS.organicMatter)
         streamWriteFloat32(streamId, field.pH                 or SoilConstants.FIELD_DEFAULTS.pH)
+        -- [SF-79] report validity beside the pH report.
+        streamWriteBool(streamId, field.pHReportValid ~= false)
         streamWriteString(streamId,  field.lastCrop           or "")
         streamWriteString(streamId,  field.lastCrop2          or "")
         streamWriteString(streamId,  field.lastCrop3          or "")
@@ -691,6 +846,9 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         streamWriteInt32(streamId,   field.burnDaysLeft       or 0)
         streamWriteFloat32(streamId, field.coverageFraction   or 0)
         streamWriteFloat32(streamId, field.compaction         or 0)
+        -- RSF-F905: amendment burn pair (owner-written, always known).
+        streamWriteFloat32(streamId, field.amendBurnPenalty   or 0)
+        streamWriteBool(streamId, true)
 
         -- Nutrient buffer (V1.7)
         local buffer = field.nutrientBuffer or {}
@@ -705,20 +863,19 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
         -- Zone cell data: per-cell soil state for the PDA cell-report overlay.
         -- Capped at 500 cells per field to prevent packet overflow on large fields.
         local zd = field.zoneData or {}
-        local ZONE_SYNC_MAX = 500
 
         -- Pass 1: count without building an intermediate table
         local zdCount = 0
         for _ in pairs(zd) do
             zdCount = zdCount + 1
-            if zdCount >= ZONE_SYNC_MAX then break end
+            if zdCount >= SF_ZONE_SYNC_MAX then break end
         end
         streamWriteInt32(streamId, zdCount)
 
         -- Pass 2: serialize directly into the stream
         local sent = 0
         for cellKey, cell in pairs(zd) do
-            if sent >= ZONE_SYNC_MAX then break end
+            if sent >= SF_ZONE_SYNC_MAX then break end
             sent = sent + 1
             streamWriteInt32(streamId,   tonumber(cellKey) or 0)
             streamWriteFloat32(streamId, cell.N  or 0)
@@ -745,13 +902,17 @@ function SoilFieldBatchSyncEvent:writeStream(streamId, connection)
 
         -- CD-11: per-mode resistance bands (server-computed; never a raw score).
         ResistanceBands.writeStream(streamId, field)
+        -- CD-11: the durable scout bit rides after the bands on every field delivery.
+        streamWriteBool(streamId, field.fieldEverScouted == true)
     end
 end
 
 function SoilFieldBatchSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     local count  = streamReadInt32(streamId)
     self.isLast  = streamReadBool(streamId)
     self.batchFields = {}
+    if not sfCountWithinBound(count, SoilConstants.NETWORK.FULL_SYNC_BATCH_SIZE) then self.refused = "FIELD_COUNT" return end
 
     for _ = 1, count do
         local fieldId        = streamReadInt32(streamId)
@@ -761,6 +922,8 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local potassium      = streamReadFloat32(streamId)
         local organicMatter  = streamReadFloat32(streamId)
         local pH             = streamReadFloat32(streamId)
+        -- [SF-79] pH report validity (see SoilFullSyncEvent).
+        local pHReportValid  = streamReadBool(streamId)
         local lastCrop       = streamReadString(streamId)
         local lastCrop2      = streamReadString(streamId)
         local lastCrop3      = streamReadString(streamId)
@@ -777,9 +940,13 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local burnDays       = streamReadInt32(streamId)
         local coverageFrac   = streamReadFloat32(streamId)
         local compaction     = streamReadFloat32(streamId)
+        -- RSF-F905: amendment burn pair.
+        local amendBurnPen   = streamReadFloat32(streamId)
+        local amendBurnKnown = streamReadBool(streamId)
 
         local buffer = {}
         local bCount = streamReadInt32(streamId)
+        if not sfCountWithinBound(bCount, SF_MAX_BUFFER_TYPES) then self.refused = "BUFFER_COUNT" return end
         for _ = 1, bCount do
             local ftIdx  = streamReadInt32(streamId)
             local amount = streamReadFloat32(streamId)
@@ -789,6 +956,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         -- Zone cell data (added v2.1.6)
         local zd = {}
         local zdCount = streamReadInt32(streamId)
+        if not sfCountWithinBound(zdCount, SF_ZONE_SYNC_MAX) then self.refused = "ZONE_COUNT" return end
         for _ = 1, zdCount do
             local keyInt = streamReadInt32(streamId)
             local zN  = streamReadFloat32(streamId)
@@ -821,6 +989,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
         local orgBreach = streamReadInt32(streamId)
         -- CD-11 bands (consume unconditionally to keep the stream aligned)
         local resBands  = ResistanceBands.readStream(streamId)
+        local everScouted = streamReadBool(streamId)   -- CD-11 durable scout bit, right after the bands
 
         if type(fieldId) == "number" and fieldId >= 0 then
             self.batchFields[fieldId] = {
@@ -830,6 +999,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 potassium             = math.max(SoilConstants.NUTRIENT_LIMITS.MIN, math.min(SoilConstants.NUTRIENT_LIMITS.MAX, potassium)),
                 organicMatter         = math.max(SoilConstants.NUTRIENT_LIMITS.MIN, math.min(SoilConstants.NUTRIENT_LIMITS.ORGANIC_MATTER_MAX, organicMatter)),
                 pH                    = math.max(SoilConstants.NUTRIENT_LIMITS.PH_MIN, math.min(SoilConstants.NUTRIENT_LIMITS.PH_MAX, pH)),
+                pHReportValid         = pHReportValid == true,
                 lastCrop              = lastCrop ~= "" and lastCrop or nil,
                 lastCrop2             = lastCrop2 ~= "" and lastCrop2 or nil,
                 lastCrop3             = lastCrop3 ~= "" and lastCrop3 or nil,
@@ -845,6 +1015,7 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 activeDisease         = activeDisease,
                 activeDiseaseSeverity = (activeDisease and SoilDiseaseSystem) and SoilDiseaseSystem.yieldSeverity(activeDisease) or 1.0,
                 diseaseDiscovered     = diseaseDiscovered or false,
+                fieldEverScouted      = everScouted == true,
                 dryDayCount           = math.max(0, dryDays),
                 burnDaysLeft          = math.max(0, burnDays),
                 nutrientBuffer        = buffer,
@@ -852,6 +1023,8 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
                 coveredCells          = {},
                 coveredCellCount      = 0,
                 compaction            = math.max(0, math.min(100, compaction or 0)),
+                amendBurnPenalty      = math.max(0, math.min(1, amendBurnPen or 0)),
+                amendBurnKnown        = amendBurnKnown == true,
                 zoneData              = zd,
                 initialized           = true,
             }
@@ -864,8 +1037,9 @@ function SoilFieldBatchSyncEvent:readStream(streamId, connection)
 end
 
 function SoilFieldBatchSyncEvent:run(connection)
-    -- CLIENT ONLY: merge this batch into the local field table
-    if g_client == nil then return end
+    -- CLIENT ONLY: merge this batch into the local field table. The side test is the
+    -- server's absence plus the server connection (row 85), not g_client.
+    if not sfAppliesOnClient(connection) then return end
     if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then return end
 
     local soilSystem = g_SoilFertilityManager.soilSystem
@@ -958,7 +1132,7 @@ end
 -- FIELD UPDATE EVENT (Server -> Clients)
 -- ========================================
 -- Sent when soil data changes (harvest, fertilizer) for a single field
-SoilFieldUpdateEvent = {}
+SoilFieldUpdateEvent = SoilFieldUpdateEvent or {}
 SoilFieldUpdateEvent_mt = Class(SoilFieldUpdateEvent, Event)
 
 InitEventClass(SoilFieldUpdateEvent, "SoilFieldUpdateEvent")
@@ -975,6 +1149,7 @@ function SoilFieldUpdateEvent.new(fieldId, fieldData)
 end
 
 function SoilFieldUpdateEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.fieldId = streamReadInt32(streamId)
 
     -- Read values with clamping to valid ranges (NPCFavor pattern)
@@ -984,6 +1159,8 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local potassium = streamReadFloat32(streamId)
     local organicMatter = streamReadFloat32(streamId)
     local pH = streamReadFloat32(streamId)
+    -- [SF-79] pH travels as a REPORT (see SoilFullSyncEvent).
+    local pHReportValid = streamReadBool(streamId)
     local lastCrop = streamReadString(streamId)
     local lastCrop2 = streamReadString(streamId)
     local lastCrop3 = streamReadString(streamId)
@@ -1000,10 +1177,14 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local burnDays = streamReadInt32(streamId)
     local coverageFrac = streamReadFloat32(streamId)
     local compaction = streamReadFloat32(streamId)
+    -- RSF-F905: amendment burn pair.
+    local amendBurnPen   = streamReadFloat32(streamId)
+    local amendBurnKnown = streamReadBool(streamId)
 
     -- Read nutrient buffer (V1.7)
     local buffer = {}
     local bCount = streamReadInt32(streamId)
+    if not sfCountWithinBound(bCount, SF_MAX_BUFFER_TYPES) then self.refused = "BUFFER_COUNT" return end
     for i = 1, bCount do
         local ftIdx = streamReadInt32(streamId)
         local amount = streamReadFloat32(streamId)
@@ -1013,6 +1194,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     -- Zone cell data (added v2.1.6)
     local zd = {}
     local zdCount = streamReadInt32(streamId)
+    if not sfCountWithinBound(zdCount, SF_ZONE_SYNC_MAX) then self.refused = "ZONE_COUNT" return end
     for _ = 1, zdCount do
         local keyInt = streamReadInt32(streamId)
         local zN  = streamReadFloat32(streamId)
@@ -1044,6 +1226,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
     local orgCert   = streamReadInt32(streamId)
     local orgBreach = streamReadInt32(streamId)
     local resBands  = ResistanceBands.readStream(streamId)
+    local everScouted = streamReadBool(streamId)   -- CD-11 durable scout bit, right after the bands
 
     -- Clamp all values to valid ranges
     self.field = {
@@ -1058,6 +1241,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
                                 math.min(SoilConstants.NUTRIENT_LIMITS.ORGANIC_MATTER_MAX, organicMatter)),
         pH = math.max(SoilConstants.NUTRIENT_LIMITS.PH_MIN,
                      math.min(SoilConstants.NUTRIENT_LIMITS.PH_MAX, pH)),
+        pHReportValid = pHReportValid == true,
         lastCrop = lastCrop,
         lastCrop2 = lastCrop2,
         lastCrop3 = lastCrop3,
@@ -1073,6 +1257,7 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
         activeDisease = activeDisease,
         activeDiseaseSeverity = (activeDisease and SoilDiseaseSystem) and SoilDiseaseSystem.yieldSeverity(activeDisease) or 1.0,
         diseaseDiscovered = diseaseDiscovered or false,
+        fieldEverScouted = everScouted == true,
         dryDayCount = math.max(0, dryDays),
         burnDaysLeft = math.max(0, burnDays),
         nutrientBuffer   = buffer,
@@ -1080,6 +1265,8 @@ function SoilFieldUpdateEvent:readStream(streamId, connection)
         coveredCells     = {},
         coveredCellCount = 0,
         compaction       = math.max(0, math.min(100, compaction or 0)),
+        amendBurnPenalty = math.max(0, math.min(1, amendBurnPen or 0)),
+        amendBurnKnown   = amendBurnKnown == true,
         zoneData         = zd,
         initialized      = true
     }
@@ -1110,6 +1297,8 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     streamWriteFloat32(streamId, self.field.potassium or SoilConstants.FIELD_DEFAULTS.potassium)
     streamWriteFloat32(streamId, self.field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter)
     streamWriteFloat32(streamId, self.field.pH or SoilConstants.FIELD_DEFAULTS.pH)
+    -- [SF-79] report validity beside the pH report (false = not current local soil).
+    streamWriteBool(streamId, self.field.pHReportValid ~= false)
     streamWriteString(streamId, self.field.lastCrop or "")
     streamWriteString(streamId, self.field.lastCrop2 or "")
     streamWriteString(streamId, self.field.lastCrop3 or "")
@@ -1126,6 +1315,9 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     streamWriteInt32(streamId, self.field.burnDaysLeft or 0)
     streamWriteFloat32(streamId, self.field.coverageFraction or 0)
     streamWriteFloat32(streamId, self.field.compaction or 0)
+    -- RSF-F905: amendment burn pair (owner-written, always known).
+    streamWriteFloat32(streamId, self.field.amendBurnPenalty or 0)
+    streamWriteBool(streamId, true)
 
     -- Write nutrient buffer (V1.7)
     local buffer = self.field.nutrientBuffer or {}
@@ -1162,11 +1354,14 @@ function SoilFieldUpdateEvent:writeStream(streamId, connection)
     -- run() replaces the client's field table wholesale, so a value that does not travel
     -- is a value that gets wiped. Server-computed; a raw score never goes on the wire.
     ResistanceBands.writeStream(streamId, self.field)
+    -- CD-11: the durable scout bit rides after the bands (same order as the full/batch sync).
+    streamWriteBool(streamId, self.field.fieldEverScouted == true)
 end
 
 function SoilFieldUpdateEvent:run(connection)
-    -- CLIENT ONLY: Apply server-authoritative field data
-    if g_client == nil then return end
+    -- CLIENT ONLY: apply server-authoritative field data. The side test is the
+    -- server's absence plus the server connection (row 85), not g_client.
+    if not sfAppliesOnClient(connection) then return end
 
     if g_SoilFertilityManager and g_SoilFertilityManager.soilSystem then
         local soilSys = g_SoilFertilityManager.soilSystem
@@ -1228,7 +1423,7 @@ end
 -- menu. The server is authoritative: it validates the chemical, applies the
 -- effectiveness/pressure/protection math, charges the requesting farm, and
 -- broadcasts the resulting field state via SoilFieldUpdateEvent.
-SoilTreatFieldEvent = {}
+SoilTreatFieldEvent = SoilTreatFieldEvent or {}
 SoilTreatFieldEvent_mt = Class(SoilTreatFieldEvent, Event)
 
 InitEventClass(SoilTreatFieldEvent, "SoilTreatFieldEvent")
@@ -1268,12 +1463,12 @@ function SoilTreatFieldEvent:run(connection)
         return
     end
 
-    -- Charge the requesting player's farm.
-    local farmId = nil
-    if connection and not connection:getIsServer() and g_currentMission and g_currentMission.userManager then
-        local user = g_currentMission.userManager:getUserByConnection(connection)
-        if user then farmId = user.farmId end
-    end
+    -- THE ACTING FARM IS THE SENDER'S OWN (MAINTENANCE row 116): the server's player
+    -- record for this connection (FSBaseMission:getFarmId), never the wire and never
+    -- the host's farm. A sender with no record is refused here, silently; the writer
+    -- tests that farm's standing on the field and charges that farm alone.
+    local farmId = SoilNetworkEvents_ActingFarmId(connection)
+    if farmId == nil or farmId <= 0 then return end
 
     g_SoilFertilityManager.soilSystem:applyNamedFungicide(self.fieldId, self.chemId, {
         charge = true,
@@ -1287,7 +1482,7 @@ end
 -- (single-writer): the server validates and calls optIn/optOut, and those methods
 -- self-broadcast the resulting field state to every peer. Mirrors SoilTreatFieldEvent.
 -- ==========================================================================
-SoilOrganicOptEvent = {}
+SoilOrganicOptEvent = SoilOrganicOptEvent or {}
 SoilOrganicOptEvent_mt = Class(SoilOrganicOptEvent, Event)
 
 InitEventClass(SoilOrganicOptEvent, "SoilOrganicOptEvent")
@@ -1319,11 +1514,16 @@ function SoilOrganicOptEvent:run(connection)
     -- resulting field state, so every client converges without extra work here.
     if g_server == nil then return end
     if not g_SoilFertilityManager or not g_SoilFertilityManager.organic then return end
+    -- THE ACTING FARM IS THE SENDER'S OWN (MAINTENANCE row 110): the server's player
+    -- record for this connection, never the wire. The writer refuses a farm that does
+    -- not own the field's farmland, so a client cannot opt another farm's field in or
+    -- out; a sender with no player record (nil) is refused there too, silently.
     local organic = g_SoilFertilityManager.organic
+    local actingFarmId = SoilNetworkEvents_ActingFarmId(connection)
     if self.doOptIn then
-        organic:optIn(self.fieldId)
+        organic:optIn(self.fieldId, actingFarmId)
     else
-        organic:optOut(self.fieldId)
+        organic:optOut(self.fieldId, actingFarmId)
     end
 end
 
@@ -1333,7 +1533,7 @@ end
 -- field so every client's discovery gate opens. Discovery is monotonic, so no
 -- validation beyond a known field is needed.
 -- ==========================================================================
-SoilScoutFieldEvent = {}
+SoilScoutFieldEvent = SoilScoutFieldEvent or {}
 SoilScoutFieldEvent_mt = Class(SoilScoutFieldEvent, Event)
 
 InitEventClass(SoilScoutFieldEvent, "SoilScoutFieldEvent")
@@ -1357,11 +1557,39 @@ function SoilScoutFieldEvent:writeStream(streamId, connection)
     streamWriteInt32(streamId, self.fieldId or 0)
 end
 
+--- [RSF-F231] The farm behind a connection, from the SERVER'S OWN PLAYER RECORD:
+--- PlayerSystem:getPlayerByConnection (PlayerSystem.lua:233-235, the table the
+--- system fills at :270 when a player joins) and Player.farmId (Player.lua:103).
+--- Never a farm id off the wire, never User.farmId. nil when the connection has no
+--- player. With no connection at all (an event run on the host itself) the local
+--- player's farm, the same resolution the kneel makes (SpatialScouting:revealCellAt).
+---@param connection table|nil
+---@return number|nil farmId
+function SoilNetworkEvents_FarmIdOfConnection(connection)
+    local player = nil
+    if connection ~= nil then
+        local ps = g_currentMission and g_currentMission.playerSystem
+        if ps ~= nil and type(ps.getPlayerByConnection) == "function" then
+            player = ps:getPlayerByConnection(connection)
+        end
+    else
+        player = g_localPlayer
+    end
+    if type(player) ~= "table" then return nil end
+    return player.farmId
+end
+
 function SoilScoutFieldEvent:run(connection)
     -- SERVER ONLY: authoritative reveal (scoutField broadcasts the field update).
     if g_server == nil then return end
     if not g_SoilFertilityManager or not g_SoilFertilityManager.soilSystem then return end
-    g_SoilFertilityManager.soilSystem:scoutField(self.fieldId)
+    -- [RSF-F231] The sender is in hand: its farm comes from the server's player
+    -- record for this connection, and the writer applies the standing test (owner
+    -- or contracting, both ordinary). A sender with no player record is refused.
+    -- A refusal is silent to the sender: nothing written, nothing broadcast.
+    local actingFarmId = SoilNetworkEvents_FarmIdOfConnection(connection)
+    if actingFarmId == nil then return end
+    g_SoilFertilityManager.soilSystem:scoutField(self.fieldId, actingFarmId)
 end
 
 -- ==========================================================================
@@ -1374,7 +1602,7 @@ end
 -- passively). Nothing else changes: no field scout fee, no diseaseDiscovered
 -- write, no other state.
 -- ==========================================================================
-SoilKneelEvent = {}
+SoilKneelEvent = SoilKneelEvent or {}
 SoilKneelEvent_mt = Class(SoilKneelEvent, Event)
 
 InitEventClass(SoilKneelEvent, "SoilKneelEvent")
@@ -1544,7 +1772,7 @@ end
 -- ========================================
 -- Sent when the local player changes the application rate on a sprayer.
 -- Server applies the change and rebroadcasts so all clients stay in sync.
-SoilSprayerRateEvent = {}
+SoilSprayerRateEvent = SoilSprayerRateEvent or {}
 SoilSprayerRateEvent_mt = Class(SoilSprayerRateEvent, Event)
 
 InitEventClass(SoilSprayerRateEvent, "SoilSprayerRateEvent")
@@ -1581,6 +1809,12 @@ function SoilSprayerRateEvent:run(connection)
     local vehicle = NetworkUtil.getObject(self.vehicleNetId)
     if not vehicle then return end
 
+    -- ON THE SERVER A CLIENT CHANGES ONLY ITS OWN FARM'S VEHICLE (MAINTENANCE row 111):
+    -- the sender's farm, from the server's player record, must own the vehicle. The
+    -- host's own local delivery stands; a pure client applying the server's
+    -- rebroadcast (a server connection, g_server nil) is unchanged.
+    if g_server ~= nil and not SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle) then return end
+
     local steps = SoilConstants.SPRAYER_RATE.STEPS
     if self.rateIndex < 1 or self.rateIndex > #steps then return end
 
@@ -1616,7 +1850,7 @@ end
 -- ========================================
 -- SPRAYER AUTO-MODE EVENT (Client <-> Server)
 -- ========================================
-SoilSprayerAutoModeEvent = {}
+SoilSprayerAutoModeEvent = SoilSprayerAutoModeEvent or {}
 SoilSprayerAutoModeEvent_mt = Class(SoilSprayerAutoModeEvent, Event)
 
 InitEventClass(SoilSprayerAutoModeEvent, "SoilSprayerAutoModeEvent")
@@ -1650,6 +1884,12 @@ function SoilSprayerAutoModeEvent:run(connection)
     local vehicle = NetworkUtil.getObject(self.vehicleNetId)
     if not vehicle then return end
 
+    -- The same ownership test as the rate event (row 111).
+    if g_server ~= nil and not SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle) then return end
+    -- [SF-73] AUTO is target automatic behind the release gate: a resolved user of a
+    -- real farm that is actively operating the vehicle, never a spectator.
+    if g_server ~= nil and not SoilNetworkEvents_ConnectionMayToggleTarget(connection, vehicle) then return end
+
     rm:setAutoMode(vehicle.id, self.enabled)
 
     if g_server then
@@ -1658,6 +1898,163 @@ function SoilSprayerAutoModeEvent:run(connection)
             nil, connection
         )
     end
+end
+
+-- ========================================
+-- [SF-73] APPLICATION TARGET RESULT EVENT (Server -> Clients)
+-- ========================================
+-- The server's confirmed footprint result for one vehicle (Implementation v1.1
+-- section 6), schema 1, in this field order: schema, vehicle net id, epoch,
+-- sequence, active, scope, the product / crop / field identifiers, carrier grain
+-- and knowledge, the N then P then K records, the binding nutrient, the dose state
+-- and reason list, and the planned / physical / agronomic / continuation litres.
+-- Every optional number carries a presence flag, never an invented zero. A change
+-- of field order is a new schema. Server to client only: a client never publishes.
+SoilApplicationTargetResultEvent = SoilApplicationTargetResultEvent or {}
+SoilApplicationTargetResultEvent_mt = Class(SoilApplicationTargetResultEvent, Event)
+
+InitEventClass(SoilApplicationTargetResultEvent, "SoilApplicationTargetResultEvent")
+
+SoilApplicationTargetResultEvent.SCHEMA = 1
+local SF73_MAX_REASONS = 32   -- the writer's own cap: 14 refusal reasons plus the shortfall states
+
+function SoilApplicationTargetResultEvent.emptyNew()
+    return Event.new(SoilApplicationTargetResultEvent_mt)
+end
+
+function SoilApplicationTargetResultEvent.new(vehicleNetId, result)
+    local self = SoilApplicationTargetResultEvent.emptyNew()
+    self.vehicleNetId = vehicleNetId
+    self.result = result
+    return self
+end
+
+local function sf73Finite(v)
+    return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+local function sf73WriteOptFloat(streamId, v)
+    local present = sf73Finite(v)
+    streamWriteBool(streamId, present)
+    if present then streamWriteFloat32(streamId, v) end
+end
+local function sf73ReadOptFloat(streamId)
+    if streamReadBool(streamId) then return streamReadFloat32(streamId) end
+    return nil
+end
+local function sf73WriteOptInt(streamId, v)
+    local present = sf73Finite(v)
+    streamWriteBool(streamId, present)
+    if present then streamWriteInt32(streamId, v) end
+end
+local function sf73ReadOptInt(streamId)
+    if streamReadBool(streamId) then return streamReadInt32(streamId) end
+    return nil
+end
+local function sf73WriteOptString(streamId, v)
+    local present = type(v) == "string"
+    streamWriteBool(streamId, present)
+    if present then streamWriteString(streamId, v) end
+end
+local function sf73ReadOptString(streamId)
+    if streamReadBool(streamId) then return streamReadString(streamId) end
+    return nil
+end
+local SF73_NUTRIENTS = { "N", "P", "K" }
+
+function SoilApplicationTargetResultEvent:writeStream(streamId, connection)
+    local r = self.result or {}
+    streamWriteInt32(streamId, SoilApplicationTargetResultEvent.SCHEMA)
+    streamWriteInt32(streamId, self.vehicleNetId or 0)
+    streamWriteString(streamId, tostring(r.epoch or ""))
+    streamWriteString(streamId, tostring(r.sequence or "0"))
+    streamWriteBool(streamId, r.active ~= false)
+    streamWriteString(streamId, tostring(r.scope or "FOOTPRINT"))
+    sf73WriteOptInt(streamId, r.productFillType)
+    sf73WriteOptString(streamId, r.productName)
+    sf73WriteOptInt(streamId, r.cropFruitIndex)
+    sf73WriteOptString(streamId, r.cropKey)
+    sf73WriteOptInt(streamId, r.fieldId)
+    sf73WriteOptFloat(streamId, r.grainMetres)
+    streamWriteString(streamId, tostring(r.knowledgeState or "UNAVAILABLE"))
+    local nutrients = r.nutrients or {}
+    for _, n in ipairs(SF73_NUTRIENTS) do
+        local x = nutrients[n] or {}
+        sf73WriteOptFloat(streamId, x.reading)
+        sf73WriteOptFloat(streamId, x.after)
+        sf73WriteOptFloat(streamId, x.lower)
+        sf73WriteOptFloat(streamId, x.upper)
+        streamWriteString(streamId, tostring(x.relationship or "UNDETERMINED"))
+        sf73WriteOptFloat(streamId, x.approachingDistance)
+        sf73WriteOptFloat(streamId, x.approachingWidth)
+        streamWriteString(streamId, tostring(x.knowledgeState or "UNAVAILABLE"))
+        sf73WriteOptFloat(streamId, x.requestedDelta)
+        sf73WriteOptFloat(streamId, x.usefulDelta)
+    end
+    sf73WriteOptString(streamId, r.binding)
+    streamWriteString(streamId, tostring(r.doseState or "UNDETERMINED"))
+    local reasons = r.reasons or {}
+    local count = math.min(#reasons, SF73_MAX_REASONS)
+    streamWriteUInt8(streamId, count)
+    for i = 1, count do streamWriteString(streamId, tostring(reasons[i])) end
+    sf73WriteOptFloat(streamId, r.plannedLitres)
+    sf73WriteOptFloat(streamId, r.physicalLitres)
+    sf73WriteOptFloat(streamId, r.agronomicLitres)
+    sf73WriteOptFloat(streamId, r.continuationLitres)
+end
+
+function SoilApplicationTargetResultEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
+    local schema = streamReadInt32(streamId)
+    if schema ~= SoilApplicationTargetResultEvent.SCHEMA then self.refused = "SCHEMA" return end
+    local r = { schema = schema, nutrients = {}, reasons = {} }
+    self.vehicleNetId = streamReadInt32(streamId)
+    r.epoch = streamReadString(streamId)
+    r.sequence = streamReadString(streamId)
+    r.active = streamReadBool(streamId)
+    r.scope = streamReadString(streamId)
+    r.productFillType = sf73ReadOptInt(streamId)
+    r.productName = sf73ReadOptString(streamId)
+    r.cropFruitIndex = sf73ReadOptInt(streamId)
+    r.cropKey = sf73ReadOptString(streamId)
+    r.fieldId = sf73ReadOptInt(streamId)
+    r.grainMetres = sf73ReadOptFloat(streamId)
+    r.knowledgeState = streamReadString(streamId)
+    for _, n in ipairs(SF73_NUTRIENTS) do
+        local x = {}
+        x.reading = sf73ReadOptFloat(streamId)
+        x.after = sf73ReadOptFloat(streamId)
+        x.lower = sf73ReadOptFloat(streamId)
+        x.upper = sf73ReadOptFloat(streamId)
+        x.relationship = streamReadString(streamId)
+        x.approachingDistance = sf73ReadOptFloat(streamId)
+        x.approachingWidth = sf73ReadOptFloat(streamId)
+        x.knowledgeState = streamReadString(streamId)
+        x.requestedDelta = sf73ReadOptFloat(streamId)
+        x.usefulDelta = sf73ReadOptFloat(streamId)
+        r.nutrients[n] = x
+    end
+    r.binding = sf73ReadOptString(streamId)
+    r.doseState = streamReadString(streamId)
+    local count = streamReadUInt8(streamId)
+    if not sfCountWithinBound(count, SF73_MAX_REASONS) then self.refused = "COUNT" return end
+    for i = 1, count do r.reasons[i] = streamReadString(streamId) end
+    r.plannedLitres = sf73ReadOptFloat(streamId)
+    r.physicalLitres = sf73ReadOptFloat(streamId)
+    r.agronomicLitres = sf73ReadOptFloat(streamId)
+    r.continuationLitres = sf73ReadOptFloat(streamId)
+    self.result = r
+    self:run(connection)
+end
+
+function SoilApplicationTargetResultEvent:run(connection)
+    if self.refused ~= nil or not sfAppliesOnClient(connection) then return end
+    -- resolve the CURRENT object; a deleted or unknown one is dropped, never held
+    local vehicle = NetworkUtil.getObject(self.vehicleNetId)
+    if vehicle == nil or vehicle.isDeleted == true then return end
+    local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    local ta = ss and ss.targetApplication
+    if ta == nil then return end
+    ta:receive(vehicle, self.result)
 end
 
 ---@param vehicle table  The vehicle object (not vehicle.id)
@@ -1683,7 +2080,7 @@ end
 -- Server-authoritative. A pure client sends a request; the server validates (admin),
 -- applies it on FieldSentry, then broadcasts so every client mirrors the state for the
 -- map-tab status readout. The server/host applies directly via the Send wrapper below.
-SoilFieldSentryEvent = {}
+SoilFieldSentryEvent = SoilFieldSentryEvent or {}
 SoilFieldSentryEvent_mt = Class(SoilFieldSentryEvent, Event)
 
 InitEventClass(SoilFieldSentryEvent, "SoilFieldSentryEvent")
@@ -1752,7 +2149,7 @@ end
 -- ========================================
 -- Server-authoritative, mirrors the manual-blacklist toggle. A meadow field still
 -- simulates (on grassland rules), so this only carries the persistent player intent.
-SoilFieldMeadowEvent = {}
+SoilFieldMeadowEvent = SoilFieldMeadowEvent or {}
 SoilFieldMeadowEvent_mt = Class(SoilFieldMeadowEvent, Event)
 
 InitEventClass(SoilFieldMeadowEvent, "SoilFieldMeadowEvent")
@@ -1819,7 +2216,7 @@ end
 -- Server -> clients only. The contract mask is evaluated server-side (refreshContract);
 -- this mirrors the resulting reason enum to clients for the map-tab readout. Carries a
 -- per-field sequence so clients drop stale / out-of-order packets (FieldSentry FIFO guard).
-SoilFieldSentryStatusEvent = {}
+SoilFieldSentryStatusEvent = SoilFieldSentryStatusEvent or {}
 SoilFieldSentryStatusEvent_mt = Class(SoilFieldSentryStatusEvent, Event)
 
 InitEventClass(SoilFieldSentryStatusEvent, "SoilFieldSentryStatusEvent")
@@ -1837,6 +2234,7 @@ function SoilFieldSentryStatusEvent.new(fieldId, reason, seq)
 end
 
 function SoilFieldSentryStatusEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.fieldId = streamReadInt32(streamId)
     self.reason  = streamReadUIntN(streamId, 3)   -- BLACKLIST enum 0..6 fits in 3 bits
     self.seq     = streamReadInt32(streamId)
@@ -1901,8 +2299,17 @@ local sfValueMapResyncInFlight = {}
 -- the layers actually streamed, not every syncable layer in LAYER_DEFS (#803).
 local sfValueMapSyncRoundLayers = {}
 local SF_VALUE_MAP_RESYNC_MAX = 2
+-- [#995] Per-layer "a FULL stream of this layer has landed here" (client). A PATCH
+-- for a layer whose FULL has not landed (a client mid-join) is ignored: applied
+-- over an empty map it would paint rows the next checksum then judges as drift.
+local sfValueMapFullLanded = {}
 
-SoilValueMapChunkEvent = {}
+-- [SF-79] Multi-part chunk assembler. Keyed by "<layerIdx>:<transferId>"; holds
+-- parts until the transfer is complete, then the caller applies them in order.
+-- A single-part chunk (the legacy shape) never enters here.
+local sfChunkAssembler = {}
+
+SoilValueMapChunkEvent = SoilValueMapChunkEvent or {}
 SoilValueMapChunkEvent_mt = Class(SoilValueMapChunkEvent, Event)
 
 InitEventClass(SoilValueMapChunkEvent, "SoilValueMapChunkEvent")
@@ -1915,12 +2322,23 @@ end
 --- gyStart:  first sync-grid row carried by this chunk (0-based)
 --- rows:     array of row arrays (4-bit states, 1-based Lua arrays)
 --- isLast:   true on the final chunk of the final layer
-function SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, isLast)
+--- meta:     optional SF-79 transport header. Defaults reproduce the legacy
+---           single-part FULL send (mode FULL, revision 0, one part).
+function SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, isLast, meta)
     local self = SoilValueMapChunkEvent.emptyNew()
     self.layerIdx = layerIdx
     self.gyStart  = gyStart
     self.rows     = rows or {}
     self.isLast   = isLast or false
+    meta = meta or {}
+    self.mode             = meta.mode or "FULL"
+    self.revision         = meta.revision or 0
+    self.baseRevision     = meta.baseRevision or 0
+    self.transferId       = meta.transferId or 0
+    self.partIndex        = meta.partIndex or 0
+    self.partCount        = meta.partCount or 1
+    self.sourceResolution = meta.sourceResolution or 0
+    self.transportStride  = meta.transportStride or 1
     return self
 end
 
@@ -1929,6 +2347,15 @@ function SoilValueMapChunkEvent:writeStream(streamId, connection)
     streamWriteUInt16(streamId, self.gyStart)
     streamWriteUInt8(streamId, #self.rows)
     streamWriteBool(streamId, self.isLast)
+    -- [SF-79] transport header: FULL/PATCH mode, revision ordering and part identity.
+    streamWriteBool(streamId, self.mode == "PATCH")   -- mode: 1 bit
+    streamWriteInt32(streamId, self.revision or 0)
+    streamWriteInt32(streamId, self.baseRevision or 0)
+    streamWriteInt32(streamId, self.transferId or 0)
+    streamWriteUInt16(streamId, self.partIndex or 0)
+    streamWriteUInt16(streamId, self.partCount or 1)
+    streamWriteUInt16(streamId, self.sourceResolution or 0)
+    streamWriteUInt16(streamId, self.transportStride or 1)
     for _, row in ipairs(self.rows) do
         streamWriteUInt16(streamId, #row)
         -- RLE: (state, runLength) pairs - soil rows are mostly long runs
@@ -1950,19 +2377,37 @@ function SoilValueMapChunkEvent:writeStream(streamId, connection)
 end
 
 function SoilValueMapChunkEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     self.layerIdx = streamReadUInt8(streamId)
     self.gyStart  = streamReadUInt16(streamId)
     local rowCount = streamReadUInt8(streamId)
     self.isLast   = streamReadBool(streamId)
+    -- [SF-79] transport header (matches writeStream order).
+    local isPatch        = streamReadBool(streamId)
+    self.mode            = isPatch and "PATCH" or "FULL"
+    self.revision        = streamReadInt32(streamId)
+    self.baseRevision    = streamReadInt32(streamId)
+    self.transferId      = streamReadInt32(streamId)
+    self.partIndex       = streamReadUInt16(streamId)
+    self.partCount       = streamReadUInt16(streamId)
+    self.sourceResolution = streamReadUInt16(streamId)
+    self.transportStride  = streamReadUInt16(streamId)
     self.rows = {}
+    if not sfCountWithinBound(rowCount, SF_SYNC_ROWS_PER_EVENT) then self.refused = "ROW_COUNT" return end
+    local grid = SoilValueMaps and SoilValueMaps.SYNC_GRID
+    if grid == nil then self.refused = "NO_GRID" return end
     for r = 1, rowCount do
         local rowLen  = streamReadUInt16(streamId)
         local numRuns = streamReadUInt16(streamId)
+        -- A row is at most the synced grid wide, and has at most one run per pixel.
+        if not sfCountWithinBound(rowLen, grid) or not sfCountWithinBound(numRuns, rowLen) then self.refused = "ROW_SHAPE" return end
         local row = {}
         local idx = 1
         for _ = 1, numRuns do
             local state = streamReadUIntN(streamId, 4)
             local len   = streamReadUInt16(streamId)
+            -- A run never runs past the row's end; the writer's runs sum to the row.
+            if not sfCountWithinBound(len, rowLen - idx + 1) then self.refused = "RUN_LENGTH" return end
             for _ = 1, len do
                 if idx <= rowLen then
                     row[idx] = state
@@ -1987,16 +2432,61 @@ function SoilValueMapChunkEvent:run(connection)
     -- is a whole-map UNFILTERED executeSet(0), so a stray or malformed chunk must
     -- not be able to reach it. Refuse rather than trust the sender.
     if def.serverOnly == true then return end
+    -- [#995] A patch is only meaningful over a layer this client holds whole.
+    if self.mode == "PATCH" and not sfValueMapFullLanded[self.layerIdx] then return end
 
-    -- First chunk of a layer (gyStart == 0): wipe residual local paint so the
-    -- server stream can converge. Without this, state-0 cells used to skip and
-    -- leftover pixels kept checksums permanently drifted.
-    if self.gyStart == 0 and vm.clearLayer then
+    -- [SF-79] Transport header validation. A malformed part is dropped, never applied.
+    if type(self.partCount) ~= "number" or self.partCount < 1 or self.partCount > 4096 then return end
+    if type(self.partIndex) ~= "number" or self.partIndex < 0 or self.partIndex >= self.partCount then return end
+    if self.sourceResolution and self.sourceResolution ~= 0 and vm.resolution and vm.resolution ~= 0
+        and self.sourceResolution ~= vm.resolution then
+        return
+    end
+
+    -- Assemble multi-part transfers; a single-part chunk applies directly.
+    local parts
+    if self.partCount > 1 then
+        local akey = self.layerIdx .. ":" .. tostring(self.transferId)
+        local asm = sfChunkAssembler[akey]
+        if asm == nil then
+            asm = { mode = self.mode, revision = self.revision, baseRevision = self.baseRevision,
+                    partCount = self.partCount, parts = {}, count = 0 }
+            sfChunkAssembler[akey] = asm
+        elseif asm.partCount ~= self.partCount or asm.mode ~= self.mode or asm.revision ~= self.revision then
+            sfChunkAssembler[akey] = nil
+            return
+        end
+        if asm.parts[self.partIndex] == nil then
+            asm.parts[self.partIndex] = self
+            asm.count = asm.count + 1
+        end
+        if asm.count < asm.partCount then return end
+        sfChunkAssembler[akey] = nil
+        parts = {}
+        for i = 0, asm.partCount - 1 do parts[#parts + 1] = asm.parts[i] end
+    else
+        parts = { self }
+    end
+
+    -- FULL clears at row zero so residual local paint cannot survive a server
+    -- stream; a PATCH (including row zero) NEVER clears.
+    if self.mode ~= "PATCH" and self.gyStart == 0 and vm.clearLayer then
         vm:clearLayer(def.key)
     end
 
-    for i, row in ipairs(self.rows) do
-        vm:applySyncRow(def.key, self.gyStart + (i - 1), row)
+    for _, part in ipairs(parts) do
+        for i, row in ipairs(part.rows) do
+            vm:applySyncRow(def.key, part.gyStart + (i - 1), row)
+        end
+    end
+
+    -- [#995] A FULL chunk that carries the layer's last row completes its FULL
+    -- stream here; patches for the layer are admissible from now on.
+    if self.mode ~= "PATCH" then
+        local numRows = vm.getSyncRowCount and vm:getSyncRowCount() or 0
+        for _, part in ipairs(parts) do
+            if part.gyStart + #part.rows >= numRows then sfValueMapFullLanded[self.layerIdx] = true end
+        end
     end
 
     -- Track this layer as streamed this round (deduped: a layer streams many
@@ -2006,14 +2496,15 @@ function SoilValueMapChunkEvent:run(connection)
     if self.isLast then
         -- #803: this layer's repair round trip has landed, so a future checksum
         -- evaluation is a fresh comparison against the applied state, not a
-        -- re-charge of an in-flight repair.
-        sfValueMapResyncInFlight[self.layerIdx] = nil
+        -- re-charge of an in-flight repair. A PATCH round is not a repair: it
+        -- leaves a pending repair's flag alone.
+        if self.mode ~= "PATCH" then sfValueMapResyncInFlight[self.layerIdx] = nil end
         local syncedLayers = 0
         for layerIdx in pairs(sfValueMapSyncRoundLayers) do
             local d = SoilValueMaps.LAYER_DEFS[layerIdx]
             if d and d.serverOnly ~= true then syncedLayers = syncedLayers + 1 end
         end
-        SoilLogger.info("Client: value map sync complete (%d layers)", syncedLayers)
+        SoilLogger.info("Client: value map %s complete (%d layers)", self.mode == "PATCH" and "patch" or "sync", syncedLayers)
         sfValueMapSyncRoundLayers = {}
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
@@ -2023,26 +2514,52 @@ function SoilValueMapChunkEvent:run(connection)
 end
 
 -- ── Checksum verification ─────────────────────────────────
+--
+-- [#995] THE COST THAT DRIP-FEEDING DID NOT TOUCH. A layer's checksum was a full
+-- walk of the sync grid, getBitVectorMapPoint once per grid point: 512 x 512 =
+-- 262,144 engine calls per layer, 3.1 million for twelve layers, in ONE tick. It ran
+-- on the server at every 5-minute broadcast and again after every single-layer
+-- reply, and on every client for every checksum event it received. And because
+-- nothing carried a write to the clients between broadcasts, after five minutes
+-- most layers were past the 2% tolerance and were re-sent whole, 32 chunks each.
+--
+-- Now SoilValueMaps keeps per-row totals and marks the rows each write touched (its
+-- sync bookkeeping). A checksum is the cached totals, refreshed for stale rows only,
+-- at most SF_SYNC_ROWS_PER_TICK rows per tick on either side. On the 5-minute timer
+-- the server runs a ROUND: it takes the dirty rows, refreshes them, broadcasts them
+-- as PATCH chunks (drip-fed; a PATCH never clears, see the chunk apply above), then
+-- broadcasts the checksums. A client that still drifts requests the layer exactly as
+-- before: the cap, the in-flight guard and the 2% tolerance are the unchanged
+-- fallback. A single-layer reply's trailing checksum carries that layer only, from
+-- the cache the reply itself refreshed, so no reply walks anything. The join sync is
+-- unchanged in shape: FULL layers, then the checksums of every synced layer, the
+-- cache seeded by the rows the send read.
 
---- Per-layer checksum: sum of all sync-grid states + count of non-zero cells.
---- Cheap to compute on both sides (reads the coarse grid, not full resolution).
-local function sfComputeLayerChecksum(vm, layerKey)
-    local stride  = vm:getSyncStride()
-    local numRows = math.floor(vm.resolution / stride)
-    local sum, nonZero = 0, 0
-    for gy = 0, numRows - 1 do
-        local row = vm:readSyncRow(layerKey, gy)
-        if row then
-            for _, state in ipairs(row) do
-                sum = sum + state
-                if state > 0 then nonZero = nonZero + 1 end
-            end
+-- Rows refreshed (one engine read per grid column each) in any one tick, on either
+-- side. 64 rows of a 512-wide grid are 32,768 reads: under 1/95 of the old tick.
+local SF_SYNC_ROWS_PER_TICK  = 64
+local SF_SYNC_CHUNK_DELAY    = 40   -- ms between chunk events (52311815's drip-feed)
+-- Every SF_SYNC_AUDIT_EVERY rounds the server refreshes EVERY row rather than the
+-- stale ones, so a write that reached a layer without marking its rows (this file's
+-- enumeration found none, and the cache would hide one forever) is caught within
+-- half an hour rather than never.
+local SF_SYNC_AUDIT_EVERY = 6
+
+--- The synced layers' checksums from the row cache, or one layer's when
+--- onlyLayerIdx is given. Pure: the caller has refreshed what it wants current, and
+--- a checksum that describes exactly the rows a client was sent is the point.
+local function sfChecksumsFromCache(vm, onlyLayerIdx)
+    local checksums = {}
+    for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
+        if def.serverOnly ~= true and (onlyLayerIdx == nil or layerIdx == onlyLayerIdx) then
+            local sum, nonZero = vm:getSyncChecksum(def.key)
+            checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum or 0, nonZero = nonZero or 0 }
         end
     end
-    return sum, nonZero
+    return checksums
 end
 
-SoilValueMapChecksumEvent = {}
+SoilValueMapChecksumEvent = SoilValueMapChecksumEvent or {}
 SoilValueMapChecksumEvent_mt = Class(SoilValueMapChecksumEvent, Event)
 
 InitEventClass(SoilValueMapChecksumEvent, "SoilValueMapChecksumEvent")
@@ -2075,6 +2592,7 @@ function SoilValueMapChecksumEvent:writeStream(streamId, connection)
 end
 
 function SoilValueMapChecksumEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
     local count = streamReadUInt8(streamId)
     self.checksums = {}
     for i = 1, count do
@@ -2087,6 +2605,85 @@ function SoilValueMapChecksumEvent:readStream(streamId, connection)
     self:run(connection)
 end
 
+--- Judge one layer against the server's checksum (client): the unchanged rule.
+--- The local checksum is the row cache, current because the evaluator refreshed
+--- the layer's stale rows before calling.
+local function sfJudgeLayer(vm, layerIdx, def, cs)
+    local localSum = vm:getSyncChecksum(def.key) or 0
+    local sumDrift = math.abs(localSum - cs.sum)
+    local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
+    if sumDrift > tolerance then
+        -- A request for this layer is already on the wire and its chunk
+        -- stream has not been applied yet. The drift we are reading is
+        -- the pre-repair state; the fresh checksum the server sends
+        -- after finishing THIS layer's own reply is the one that judges
+        -- the round trip. Charging now would double-count against the
+        -- trailing checksums of other layers repaired in the same pass
+        -- (#803). Wait for our own stream to land.
+        if sfValueMapResyncInFlight[layerIdx] then
+            -- still awaiting the in-flight repair; skip re-charging
+        else
+            local attempts = sfValueMapResyncAttempts[layerIdx] or 0
+            if attempts >= SF_VALUE_MAP_RESYNC_MAX then
+                if attempts == SF_VALUE_MAP_RESYNC_MAX then
+                    SoilLogger.warning(
+                        "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
+                        def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
+                    sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
+                end
+            elseif g_client then
+                -- Charge the attempt ONLY on the branch that actually sends a
+                -- request, so a checksum that evaluates a layer but sends
+                -- nothing cannot burn the cap (#803, Claude(A)'s addition).
+                sfValueMapResyncAttempts[layerIdx] = attempts + 1
+                sfValueMapResyncInFlight[layerIdx] = true
+                SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
+                    def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
+                g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
+            end
+        end
+    else
+        sfValueMapResyncAttempts[layerIdx] = 0
+        sfValueMapResyncInFlight[layerIdx] = nil
+    end
+end
+
+-- The client's evaluator: the checksums being judged and the entry it is on. It
+-- refreshes stale rows at most SF_SYNC_ROWS_PER_TICK per tick and judges a layer
+-- once its cache is current, so a join's twelve freshly applied layers are read back
+-- over a few dozen ticks rather than three million reads in one.
+local sfClientEvaluator = nil
+
+--- One step of the evaluation under a row budget. Returns true when every entry
+--- has been judged.
+local function sfEvaluateStep(vm, budget)
+    local ev = sfClientEvaluator
+    while ev.cursor <= #ev.entries do
+        local cs = ev.entries[ev.cursor]
+        -- [SF-43 ask 4] Index comes from the entry, never from its position.
+        local layerIdx = cs.layerIdx
+        local def = layerIdx and SoilValueMaps.LAYER_DEFS[layerIdx]
+        -- A serverOnly layer was never allocated here, so it has nothing to compare
+        -- and must never be resynced. Defensive: the server does not send one.
+        if def and def.serverOnly == true then def = nil end
+        if def == nil then
+            ev.cursor = ev.cursor + 1
+        else
+            local stale = vm:getSyncStaleRows(def.key)
+            local i = 1
+            while i <= #stale and budget > 0 do
+                vm:refreshSyncRow(def.key, stale[i])
+                i = i + 1
+                budget = budget - 1
+            end
+            if i <= #stale then return false end   -- the budget is spent; next tick
+            sfJudgeLayer(vm, layerIdx, def, cs)
+            ev.cursor = ev.cursor + 1
+        end
+    end
+    return true
+end
+
 function SoilValueMapChecksumEvent:run(connection)
     -- CLIENT ONLY: compare against the local maps; request a resync when a
     -- layer has drifted (tolerance covers coarse-grid quantisation noise).
@@ -2094,58 +2691,32 @@ function SoilValueMapChecksumEvent:run(connection)
     local vm = sfGetValueMaps()
     if not vm then return end
 
-    for _, cs in ipairs(self.checksums) do
-        -- [SF-43 ask 4] Index comes from the entry, never from its position.
-        local layerIdx = cs.layerIdx
-        local def = layerIdx and SoilValueMaps.LAYER_DEFS[layerIdx]
-        -- A serverOnly layer was never allocated here, so it has nothing to compare
-        -- and must never be resynced. Defensive: the server does not send one.
-        if def and def.serverOnly == true then def = nil end
-        if def then
-            local localSum, localNonZero = sfComputeLayerChecksum(vm, def.key)
-            local sumDrift = math.abs(localSum - cs.sum)
-            local tolerance = math.max(64, cs.nonZero * 0.02)   -- 2% of painted cells
-            if sumDrift > tolerance then
-                -- A request for this layer is already on the wire and its chunk
-                -- stream has not been applied yet. The drift we are reading is
-                -- the pre-repair state; the fresh full checksum the server sends
-                -- after finishing THIS layer's own reply is the one that judges
-                -- the round trip. Charging now would double-count against the
-                -- trailing checksums of other layers repaired in the same pass
-                -- (#803). Wait for our own stream to land.
-                if sfValueMapResyncInFlight[layerIdx] then
-                    -- still awaiting the in-flight repair; skip re-charging
-                else
-                    local attempts = sfValueMapResyncAttempts[layerIdx] or 0
-                    if attempts >= SF_VALUE_MAP_RESYNC_MAX then
-                        if attempts == SF_VALUE_MAP_RESYNC_MAX then
-                            SoilLogger.warning(
-                                "Client: value map '%s' still drifted after %d resyncs (local sum=%d server=%d) - stopping requests this session",
-                                def.key, SF_VALUE_MAP_RESYNC_MAX, localSum, cs.sum)
-                            sfValueMapResyncAttempts[layerIdx] = attempts + 1  -- only log once
-                        end
-                    elseif g_client then
-                        -- Charge the attempt ONLY on the branch that actually sends a
-                        -- request, so a checksum that evaluates a layer but sends
-                        -- nothing cannot burn the cap (#803, Claude(A)'s addition).
-                        sfValueMapResyncAttempts[layerIdx] = attempts + 1
-                        sfValueMapResyncInFlight[layerIdx] = true
-                        SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",
-                            def.key, localSum, cs.sum, attempts + 1, SF_VALUE_MAP_RESYNC_MAX)
-                        g_client:getServerConnection():sendEvent(SoilRequestValueMapEvent.new(layerIdx))
-                    end
-                end
-            else
-                sfValueMapResyncAttempts[layerIdx] = 0
-                sfValueMapResyncInFlight[layerIdx] = nil
-            end
-        end
+    -- A newer checksum supersedes one still being evaluated.
+    if sfClientEvaluator ~= nil then
+        sfClientEvaluator.entries, sfClientEvaluator.cursor = self.checksums, 1
+        return
     end
+    sfClientEvaluator = { entries = self.checksums, cursor = 1 }
+    if g_currentMission == nil or g_currentMission.addUpdateable == nil then
+        sfEvaluateStep(vm, math.huge)
+        sfClientEvaluator = nil
+        return
+    end
+    local evaluator = {
+        update = function(dsp, dt)
+            local vmNow = sfGetValueMaps()
+            if vmNow == nil or sfEvaluateStep(vmNow, SF_SYNC_ROWS_PER_TICK) then
+                sfClientEvaluator = nil
+                g_currentMission:removeUpdateable(dsp)
+            end
+        end,
+    }
+    g_currentMission:addUpdateable(evaluator)
 end
 
 -- ── Layer resync request (Client -> Server) ───────────────
 
-SoilRequestValueMapEvent = {}
+SoilRequestValueMapEvent = SoilRequestValueMapEvent or {}
 SoilRequestValueMapEvent_mt = Class(SoilRequestValueMapEvent, Event)
 
 InitEventClass(SoilRequestValueMapEvent, "SoilRequestValueMapEvent")
@@ -2177,20 +2748,19 @@ end
 
 -- ── Server-side dispatch ──────────────────────────────────
 
---- Stream the value map layers to one client connection.
---- onlyLayerIdx: optional 1-based LAYER_DEFS index to resend a single layer.
---- Mirrors the field-batch strategy: synchronous on dedicated servers,
---- drip-fed via addUpdateable on listen servers to protect the render thread.
+--- Stream the value map layers FULL to one client connection (the join sync, or a
+--- single-layer repair when onlyLayerIdx is given). Drip-fed via addUpdateable
+--- (BaseMission.lua:534, so on a dedicated server too); synchronous only where
+--- addUpdateable is absent. Each chunk's rows are read through refreshSyncRow, so
+--- the send seeds the row cache with exactly what it sent, and the trailing
+--- checksum comes from that cache: no walk after the send.
 function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
     if g_server == nil or not connection then return end
     local vm = sfGetValueMaps()
     if not vm then return end
 
-    local stride  = vm:getSyncStride()
-    local numRows = math.floor(vm.resolution / stride)
+    local numRows = vm:getSyncRowCount()
     if numRows <= 0 then return end
-
-    local ROWS_PER_EVENT = 16
 
     -- Build the (layerIdx, gyStart) work list
     local work = {}
@@ -2201,7 +2771,7 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
             local gy = 0
             while gy < numRows do
                 work[#work + 1] = { layerIdx = layerIdx, key = def.key, gyStart = gy }
-                gy = gy + ROWS_PER_EVENT
+                gy = gy + SF_SYNC_ROWS_PER_EVENT
             end
         end
     end
@@ -2209,45 +2779,39 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
 
     local function buildChunk(item, isLast)
         local rows = {}
-        local gyEnd = math.min(item.gyStart + ROWS_PER_EVENT - 1, numRows - 1)
+        local gyEnd = math.min(item.gyStart + SF_SYNC_ROWS_PER_EVENT - 1, numRows - 1)
         for gy = item.gyStart, gyEnd do
-            rows[#rows + 1] = vm:readSyncRow(item.key, gy) or {}
+            rows[#rows + 1] = vm:refreshSyncRow(item.key, gy) or {}
         end
         return SoilValueMapChunkEvent.new(item.layerIdx, item.gyStart, rows, isLast)
     end
 
-    -- [SF-43 ask 4] SKIP serverOnly layers entirely rather than sending a sentinel:
-    -- sfComputeLayerChecksum walks the whole sync grid, so a sentinel would still
-    -- pay the full cost per unsynced layer for a number nobody may act on.
-    local function buildChecksums()
-        local checksums = {}
-        for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
-            if def.serverOnly ~= true then
-                local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
-                checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum, nonZero = nonZero }
-            end
-        end
-        return checksums
+    -- [SF-43 ask 4] serverOnly layers are skipped entirely rather than sent as a
+    -- sentinel; the trailing checksum names the layers it carries by index. A
+    -- single-layer repair is judged by its own layer's checksum alone.
+    local function trailingChecksum()
+        return SoilValueMapChecksumEvent.new(sfChecksumsFromCache(vm, onlyLayerIdx))
     end
 
-    if g_dedicatedServer ~= nil or g_currentMission == nil
-       or g_currentMission.addUpdateable == nil then
-        -- Synchronous path (connection lifetime guaranteed - see issue #228)
+    if g_currentMission == nil or g_currentMission.addUpdateable == nil then
         for i, item in ipairs(work) do
             connection:sendEvent(buildChunk(item, i == #work))
         end
-        connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
+        connection:sendEvent(trailingChecksum())
         SoilLogger.info("Server: value maps sent synchronously (%d chunks)", #work)
     else
-        -- Listen server: drip-feed chunks across frames
         local dispatcher = {
             index      = 1,
             timer      = 0,
-            delay      = 40,   -- ms between chunks
+            delay      = SF_SYNC_CHUNK_DELAY,
             work       = work,
             connection = connection,
             update = function(dsp, dt)
                 if not dsp.connection or dsp.index > #dsp.work then
+                    g_currentMission:removeUpdateable(dsp)
+                    return
+                end
+                if dsp.connection.isConnected == false then
                     g_currentMission:removeUpdateable(dsp)
                     return
                 end
@@ -2260,7 +2824,7 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
                 dsp.index = dsp.index + 1
 
                 if isLast then
-                    dsp.connection:sendEvent(SoilValueMapChecksumEvent.new(buildChecksums()))
+                    dsp.connection:sendEvent(trailingChecksum())
                     g_currentMission:removeUpdateable(dsp)
                 end
             end,
@@ -2270,22 +2834,299 @@ function SoilNetworkEvents_SendValueMaps(connection, onlyLayerIdx)
     end
 end
 
---- Broadcast checksums to all clients (periodic drift detection).
+-- ── The server's sync round (timer) ───────────────────────
+
+-- One round per timer firing: REFRESH (per tick up to SF_SYNC_ROWS_PER_TICK rows of
+-- the layer at the cursor: its stale rows for the checksum and its dirty rows for
+-- the patch, taken at round start), SEND (the PATCH chunks to every client at
+-- SF_SYNC_CHUNK_DELAY ms, the last one flagged), CHECKSUM (every synced layer, from
+-- the cache). A round still running when the timer fires again is left to finish;
+-- that firing is skipped, the next one starts a fresh round.
+local sfSyncRound = nil
+local sfSyncRoundCount = 0
+
+--- Group a layer's dirty rows into PATCH chunks of consecutive rows.
+local function sfRoundBuildChunks(round, layerIdx, rowsByGy, dirtyRows)
+    local i, n = 1, #dirtyRows
+    while i <= n do
+        local gyStart = dirtyRows[i]
+        local rows = { rowsByGy[gyStart] }
+        local j = i
+        while j + 1 <= n and dirtyRows[j + 1] == dirtyRows[j] + 1 and #rows < SF_SYNC_ROWS_PER_EVENT do
+            j = j + 1
+            rows[#rows + 1] = rowsByGy[dirtyRows[j]]
+        end
+        round.chunks[#round.chunks + 1] = SoilValueMapChunkEvent.new(layerIdx, gyStart, rows, false, { mode = "PATCH" })
+        i = j + 1
+    end
+end
+
+--- One tick of a round. Returns true when the round is complete.
+local function sfRoundStep(round, vm, dt)
+    if round.phase == "refresh" then
+        local budget = SF_SYNC_ROWS_PER_TICK
+        while budget > 0 and round.cursor <= #round.layers do
+            local layer = round.layers[round.cursor]
+            if layer.todo == nil then
+                local set, taken = {}, {}
+                if round.audit then
+                    for gy = 0, vm:getSyncRowCount() - 1 do set[gy] = true end
+                else
+                    for _, gy in ipairs(vm:getSyncStaleRows(layer.key)) do set[gy] = true end
+                end
+                for _, gy in ipairs(layer.dirty) do set[gy] = true; taken[gy] = true end
+                local list = {}
+                for gy in pairs(set) do list[#list + 1] = gy end
+                table.sort(list)
+                layer.todo, layer.next, layer.rows, layer.taken = list, 1, {}, taken
+            end
+            -- The list is refreshed over several ticks, so each row is judged at its own
+            -- refresh, not when the list is built: a row dirty in the LIVE set and not in
+            -- the taken one was written after the take (before or after the build), this
+            -- round patches nothing for it, so it is not refreshed either (the cache would
+            -- checksum a value no client has, and the client would drift into a FULL
+            -- resend). It stays stale and dirty for the next round, which patches and
+            -- refreshes it together. A taken row written again is refreshed and patched
+            -- at its newest value.
+            while budget > 0 and layer.next <= #layer.todo do
+                local gy = layer.todo[layer.next]
+                layer.next = layer.next + 1
+                if layer.taken[gy] or not vm:isSyncRowDirty(layer.key, gy) then
+                    layer.rows[gy] = vm:refreshSyncRow(layer.key, gy) or {}
+                    budget = budget - 1
+                end
+            end
+            if layer.next > #layer.todo then
+                sfRoundBuildChunks(round, layer.layerIdx, layer.rows, layer.dirty)
+                layer.rows = nil
+                round.cursor = round.cursor + 1
+            end
+        end
+        if round.cursor > #round.layers then
+            round.phase = "send"
+            round.timer = SF_SYNC_CHUNK_DELAY   -- the first chunk goes out on the next step
+        end
+        return false
+    end
+    if round.phase == "send" then
+        if round.index > #round.chunks then
+            round.phase = "checksum"
+        else
+            round.timer = round.timer + dt
+            if round.timer < SF_SYNC_CHUNK_DELAY then return false end
+            round.timer = 0
+            local chunk = round.chunks[round.index]
+            chunk.isLast = (round.index == #round.chunks)
+            g_server:broadcastEvent(chunk)
+            round.index = round.index + 1
+            return false
+        end
+    end
+    g_server:broadcastEvent(SoilValueMapChecksumEvent.new(sfChecksumsFromCache(vm)))
+    SoilLogger.info("Server: value map round %d: %d patch chunk(s), checksums from the row cache%s",
+        round.number, #round.chunks, round.audit and " (audit round, every row refreshed)" or "")
+    return true
+end
+
+--- The 5-minute timer's entry (SoilFertilityManager:update): start a sync round.
 function SoilNetworkEvents_BroadcastValueMapChecksums()
     if g_server == nil then return end
     local vm = sfGetValueMaps()
     if not vm then return end
-    -- [SF-43 ask 4] The broadcast twin of buildChecksums above: same skip, same
-    -- explicit layerIdx. These two must stay in lockstep - a divergence here is
-    -- exactly the positional bug the carried index was added to make impossible.
-    local checksums = {}
+    if sfSyncRound ~= nil then return end
+    sfSyncRoundCount = sfSyncRoundCount + 1
+    local round = { number = sfSyncRoundCount, audit = (sfSyncRoundCount % SF_SYNC_AUDIT_EVERY == 0),
+                    phase = "refresh", layers = {}, cursor = 1, chunks = {}, index = 1, timer = 0 }
+    -- The dirty sets are taken now: a write that lands during the round goes to the next.
     for layerIdx, def in ipairs(SoilValueMaps.LAYER_DEFS) do
         if def.serverOnly ~= true then
-            local sum, nonZero = sfComputeLayerChecksum(vm, def.key)
-            checksums[#checksums + 1] = { layerIdx = layerIdx, sum = sum, nonZero = nonZero }
+            round.layers[#round.layers + 1] = { layerIdx = layerIdx, key = def.key, dirty = vm:takeSyncDirtyRows(def.key) }
         end
     end
-    g_server:broadcastEvent(SoilValueMapChecksumEvent.new(checksums))
+    sfSyncRound = round
+    if g_currentMission == nil or g_currentMission.addUpdateable == nil then
+        while not sfRoundStep(round, vm, SF_SYNC_CHUNK_DELAY) do end
+        sfSyncRound = nil
+        return
+    end
+    round.update = function(dsp, dt)
+        local vmNow = sfGetValueMaps()
+        if vmNow == nil or g_server == nil or sfRoundStep(dsp, vmNow, dt) then
+            sfSyncRound = nil
+            g_currentMission:removeUpdateable(dsp)
+        end
+    end
+    g_currentMission:addUpdateable(round)
+end
+
+-- ==========================================================================
+-- [SF-22] SoilScoutingMaskSyncEvent (server -> client): farm-private delivery of
+-- the walked mask. Mode FULL (0) replaces one farm's slice atomically across a
+-- contiguous chunk sequence; mode DELTA (1) adds a handful of freshly walked
+-- cells (always chunk 1 of 1). The server sends a farm's bytes ONLY to that
+-- farm's own clients, so another farm never receives an entry.
+--
+-- CLIENT-APPLY ONLY: the run() guard is `g_server ~= nil` (NOT the weaker
+-- `not g_client` used by SoilFullSyncEvent). A listen host has g_client, and
+-- Connection:sendEvent runs a local-stream event in-process; applying a display
+-- payload on the host would clobber its own authoritative mask.
+-- ==========================================================================
+SoilScoutingMaskSyncEvent = SoilScoutingMaskSyncEvent or {}
+SoilScoutingMaskSyncEvent_mt = Class(SoilScoutingMaskSyncEvent, Event)
+
+InitEventClass(SoilScoutingMaskSyncEvent, "SoilScoutingMaskSyncEvent")
+
+SoilScoutingMaskSyncEvent.SCHEMA      = 1
+SoilScoutingMaskSyncEvent.MODE_FULL   = 0
+SoilScoutingMaskSyncEvent.MODE_DELTA  = 1
+SoilScoutingMaskSyncEvent.MAX_ENTRIES = 32
+
+function SoilScoutingMaskSyncEvent.emptyNew()
+    return Event.new(SoilScoutingMaskSyncEvent_mt)
+end
+
+local function sfNewMaskSync(mode, farmId, chunkIndex, chunkCount, entries)
+    local self = SoilScoutingMaskSyncEvent.emptyNew()
+    self.mode       = mode
+    self.farmId     = farmId
+    self.chunkIndex = chunkIndex or 1
+    self.chunkCount = chunkCount or 1
+    self.entries    = entries or {}
+    return self
+end
+
+--- One FULL chunk (chunkIndex of chunkCount) of farmId's mask.
+function SoilScoutingMaskSyncEvent.newFull(farmId, chunkIndex, chunkCount, entries)
+    return sfNewMaskSync(SoilScoutingMaskSyncEvent.MODE_FULL, farmId, chunkIndex, chunkCount, entries)
+end
+
+--- One independently applicable DELTA (always chunk 1 of 1) of farmId's mask.
+function SoilScoutingMaskSyncEvent.newDelta(farmId, entries)
+    return sfNewMaskSync(SoilScoutingMaskSyncEvent.MODE_DELTA, farmId, 1, 1, entries)
+end
+
+function SoilScoutingMaskSyncEvent:writeStream(streamId, connection)
+    streamWriteUInt8(streamId, SoilScoutingMaskSyncEvent.SCHEMA)
+    streamWriteUInt8(streamId, self.mode or 0)
+    streamWriteUIntN(streamId, self.farmId or 0, FarmManager.FARM_ID_SEND_NUM_BITS)
+    streamWriteUInt16(streamId, self.chunkIndex or 1)
+    streamWriteUInt16(streamId, self.chunkCount or 1)
+    local n = math.min(#self.entries, SoilScoutingMaskSyncEvent.MAX_ENTRIES)
+    streamWriteUInt16(streamId, n)
+    for i = 1, n do
+        local e = self.entries[i]
+        streamWriteInt32(streamId, e.fieldId or 0)
+        streamWriteString(streamId, e.cellKey or "")
+        streamWriteInt32(streamId, e.day or 0)
+        streamWriteFloat32(streamId, e.truth or 0)
+        streamWriteFloat32(streamId, e.x or 0)
+        streamWriteFloat32(streamId, e.z or 0)
+        streamWriteInt32(streamId, e.gen or 0)
+    end
+end
+
+function SoilScoutingMaskSyncEvent:readStream(streamId, connection)
+    if not sfAppliesOnClient(connection) then self.refused = "WRONG_SIDE" return end
+    self.schema     = streamReadUInt8(streamId)
+    self.mode       = streamReadUInt8(streamId)
+    self.farmId     = streamReadUIntN(streamId, FarmManager.FARM_ID_SEND_NUM_BITS)
+    self.chunkIndex = streamReadUInt16(streamId)
+    self.chunkCount = streamReadUInt16(streamId)
+    local n = streamReadUInt16(streamId)
+    self.entries = {}
+    if not sfCountWithinBound(n, SoilScoutingMaskSyncEvent.MAX_ENTRIES) then self.refused = "ENTRY_COUNT" return end
+    for i = 1, n do
+        local e = {}
+        e.fieldId = streamReadInt32(streamId)
+        e.cellKey = streamReadString(streamId)
+        e.day     = streamReadInt32(streamId)
+        e.truth   = streamReadFloat32(streamId)
+        e.x       = streamReadFloat32(streamId)
+        e.z       = streamReadFloat32(streamId)
+        e.gen     = streamReadInt32(streamId)
+        self.entries[i] = e
+    end
+    self:run(connection)
+end
+
+function SoilScoutingMaskSyncEvent:run(connection)
+    -- CLIENT-APPLY ONLY. The listen host is g_server ~= nil and must never
+    -- overwrite its own authoritative mask with a display payload.
+    if g_server ~= nil then return end
+    local scouting = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.spatialScouting
+    if scouting == nil or SoilScoutingBridge == nil or SoilScoutingBridge.applyMaskEvent == nil then return end
+    local localFarmId = g_localPlayer and g_localPlayer.farmId
+    SoilScoutingBridge.applyMaskEvent(scouting, localFarmId, {
+        schema     = self.schema,
+        mode       = self.mode,
+        farmId     = self.farmId,
+        chunkIndex = self.chunkIndex,
+        chunkCount = self.chunkCount,
+        entries    = self.entries,
+    })
+end
+
+-- ==========================================================================
+-- [SF-22] SoilScoutingMaskRequestEvent (client -> server): "send me a fresh FULL
+-- of my current farm's mask". No payload, no selector: the server resolves the
+-- requesting connection's user and ordinary farm and replies with one contiguous
+-- FULL. Spectator / guided-tour / invalid / unresolved receives no mask. Sent on
+-- a farm switch; the join case piggybacks on SoilRequestFullSyncEvent:run.
+-- ==========================================================================
+SoilScoutingMaskRequestEvent = SoilScoutingMaskRequestEvent or {}
+SoilScoutingMaskRequestEvent_mt = Class(SoilScoutingMaskRequestEvent, Event)
+
+InitEventClass(SoilScoutingMaskRequestEvent, "SoilScoutingMaskRequestEvent")
+
+function SoilScoutingMaskRequestEvent.emptyNew()
+    return Event.new(SoilScoutingMaskRequestEvent_mt)
+end
+
+function SoilScoutingMaskRequestEvent.new()
+    return SoilScoutingMaskRequestEvent.emptyNew()
+end
+
+function SoilScoutingMaskRequestEvent:readStream(streamId, connection)
+    self:run(connection)
+end
+
+function SoilScoutingMaskRequestEvent:writeStream(streamId, connection)
+    -- no payload: the server resolves the farm from the connection, never the wire
+end
+
+function SoilScoutingMaskRequestEvent:run(connection)
+    -- SERVER ONLY: resolve the requester's ordinary farm and reply with a FULL.
+    if g_server == nil or connection == nil then return end
+    SoilNetworkEvents_SendScoutingMaskFull(connection)
+end
+
+--- Server helper: resolve a connection's ordinary farm and send its walked-mask
+--- FULL. No-op for a non-ordinary or unresolved farm. Shared by the join
+--- piggyback (SoilRequestFullSyncEvent:run) and the farm-switch request event.
+---@param connection table
+function SoilNetworkEvents_SendScoutingMaskFull(connection)
+    if g_server == nil or connection == nil then return end
+    local scouting = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+        and g_SoilFertilityManager.soilSystem.spatialScouting
+    if scouting == nil or SoilScoutingBridge == nil or SoilScoutingBridge.sendFarmFull == nil then return end
+
+    local userManager = g_currentMission and g_currentMission.userManager
+    local user = userManager and userManager:getUserByConnection(connection)
+    if user == nil then return end
+
+    local farmId = nil
+    if g_farmManager and type(g_farmManager.getFarmByUserId) == "function" then
+        local farm = g_farmManager:getFarmByUserId(user:getId())
+        farmId = farm and farm.farmId
+    end
+    if farmId == nil then farmId = user.farmId end
+
+    if not (SpatialScouting and SpatialScouting.isOrdinaryFarmId
+            and SpatialScouting.isOrdinaryFarmId(farmId)) then
+        return
+    end
+    SoilScoutingBridge.sendFarmFull(scouting, connection, farmId)
 end
 
 SoilLogger.info("Network events system loaded")

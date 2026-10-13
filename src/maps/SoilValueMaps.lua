@@ -25,7 +25,7 @@
 -- =========================================================
 
 ---@class SoilValueMaps
-SoilValueMaps = {}
+SoilValueMaps = SoilValueMaps or {}
 local SoilValueMaps_mt = Class(SoilValueMaps)
 
 -- Unscouted-disease marker (Unscouted Indicator). The diseasePressure DISPLAY
@@ -121,6 +121,42 @@ SoilValueMaps.LAYER_DEFS = {
       maxVal = (SoilConstants and SoilConstants.COMPACTION and SoilConstants.COMPACTION.TRAFFIC_DRAG
                 and SoilConstants.COMPACTION.TRAFFIC_DRAG.CAP) or 0.3,
       serverOnly = true },
+    -- [SF-53] GROWTH CREDIT bank. The two layers are one logical persistence unit
+    -- (brief 3.1): a cell is only ever read/written as a pair. growthCreditDays
+    -- holds the packed credit byte: low seven bits = bank days 0..84, high bit =
+    -- appliedThisCrop witness. growthCreditFruit holds the fruit identity 1..63.
+    -- minVal 0 / maxVal 254 makes unitsPerRaw exactly 1, so the semantic packed
+    -- value round-trips raw without quantisation (the materialAge shape). The
+    -- exact 0..254 linear encode maps semantic zero to raw one; "absent" is a
+    -- never-written cell (raw zero), which decodes to nil on read, while a
+    -- semantic zero-bank + applied bit (128) stays a valid crop record.
+    { key = "growthCreditDays",  file = "sfSoilMap_GrowthCreditDays.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
+    { key = "growthCreditFruit", file = "sfSoilMap_GrowthCreditFruit.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
+    -- [SF-78] GROWTH BLOCK (hold) capture. Same one-logical-pair contract as the
+    -- credit pair (brief 3.1): growthBlockState holds the captured pre-state
+    -- 0..254; growthBlockFruit holds fruit 1..63 in the low six bits, ACTIVE in
+    -- bit 6 (64) and HELD in bit 7 (128) (both flags invalid). minVal 0 / maxVal
+    -- 254 gives unitsPerRaw 1 so the packed value round-trips without
+    -- quantisation; raw zero is "absent" and presence is carried by the fruit
+    -- byte's flag. Allocated only with the family enabled or prior pair files.
+    { key = "growthBlockState",  file = "sfSoilMap_GrowthBlockState.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
+    { key = "growthBlockFruit",  file = "sfSoilMap_GrowthBlockFruit.grle",
+      minVal = 0, maxVal = 254, serverOnly = true },
+    -- [RSF-F213] GROUND MEMBERSHIP (GROUND-CONDITION-CONTRACT section 5, P-GROUND-3):
+    -- a ONE-BIT companion index at the exact condition geometry saying which Soil
+    -- cells the daily settle must consider, fields and yards alike. Derived, not a
+    -- truth: native height state is occupancy truth and the two condition layers
+    -- are the record; a bit here has no quantity meaning. Written and read only by
+    -- GroundConditionCoordinator through its own modifier, never through the value
+    -- helpers below (no encode, no radius, no polygon), so `channels = 1` is honest
+    -- and costs one bit a cell. serverOnly for the same reasons as the two
+    -- condition layers. Absent from an older save it is rebuilt at arm from the
+    -- condition bytes and native occupancy (the coordinator), never assumed empty.
+    { key = "groundMembership", file = "sfSoilMap_GMB.grle", channels = 1,
+      minVal = 0, maxVal = 1, serverOnly = true },
 }
 
 local NUM_CHANNELS = 8      -- bits per pixel
@@ -192,6 +228,14 @@ function SoilValueMaps.new()
     self.hasExecuteAdd  = false
     self.hasPolygonOps  = false
     self._polygonProbed = false
+    -- [SF-52] Growth-input revision family (server-owned, session-local,
+    -- unpersisted). Coordinates are unavailable until establishGrowthInputRevisions
+    -- runs after a coherent map load; a fresh instance carries none.
+    self.growthInputInitialized      = false
+    self.growthInputRevision         = nil
+    self.growthInputUnscopedRevision = nil
+    self.growthInputFarmlandRevision = {}
+    self._suppressGrowthObserve      = false
     return self
 end
 
@@ -236,6 +280,9 @@ function SoilValueMaps:initialize(savegameDir)
     local isServer = (g_server ~= nil)
     for _, def in ipairs(SoilValueMaps.LAYER_DEFS) do
         local skipOnClient = (def.serverOnly == true) and not isServer
+        -- [RSF-F213] a def may declare its own bit depth; the value layers keep the
+        -- store's eight.
+        local channels = def.channels or NUM_CHANNELS
         local bvm = nil
         if not skipOnClient then
             bvm = createBitVectorMap("SFVM_" .. def.key)
@@ -249,7 +296,7 @@ function SoilValueMaps:initialize(savegameDir)
             if savegameDir and fileExists ~= nil and def.file then
                 local path = savegameDir .. "/" .. def.file
                 if fileExists(path) then
-                    local ok = loadBitVectorMapFromFile(bvm, path, NUM_CHANNELS)
+                    local ok = loadBitVectorMapFromFile(bvm, path, channels)
                     if ok then
                         -- Adopt the persisted resolution (may differ if the cap changed).
                         -- [SF-43] FIRST loaded layer only. This was last-wins, which
@@ -278,12 +325,12 @@ function SoilValueMaps:initialize(savegameDir)
                 end
             end
             if not loaded then
-                loadBitVectorMapNew(bvm, self.resolution, self.resolution, NUM_CHANNELS, false)
+                loadBitVectorMapNew(bvm, self.resolution, self.resolution, channels, false)
             end
 
             -- World-coordinate modifier: passing g_terrainNode maps world XZ onto
             -- the full map extent (GDN FS25 weed-control sample pattern).
-            local modifier = DensityMapModifier.new(bvm, 0, NUM_CHANNELS, g_terrainNode)
+            local modifier = DensityMapModifier.new(bvm, 0, channels, g_terrainNode)
             local filter   = DensityMapFilter.new(modifier)
             self.layers[def.key] = {
                 bvm      = bvm,
@@ -291,6 +338,7 @@ function SoilValueMaps:initialize(savegameDir)
                 filter   = filter,
                 def      = def,
                 loaded   = loaded,
+                channels = channels,
             }
         end
     end
@@ -384,28 +432,40 @@ function SoilValueMaps:delete()
     self.noiseFilterB = nil
     self.available   = false
     self.initialized = false
+    -- [SF-52] discard the growth-input coordinates so no prior-session coordinate
+    -- survives a same-process reload (brief 3.7; invariant 11).
+    self:resetGrowthInputRevisions()
 end
 
 -- ─────────────────────────────────────────────────────────
 -- Persistence
 -- ─────────────────────────────────────────────────────────
 
+--- [MAINTENANCE row 137] Returns how many layers saved and which: key -> true for each
+--- layer whose save call completed. The engine's saveBitVectorMapToFile returns nothing
+--- any caller reads (DensityMapHeightManager.lua:527, InfoLayer.lua:104), so a call that
+--- did not throw is the only success there is to report.
+---@return number saved, table savedByKey
 function SoilValueMaps:saveToSavegame(savegameDir)
-    if not self.available or not savegameDir then return end
+    local savedByKey = {}
+    if not self.available or not savegameDir then return 0, savedByKey end
     if saveBitVectorMapToFile == nil then
         SoilLogger.warning("SoilValueMaps: saveBitVectorMapToFile unavailable - maps not persisted")
-        return
+        return 0, savedByKey
     end
     local saved = 0
-    for _, entry in pairs(self.layers) do
+    for key, entry in pairs(self.layers) do
         if entry.def.file then   -- ephemeral layers (organicStatus) are rebuilt, not saved
             local path = savegameDir .. "/" .. entry.def.file
             local ok, err = pcall(saveBitVectorMapToFile, entry.bvm, path)
-            if ok then saved = saved + 1
+            if ok then
+                saved = saved + 1
+                savedByKey[key] = true
             else SoilLogger.warning("SoilValueMaps: save failed for %s: %s", path, tostring(err)) end
         end
     end
     SoilLogger.info("SoilValueMaps: %d layer maps saved to %s", saved, savegameDir)
+    return saved, savedByKey
 end
 
 -- ─────────────────────────────────────────────────────────
@@ -450,6 +510,146 @@ function SoilValueMaps:readValueAtWorld(key, worldX, worldZ)
     return decode(raw, entry.def)
 end
 
+--- [SCS-041] Metres-per-pixel grain of the value maps. Every layer shares one
+--- resolution, so this is the honest cell size a positional consumer needs to
+--- size a per-cell budget (SeasonalCropStress irrigation absorption). Returns
+--- nil when the maps are unavailable rather than a fabricated grain.
+---@return number|nil grainMetres  terrainSize / resolution, or nil
+function SoilValueMaps:getGrainMetres()
+    if not self.available or self.resolution == nil or self.resolution <= 0 then return nil end
+    return self.terrainSize / self.resolution
+end
+
+-- ─────────────────────────────────────────────────────────
+-- [SF-52] Growth-input revision family
+-- ─────────────────────────────────────────────────────────
+-- One server-owned set of observation coordinates over the four growth
+-- read-set layers (nitrogen, phosphorus, potassium, compaction). A growth
+-- consumer reads these coordinates before and after it samples the ground;
+-- equal coordinates prove the ground under its point or plan did not move
+-- mid-read. Coordinates are session-local monotonic integers compared for
+-- EQUALITY only - never for an exact +1 increment - and are never persisted
+-- (SF-52 brief 3.1; invariants 7 and 11).
+--
+-- Three coordinates:
+--   growthInputRevision          one global observation sequence
+--   growthInputFarmlandRevision  one sequence per public farmland id
+--   growthInputUnscopedRevision  one conservative invalidation sequence
+--
+-- A write whose domain names its farmlands advances the global sequence and
+-- each named farmland. A write with no proven domain advances the global and
+-- the unscoped sequence, so an unproven write conservatively invalidates every
+-- field rather than falsely claiming currentness (invariant 7: harmless false
+-- invalidation, never false currentness).
+
+-- Only these four layers carry growth truth. A write to any OTHER layer (pH,
+-- organicMatter, the pressure display layers, the material/traffic layers)
+-- never advances the growth read-set.
+local GROWTH_READ_KEYS = {
+    nitrogen   = true,
+    phosphorus = true,
+    potassium  = true,
+    compaction = true,
+}
+
+-- Private write-observation outcomes (SF-52 brief 3.1).
+SoilValueMaps.GROWTH_WRITE_REFUSED  = "REFUSED"   -- invalid/unavailable/no-op: no advance
+SoilValueMaps.GROWTH_WRITE_EXECUTED = "EXECUTED"  -- the engine write ran for a valid nonzero intent
+
+--- Establish the first usable growth-input coordinates. Called ONCE, only after
+--- map load, creation, migration and any seed work has produced coherent server
+--- truth, so a bootstrap write can never expose a partial generation
+--- (brief 3.1). Idempotent: a second call is ignored. Seeds a revision of 1 for
+--- every currently known public farmland id so an owned farmland has a token
+--- immediately; a farmland first seen later is minted on its first observed
+--- write. Server-only; a client never establishes or mints these coordinates
+--- (invariant 13).
+---@param farmlandIds number[]|nil currently known public farmland ids
+function SoilValueMaps:establishGrowthInputRevisions(farmlandIds)
+    if g_server == nil then return end
+    if not self.growthInputInitialized then
+        self.growthInputInitialized      = true
+        self.growthInputRevision         = 1
+        self.growthInputUnscopedRevision = 1
+        self.growthInputFarmlandRevision = {}
+    end
+    -- Seed a revision of 1 for every farmland not yet known (idempotent per id),
+    -- so a farmland bought after the first generation gains a token here rather
+    -- than only on its first observed write.
+    if type(farmlandIds) == "table" then
+        for _, id in ipairs(farmlandIds) do
+            if self.growthInputFarmlandRevision[id] == nil then
+                self.growthInputFarmlandRevision[id] = 1
+            end
+        end
+    end
+end
+
+--- Discard every growth-input coordinate. Called on mission reload and teardown
+--- so no prior-session coordinate survives (brief 3.7; invariant 11).
+function SoilValueMaps:resetGrowthInputRevisions()
+    self.growthInputInitialized      = false
+    self.growthInputRevision         = nil
+    self.growthInputUnscopedRevision = nil
+    self.growthInputFarmlandRevision = {}
+    self._suppressGrowthObserve      = false
+end
+
+--- Observe one public read-set write at the mutator boundary and advance the
+--- coordinates it proves. The private heart of the family (brief 3.1).
+---
+--- No advance happens when: a nested public write already reported this outer
+--- write (one requested public write = one outcome); the caller is not the
+--- server; the coordinates are not yet established (bootstrap); the layer is
+--- outside the growth read-set; or the outcome is REFUSED. An EXECUTED read-set
+--- write advances the global sequence, then advances each proven farmland when a
+--- domain is given, or the unscoped sequence when it is not.
+---@param key string the layer written
+---@param outcome string GROWTH_WRITE_EXECUTED | GROWTH_WRITE_REFUSED
+---@param growthDomain table|nil { farmlandIds = { id, ... } }
+function SoilValueMaps:_observeGrowthWrite(key, outcome, growthDomain)
+    if self._suppressGrowthObserve then return end
+    if g_server == nil then return end
+    if not self.growthInputInitialized then return end
+    if not GROWTH_READ_KEYS[key] then return end
+    if outcome ~= SoilValueMaps.GROWTH_WRITE_EXECUTED then return end
+
+    self.growthInputRevision = self.growthInputRevision + 1
+
+    local farmlandIds = growthDomain and growthDomain.farmlandIds
+    if type(farmlandIds) == "table" and #farmlandIds > 0 then
+        for _, id in ipairs(farmlandIds) do
+            self.growthInputFarmlandRevision[id] =
+                (self.growthInputFarmlandRevision[id] or 1) + 1
+        end
+    else
+        self.growthInputUnscopedRevision = self.growthInputUnscopedRevision + 1
+    end
+end
+
+--- Global growth-input revision, or nil before coherent initialization or on a
+--- non-authoritative client. Consumers compare equality (brief 3.2).
+---@return number|nil
+function SoilValueMaps:getGrowthInputRevision()
+    if not self.growthInputInitialized then return nil end
+    return self.growthInputRevision
+end
+
+--- The three-part observation token for a farmland, or nil before initialization
+--- or for a farmland with no established coordinate (brief 3.2). Equality only.
+---@param farmlandId number
+---@return table|nil token { globalRevision, farmlandRevision, unscopedRevision }
+function SoilValueMaps:getGrowthInputToken(farmlandId)
+    if not self.growthInputInitialized then return nil end
+    local farmlandRevision = self.growthInputFarmlandRevision[farmlandId]
+    if farmlandRevision == nil then return nil end
+    return {
+        globalRevision   = self.growthInputRevision,
+        farmlandRevision = farmlandRevision,
+        unscopedRevision = self.growthInputUnscopedRevision,
+    }
+end
+
 --- [SF-43] RAW (unencoded) value at a world position; nil when unavailable.
 --- The age layer must not round-trip through decode(): raw 0 and raw 255 are
 --- SENTINELS ("no record" and "the ceiling refusal"), not points on a semantic
@@ -464,7 +664,10 @@ function SoilValueMaps:readRawAtWorld(key, worldX, worldZ)
 end
 
 --- Write a semantic value into a square of half-size `radius` (meters).
-function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius)
+--- [SF-52] Optional trailing `growthDomain` = { farmlandIds = {...} } lets a
+--- caller that owns the touched farmland(s) prove them; without it the write
+--- advances the conservative unscoped coordinate.
+function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -476,18 +679,37 @@ function SoilValueMaps:writeValueAtWorld(key, worldX, worldZ, value, radius)
         worldX - r, worldZ + r,   -- height point
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(encode(value, entry.def))
+    self:_markSyncDirtyZ(key, worldZ - r, worldZ + r)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- Read-modify-write delta at a position: reads the pixel under (x,z),
---- adds `delta`, writes the result back over the radius square. Used by
---- residue/amendment incorporation which applies local bumps.
-function SoilValueMaps:addValueAtWorld(key, worldX, worldZ, delta, radius)
+--- adds `delta`, writes the result back over the radius square.
+---
+--- [SF-934] DO NOT USE THIS FOR INCREMENTAL FIELD WRITES. Despite the name this is
+--- a SET over an area, not an add over an area: it samples ONE pixel, adds the
+--- delta, then stamps that single result across the whole radius square, replacing
+--- every other pixel in the square with whatever the sampled pixel held. Two passes
+--- over the same ground therefore copy different neighbours and can move a value in
+--- opposite directions from an unchanged delta (#934, tillage NPK flipping with
+--- travel direction). `addPaintStrip` is the additive primitive; route per-pixel
+--- work through that. This is kept only for a caller that genuinely wants one
+--- sampled value levelled across a patch.
+function SoilValueMaps:addValueAtWorld(key, worldX, worldZ, delta, radius, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]
     if not entry then return end
     local current = self:readValueAtWorld(key, worldX, worldZ)
     if current == nil then return end   -- unseeded ground: nothing to modify
-    self:writeValueAtWorld(key, worldX, worldZ, current + delta, radius)
+    -- [SF-52] One requested public write reports one outer outcome: suppress the
+    -- nested writeValueAtWorld observation and report this add's own outcome. The
+    -- pcall guarantees the suppress flag is cleared even if the engine write errors.
+    self._suppressGrowthObserve = true
+    local ok = pcall(self.writeValueAtWorld, self, key, worldX, worldZ, current + delta, radius)
+    self._suppressGrowthObserve = false
+    if ok then
+        self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
+    end
 end
 
 -- ─────────────────────────────────────────────────────────
@@ -498,7 +720,7 @@ end
 --- ax/az..bx/bz span the boom laterally; halfThickness (meters) extends the
 --- strip along the travel direction so consecutive frames form a continuous
 --- painted band (PF-style strips instead of stamped cells).
-function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
+function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value, growthDomain)
     if not self.available then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -506,7 +728,13 @@ function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
     local dx, dz = bx - ax, bz - az
     local len = math.sqrt(dx * dx + dz * dz)
     if len < 0.01 then
-        self:writeValueAtWorld(key, ax, az, value, halfThickness)
+        -- [SF-52] degenerate strip falls back to the point writer; report once.
+        self._suppressGrowthObserve = true
+        local ok = pcall(self.writeValueAtWorld, self, key, ax, az, value, halfThickness)
+        self._suppressGrowthObserve = false
+        if ok then
+            self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
+        end
         return
     end
     -- Unit perpendicular (travel direction) of the boom line
@@ -520,6 +748,9 @@ function SoilValueMaps:paintStrip(key, ax, az, bx, bz, halfThickness, value)
         ax + ux * h, az + uz * h,   -- height point (along travel)
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(encode(value, entry.def))
+    self:_markSyncDirtyZ(key, math.min(az - uz * h, bz - uz * h, az + uz * h, bz + uz * h),
+                              math.max(az - uz * h, bz - uz * h, az + uz * h, bz + uz * h))
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- [RSF-762] Add a semantic delta to a parallelogram strip additively.
@@ -539,7 +770,7 @@ end
 ---@param hx,hz  height corner (meters)
 ---@param delta  semantic delta to add
 ---@return number semantic amount applied (0 when sub-step or the additive path is unavailable)
-function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
+function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta, growthDomain)
     if not self.available then return 0 end
     local entry = self.layers[key]
     if not entry then return 0 end
@@ -554,6 +785,43 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
     if not self.hasExecuteAdd then return 0 end
     local rawLow = def.rawFloor or RAW_MIN
     local filter = entry.filter
+
+    -- Saturation band (commit c776536b; the old [SF-30] tag was a mislabel, SF-30 is the
+    -- drilling-window advisory): clamp the pixels the add has to skip.
+    --
+    -- The add's filter below deliberately excludes any pixel that would overflow the
+    -- raw range. That protects the no-data sentinel, but it means a LARGE dose
+    -- silently does nothing to ground that is already moderately stocked, while
+    -- addPaintStrip still returns the full semantic delta as if it had landed.
+    -- A pixel that cannot take the whole delta should end up AT the ceiling, not
+    -- refuse the paint. Same at the floor for a negative delta.
+    --
+    -- The clamp runs BEFORE the add (MAINTENANCE row 149; the order #1025 set in the
+    -- two aimed-delta paths). After the add it also took the pixels the add had just
+    -- carried into its window and parked them at the ceiling (or the floor), up to one
+    -- step less one past the dose. Run first, a parked pixel sits outside the add's
+    -- window and an added one lands inside the range, so no pixel is handled twice. If
+    -- the add then fails, the parked pixels are where the dose would have taken them.
+    if type(m.executeSet) == "function" then
+        local sok, serr = pcall(function()
+            if rawDelta > 0 then
+                -- Everything from the add's ceiling upward saturates to RAW_MAX.
+                filter:setValueCompareParams(DensityValueCompareType.BETWEEN,
+                    math.max(rawLow, RAW_MAX - rawDelta + 1), RAW_MAX)
+                m:executeSet(RAW_MAX, filter)
+            else
+                -- Mirror at the bottom, never below the layer's own floor.
+                filter:setValueCompareParams(DensityValueCompareType.BETWEEN,
+                    rawLow, math.min(RAW_MAX, rawLow - rawDelta - 1))
+                m:executeSet(rawLow, filter)
+            end
+        end)
+        if not sok then
+            -- Non-fatal: the add below still lands; only the band's top-up is lost.
+            SoilLogger.debug("SoilValueMaps: addPaintStrip saturation clamp failed (%s)", tostring(serr))
+        end
+    end
+
     if rawDelta > 0 then
         filter:setValueCompareParams(DensityValueCompareType.BETWEEN, rawLow, RAW_MAX - rawDelta)
     else
@@ -567,6 +835,9 @@ function SoilValueMaps:addPaintStrip(key, sx, sz, wx, wz, hx, hz, delta)
         self.hasExecuteAdd = false
         return 0
     end
+
+    self:_markSyncDirtyZ(key, math.min(sz, wz, hz, wz + hz - sz), math.max(sz, wz, hz, wz + hz - sz))
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta * upr
 end
 
@@ -681,7 +952,7 @@ local function forEachPolyBlock(verts, step, fn)
 end
 
 --- Paint an entire field polygon with a uniform semantic value.
-function SoilValueMaps:paintPolygon(key, verts, value)
+function SoilValueMaps:paintPolygon(key, verts, value, growthDomain)
     if not self.available or not verts or #verts < 3 then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -697,6 +968,8 @@ function SoilValueMaps:paintPolygon(key, verts, value)
             m:executeSet(raw)
         end)
     end
+    self:_markSyncDirtyVerts(key, verts)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- Seed a field polygon: paint the base value, then add +/- `spread`
@@ -704,7 +977,7 @@ end
 --- real PF soil map instead of a flat colour block.
 --- With engine polygon ops + Perlin masks this is 3 modifier calls; the
 --- fallback uses per-block deterministic hash noise.
-function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
+function SoilValueMaps:seedPolygon(key, verts, baseValue, spread, growthDomain)
     if not self.available or not verts or #verts < 3 then return end
     local entry = self.layers[key]
     if not entry then return end
@@ -717,6 +990,8 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
         m:executeSet(encode(baseValue, def))
         m:executeSet(encode(baseValue + spread, def), self.noiseFilterA)
         m:executeSet(encode(baseValue - spread, def), self.noiseFilterB)
+        self:_markSyncDirtyVerts(key, verts)
+        self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
         return
     end
 
@@ -733,6 +1008,8 @@ function SoilValueMaps:seedPolygon(key, verts, baseValue, spread)
             DensityCoordType.POINT_POINT_POINT)
         m:executeSet(encode(v, def))
     end)
+    self:_markSyncDirtyVerts(key, verts)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
 end
 
 --- SF-20 RELIEF WEIGHT: the pure maths, engine-free so the bench can prove it.
@@ -791,7 +1068,7 @@ end
 --- Returns false when relief cannot or should not drive this field (no terrain
 --- node, no samples, a failed sample, or a field flatter than the guard). The
 --- caller then seeds exactly as it does today - a flat field is unchanged.
-function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
+function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude, growthDomain)
     if not self.available or not verts or #verts < 3 then return false end
     local entry = self.layers[key]
     if not entry then return false end
@@ -828,7 +1105,11 @@ function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
     -- organicMatter layer would lose its field edges on every machine where
     -- engine polygon ops work. paintPolygon takes the precise path when it can
     -- and the same block fallback when it cannot.
-    self:paintPolygon(key, verts, baseValue)
+    -- [SF-52] the whole reseed reports one outcome: suppress the base-coat
+    -- observation and report once at the end. pcall keeps the flag balanced.
+    self._suppressGrowthObserve = true
+    pcall(self.paintPolygon, self, key, verts, baseValue)
+    self._suppressGrowthObserve = false
 
     -- Pass 2: overlay base + deviation over the same blocks. encode() clamps to
     -- the layer's range; on a decayed field sitting near its floor the clamp can
@@ -842,6 +1123,8 @@ function SoilValueMaps:seedPolygonByRelief(key, verts, baseValue, amplitude)
             DensityCoordType.POINT_POINT_POINT)
         m:executeSet(encode(baseValue + dev[i], def))
     end
+    self:_markSyncDirtyVerts(key, verts)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return true
 end
 
@@ -850,7 +1133,7 @@ end
 --- extraction). Deltas smaller than one raw step must be accumulated by the
 --- caller (see SoilFertilitySystem field._mapPendingDelta) before calling.
 --- Returns the semantic amount actually applied (0 when below one raw step).
-function SoilValueMaps:applyDeltaToPolygon(key, verts, delta)
+function SoilValueMaps:applyDeltaToPolygon(key, verts, delta, growthDomain)
     if not self.available or not verts or #verts < 3 then return 0 end
     local entry = self.layers[key]
     if not entry then return 0 end
@@ -898,6 +1181,8 @@ function SoilValueMaps:applyDeltaToPolygon(key, verts, delta)
                 return 0
             end
         end
+        self:_markSyncDirtyVerts(key, verts)
+        self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
         return applied
     end
 
@@ -912,6 +1197,8 @@ function SoilValueMaps:applyDeltaToPolygon(key, verts, delta)
             m:executeSet(encode(current + applied, def))
         end
     end)
+    self:_markSyncDirtyVerts(key, verts)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return applied
 end
 
@@ -938,7 +1225,18 @@ end
 -- pass). The edge pass carries the pixels the add's guard had to exclude: they
 -- saturate at the top for a positive delta and floor at the bottom for a negative
 -- one, so a long step cannot leave a permanently frozen band at either end.
-local function aimedWindows(rawDelta, rawLow, rawHigh)
+--
+-- `floorRaw` (a negative delta only; RAW_MIN when nil) is where the edge pass parks a
+-- pixel that cannot take the whole step (MAINTENANCE row 106). The add starts at
+-- floorRaw + mag, so it never takes a pixel below the floor, and the edge pass takes
+-- only pixels at or above the floor: a pixel the caller's band holds below it (the
+-- reserved sentinel band) is left as it is, never raised to a value.
+--
+-- THE EDGE PASS RUNS BEFORE THE ADD, in both callers. Run after it, the edge window
+-- also catches the pixels the add has just moved into it, and parks them at the
+-- ceiling or the floor a second time: a wetting step over-wets, a catch-up over-ages
+-- and a drying step over-dries by up to one step less one.
+local function aimedWindows(rawDelta, rawLow, rawHigh, floorRaw)
     local addLow, addHigh, edgeLow, edgeHigh
     if rawDelta > 0 then
         addLow   = rawLow
@@ -947,10 +1245,11 @@ local function aimedWindows(rawDelta, rawLow, rawHigh)
         edgeHigh = rawHigh
     else
         local mag = -rawDelta
-        addLow   = math.max(rawLow, RAW_MIN + mag)
+        floorRaw = floorRaw or RAW_MIN
+        addLow   = math.max(rawLow, floorRaw + mag)
         addHigh  = rawHigh
-        edgeLow  = rawLow
-        edgeHigh = math.min(rawHigh, RAW_MIN + mag - 1)
+        edgeLow  = math.max(rawLow, floorRaw)
+        edgeHigh = math.min(rawHigh, floorRaw + mag - 1)
     end
     if addLow  > addHigh  then addLow,  addHigh  = nil, nil end
     if edgeLow > edgeHigh then edgeLow, edgeHigh = nil, nil end
@@ -971,7 +1270,7 @@ end
 --- beats quietly inventing.
 ---
 ---@return number|nil rawApplied  raw steps added; nil = REFUSED, stand the layer down
-function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
+function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh, growthDomain)
     if not self.available then return nil end
     local entry = self.layers[key]
     if not entry then return nil end
@@ -1005,7 +1304,26 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
 
     local addLow, addHigh, satLow, satHigh = aimedWindows(rawDelta, rawLow, rawHigh)
 
-    -- Pass 1: the add. Its window stops short of RAW_MAX - rawDelta so no pixel can
+    -- Pass 1: the saturating pass. Pixels the add's guard window has to exclude but
+    -- that rawDelta lived ticks WOULD have pushed to the ceiling are set there
+    -- directly. Without this a long sleep leaves a permanently frozen band just
+    -- below the ceiling: at rawDelta 30 a pixel sitting at 230 falls outside the add
+    -- window on this tick and on every tick after it, forever.
+    -- It runs FIRST (row 106): after the add it would also take the pixels the add
+    -- had just carried into its window, and a catch-up of d days would age them by
+    -- up to d - 1 days more than they lived.
+    -- At rawDelta 1 (the ordinary daily tick) this window is empty by construction,
+    -- so the normal path really is ONE engine call.
+    if satLow then
+        coverWholeMap()
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, satLow, satHigh)
+        local okSat, errSat = pcall(function() m:executeSet(RAW_MAX, filter) end)
+        if not okSat then
+            SoilLogger.warning("SoilValueMaps: saturating pass failed on '%s' (%s)", key, tostring(errSat))
+        end
+    end
+
+    -- Pass 2: the add. Its window stops short of RAW_MAX - rawDelta so no pixel can
     -- overflow past the ceiling and wrap into the raw-0 no-data sentinel.
     if addLow then
         coverWholeMap()
@@ -1019,22 +1337,8 @@ function SoilValueMaps:applyRawDeltaToLayer(key, rawDelta, rawLow, rawHigh)
         end
     end
 
-    -- Pass 2: the saturating pass. Pixels the add's guard window had to exclude but
-    -- that rawDelta lived ticks WOULD have pushed to the ceiling are set there
-    -- directly. Without this a long sleep leaves a permanently frozen band just
-    -- below the ceiling: at rawDelta 30 a pixel sitting at 230 falls outside the add
-    -- window on this tick and on every tick after it, forever.
-    -- At rawDelta 1 (the ordinary daily tick) this window is empty by construction,
-    -- so the normal path really is ONE engine call.
-    if satLow then
-        coverWholeMap()
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, satLow, satHigh)
-        local okSat, errSat = pcall(function() m:executeSet(RAW_MAX, filter) end)
-        if not okSat then
-            SoilLogger.warning("SoilValueMaps: saturating pass failed on '%s' (%s)", key, tostring(errSat))
-        end
-    end
-
+    self:markSyncLayerDirty(key)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta
 end
 
@@ -1051,7 +1355,7 @@ end
 ---
 --- Same fabrication fence as its sibling: never falls back to the block-walk.
 ---@return number|nil rawApplied  nil = REFUSED, stand the layer down
-function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, rawHigh, opts)
+function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, rawHigh, opts, growthDomain)
     if not self.available or not verts or #verts < 3 then return nil end
     local entry = self.layers[key]
     if not entry then return nil end
@@ -1079,7 +1383,8 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
 
     local m      = entry.modifier
     local filter = entry.filter
-    local addLow, addHigh, edgeLow, edgeHigh = aimedWindows(rawDelta, rawLow, rawHigh)
+    local addLow, addHigh, edgeLow, edgeHigh =
+        aimedWindows(rawDelta, rawLow, rawHigh, rawDelta < 0 and edgeValue or nil)
 
     -- A caller band wholly outside the safe window is a NO-OP on both sides.
     if addLow == nil and edgeLow == nil then return 0 end
@@ -1089,6 +1394,16 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
             "SoilValueMaps: polygon ops unavailable - REFUSING the banded delta on '%s'. The block-walk " ..
             "scales with area and degrades the banded curve to a block average.", key)
         return nil
+    end
+
+    -- The edge pass first (row 106): after the add it would also park the pixels the
+    -- add had just carried into its window.
+    if edgeLow then
+        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, edgeLow, edgeHigh)
+        local okEdge, errEdge = pcall(function() m:executeSet(edgeValue, filter) end)
+        if not okEdge then
+            SoilLogger.warning("SoilValueMaps: edge pass failed on '%s' (%s)", key, tostring(errEdge))
+        end
     end
 
     if addLow then
@@ -1102,14 +1417,8 @@ function SoilValueMaps:applyRawDeltaToPolygonBand(key, verts, rawDelta, rawLow, 
         end
     end
 
-    if edgeLow then
-        filter:setValueCompareParams(DensityValueCompareType.BETWEEN, edgeLow, edgeHigh)
-        local okEdge, errEdge = pcall(function() m:executeSet(edgeValue, filter) end)
-        if not okEdge then
-            SoilLogger.warning("SoilValueMaps: edge pass failed on '%s' (%s)", key, tostring(errEdge))
-        end
-    end
-
+    self:_markSyncDirtyVerts(key, verts)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return rawDelta
 end
 
@@ -1124,11 +1433,13 @@ end
 --- launders age in the one direction the design forbids.
 ---
 ---@return boolean cleared  false = REFUSED (nothing was written)
-function SoilValueMaps:clearPolygonWhere(key, verts, rawLow, rawHigh)
+function SoilValueMaps:clearPolygonWhere(key, verts, rawLow, rawHigh, growthDomain)
     -- Clearing targets WRITTEN records, so the band floor is RAW_MIN here: raw 0 is
     -- already "no record" and there is nothing to clear.
+    -- [SF-52] one write, one observation: setPolygonWhere reports the outcome; the
+    -- domain rides through so this clear is attributed like a direct aimed write.
     rawLow = math.max(RAW_MIN, math.floor(tonumber(rawLow) or RAW_MIN))
-    return self:setPolygonWhere(key, verts, 0, rawLow, rawHigh)
+    return self:setPolygonWhere(key, verts, 0, rawLow, rawHigh, growthDomain)
 end
 
 --- [SF-43] Set every pixel inside `verts` whose CURRENT raw lies in
@@ -1144,7 +1455,7 @@ end
 --- reason ask 1 refuses: the block-walk would paint whole 16 m blocks unfiltered,
 --- inventing records on ground no machine touched.
 ---@return boolean written  false = REFUSED (nothing was written)
-function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh)
+function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh, growthDomain)
     if not self.available or not verts or #verts < 3 then return false end
     local entry = self.layers[key]
     if not entry then return false end
@@ -1169,6 +1480,8 @@ function SoilValueMaps:setPolygonWhere(key, verts, rawValue, rawLow, rawHigh)
         SoilLogger.warning("SoilValueMaps: aimed write failed on '%s' (%s)", key, tostring(err))
         return false
     end
+    self:_markSyncDirtyVerts(key, verts)
+    self:_observeGrowthWrite(key, SoilValueMaps.GROWTH_WRITE_EXECUTED, growthDomain)
     return true
 end
 
@@ -1256,7 +1569,18 @@ end
 
 --- Average semantic value over a field polygon via engine-side executeGet.
 ---@return number|nil avg, number pixelCount
-function SoilValueMaps:readAverageOfPolygon(key, verts)
+--- Area-weighted mean of a layer over a polygon, counting only written pixels.
+--- An optional external `DensityMapFilter` (e.g. a fruit-harvest-state filter built
+--- by SF-14) is ANDed with the written-pixel filter on both the native polygon and
+--- block-fallback branches, so the mean covers only pixels that are both written
+--- and match the external mask. When the external filter is nil the call is
+--- unchanged (one-filter executeGet). No new map, persistence file or allocator.
+---@param key string
+---@param verts table list of {x=, z=}
+---@param externalFilter table|nil optional DensityMapFilter to AND with written pixels
+---@return number|nil mean decoded value
+---@return number pixels counted
+function SoilValueMaps:readAverageOfPolygon(key, verts, externalFilter)
     if not self.available or not verts or #verts < 3 then return nil, 0 end
     local entry = self.layers[key]
     if not entry then return nil, 0 end
@@ -1268,7 +1592,7 @@ function SoilValueMaps:readAverageOfPolygon(key, verts)
     local sum, pixels = 0, 0
     if setPolygonRegion(self, m, verts) then
         local ok, acc, n = pcall(function()
-            local a, cnt, _ = m:executeGet(filter)
+            local a, cnt, _ = m:executeGet(filter, externalFilter)
             return a, cnt
         end)
         if ok and n and n > 0 then sum, pixels = acc, n end
@@ -1278,7 +1602,7 @@ function SoilValueMaps:readAverageOfPolygon(key, verts)
                 cx - half, cz - half, cx + half, cz - half, cx - half, cz + half,
                 DensityCoordType.POINT_POINT_POINT)
             local ok, acc, n = pcall(function()
-                local a, cnt, _ = m:executeGet(filter)
+                local a, cnt, _ = m:executeGet(filter, externalFilter)
                 return a, cnt
             end)
             if ok and n and n > 0 then
@@ -1292,16 +1616,239 @@ function SoilValueMaps:readAverageOfPolygon(key, verts)
     return decode(sum / pixels, entry.def), pixels
 end
 
+--- [SF-73] The STRICT polygon read of one layer: the engine's own count of written
+--- pixels against every pixel the polygon selects, on the exact polygon or not at
+--- all. readAverageOfPolygon above falls back to coarse 16 m blocks when polygon
+--- setup fails; a target dose must never be priced on that fallback, so this one
+--- refuses (nil) instead. executeGet returns (sum, pixels matching, pixels total),
+--- the order FSDensityMapUtil and DensityMapHeightUtil read (DensityMapHeightUtil.lua:107).
+---@return number|nil rawSum, number|nil written, number|nil total
+function SoilValueMaps:readPolygonStrict(key, verts)
+    if not self.available or type(verts) ~= "table" or #verts < 3 then return nil end
+    local entry = self.layers[key]
+    if not entry then return nil end
+    local m = entry.modifier
+    local filter = entry.filter
+    if not setPolygonRegion(self, m, verts) then return nil end
+    filter:setValueCompareParams(DensityValueCompareType.BETWEEN, RAW_MIN, RAW_MAX)
+    local ok, sum, written, total = pcall(function()
+        local a, n, t = m:executeGet(filter)
+        return a, n, t
+    end)
+    if not ok or type(written) ~= "number" or type(total) ~= "number" then return nil end
+    return sum or 0, written, total
+end
+
+--- [SF-73] The raw a semantic value encodes to on a layer, and back.
+---@return number|nil
+function SoilValueMaps:encodeForLayer(key, value)
+    local entry = self.layers[key]
+    if not entry or type(value) ~= "number" then return nil end
+    return encode(value, entry.def)
+end
+
+---@return number|nil
+function SoilValueMaps:decodeForLayer(key, raw)
+    local entry = self.layers[key]
+    if not entry then return nil end
+    return decode(raw, entry.def)
+end
+
 -- ─────────────────────────────────────────────────────────
 -- Multiplayer sync support
 -- Reads/writes coarse 4-bit state grids (top 4 bits) at a stride
 -- so a join sync stays small; see NetworkEvents SoilValueMapChunkEvent.
+--
+-- [#995] SYNC BOOKKEEPING. A layer's checksum used to be a full walk of the sync
+-- grid, getBitVectorMapPoint once per grid point: 512 x 512 = 262,144 engine calls
+-- per layer, 3.1 million for twelve layers, in ONE tick, on the server at every
+-- broadcast and on every client for every checksum event. And nothing carried a
+-- write to the clients between broadcasts, so a drifted layer was re-sent whole.
+-- Every engine write of a layer goes through this file (the writers above, the
+-- seeders, and the client's own apply below), so each one marks the sync rows it
+-- touched: DIRTY rows are what the clients are missing (NetworkEvents sends them as
+-- PATCH chunks on the timer), STALE rows are what this side's cached per-row totals
+-- no longer describe. The checksum is the sum of the cached row totals, refreshed
+-- for stale rows only, a bounded number of rows per tick.
 -- ─────────────────────────────────────────────────────────
 
 SoilValueMaps.SYNC_GRID = 512   -- synced grid is at most SYNC_GRID x SYNC_GRID
 
 function SoilValueMaps:getSyncStride()
     return math.max(1, math.floor(self.resolution / SoilValueMaps.SYNC_GRID))
+end
+
+--- Number of sync-grid rows (and columns) at this resolution.
+function SoilValueMaps:getSyncRowCount()
+    return math.floor(self.resolution / self:getSyncStride())
+end
+
+--- One layer's sync state, created on first use with every row stale (unread).
+local function syncState(self, key)
+    self._sync = self._sync or {}
+    local st = self._sync[key]
+    if st == nil then
+        local n = self:getSyncRowCount()
+        st = { rowSum = {}, rowNonZero = {}, sum = 0, nonZero = 0,
+               stale = {}, staleCount = n, dirty = {}, dirtyCount = 0 }
+        for gy = 0, n - 1 do st.stale[gy] = true end
+        self._sync[key] = st
+    end
+    return st
+end
+
+--- Mark sync rows gy0..gy1 (0-based, clamped to the grid) of `key` as written:
+--- dirty for the next patch round and stale for the next checksum.
+function SoilValueMaps:markSyncRowsDirty(key, gy0, gy1)
+    if self.layers[key] == nil then return end
+    local n = self:getSyncRowCount()
+    if n <= 0 then return end
+    local a = math.max(0, math.floor(math.min(gy0, gy1)))
+    local b = math.min(n - 1, math.floor(math.max(gy0, gy1)))
+    if a > b then return end
+    local st = syncState(self, key)
+    for gy = a, b do
+        if not st.dirty[gy] then st.dirty[gy] = true; st.dirtyCount = st.dirtyCount + 1 end
+        if not st.stale[gy] then st.stale[gy] = true; st.staleCount = st.staleCount + 1 end
+    end
+end
+
+--- Mark rows STALE only: this side's cached totals no longer describe them, but no
+--- client is owed them (the receiving side's own apply of a chunk).
+function SoilValueMaps:markSyncRowsStale(key, gy0, gy1)
+    if self.layers[key] == nil then return end
+    local n = self:getSyncRowCount()
+    if n <= 0 then return end
+    local a = math.max(0, math.floor(math.min(gy0, gy1)))
+    local b = math.min(n - 1, math.floor(math.max(gy0, gy1)))
+    if a > b then return end
+    local st = syncState(self, key)
+    for gy = a, b do
+        if not st.stale[gy] then st.stale[gy] = true; st.staleCount = st.staleCount + 1 end
+    end
+end
+
+--- Mark every sync row of `key` (a whole-layer write).
+function SoilValueMaps:markSyncLayerDirty(key)
+    self:markSyncRowsDirty(key, 0, self:getSyncRowCount() - 1)
+end
+
+--- A world z range touches the sync rows whose sampled pixel line pz = gy * stride
+--- lies in the written pixel lines [pz0, pz1]: floor(pz0 / stride) .. floor(pz1 / stride),
+--- with pz mapped as worldToPixel maps it.
+function SoilValueMaps:_markSyncDirtyZ(key, z0, z1)
+    -- No terrain yet (terrainSize is 0 from the constructor until the load at
+    -- getTerrainSize): there are no pixels to mark, and nothing to sync.
+    if type(self.terrainSize) ~= "number" or self.terrainSize <= 0 then return end
+    if not self.available or self.layers[key] == nil then return end
+    local half = self.terrainSize * 0.5
+    local res  = self.resolution
+    local lo, hi = math.min(z0, z1), math.max(z0, z1)
+    local pz0 = math.max(0, math.min(res - 1, math.floor((lo + half) / self.terrainSize * res)))
+    local pz1 = math.max(0, math.min(res - 1, math.floor((hi + half) / self.terrainSize * res)))
+    local stride = self:getSyncStride()
+    self:markSyncRowsDirty(key, math.floor(pz0 / stride), math.floor(pz1 / stride))
+end
+
+--- The z extent of a polygon's vertices.
+function SoilValueMaps:_markSyncDirtyVerts(key, verts)
+    if type(verts) ~= "table" then return end
+    local lo, hi
+    for _, v in ipairs(verts) do
+        if type(v) == "table" and type(v.z) == "number" then
+            if lo == nil or v.z < lo then lo = v.z end
+            if hi == nil or v.z > hi then hi = v.z end
+        end
+    end
+    if lo ~= nil then self:_markSyncDirtyZ(key, lo, hi) end
+end
+
+--- Re-read one sync row from the engine, fold it into the cached totals and clear
+--- it from the stale set. Returns the row, or nil when the layer is absent.
+function SoilValueMaps:refreshSyncRow(key, gy)
+    local row = self:readSyncRow(key, gy)
+    if row == nil then return nil end
+    local st = syncState(self, key)
+    local sum, nonZero = 0, 0
+    for _, state in ipairs(row) do
+        sum = sum + state
+        if state > 0 then nonZero = nonZero + 1 end
+    end
+    if st.rowSum[gy] ~= nil then
+        st.sum     = st.sum - st.rowSum[gy]
+        st.nonZero = st.nonZero - st.rowNonZero[gy]
+    end
+    st.rowSum[gy], st.rowNonZero[gy] = sum, nonZero
+    st.sum, st.nonZero = st.sum + sum, st.nonZero + nonZero
+    if st.stale[gy] then st.stale[gy] = nil; st.staleCount = st.staleCount - 1 end
+    return row
+end
+
+--- The rows whose cached totals cannot be trusted (never read, or written since),
+--- ascending.
+function SoilValueMaps:getSyncStaleRows(key)
+    local out = {}
+    if self.layers[key] == nil then return out end
+    local st = syncState(self, key)
+    for gy = 0, self:getSyncRowCount() - 1 do
+        if st.stale[gy] then out[#out + 1] = gy end
+    end
+    return out
+end
+
+--- The rows written since the last take, ascending, left in place (a read for the
+--- bench and the debug stats; production takes them).
+function SoilValueMaps:getSyncDirtyRows(key)
+    local out = {}
+    if self.layers[key] == nil then return out end
+    local st = syncState(self, key)
+    for gy in pairs(st.dirty) do out[#out + 1] = gy end
+    table.sort(out)
+    return out
+end
+
+--- Whether row gy of `key` has been written since the last take: the live mark, read
+--- in place (the round's refresh loop, judging a row on its list at its own refresh).
+function SoilValueMaps:isSyncRowDirty(key, gy)
+    if self.layers[key] == nil then return false end
+    return syncState(self, key).dirty[gy] == true
+end
+
+--- Take (and clear) the rows written since the last take, ascending: what a patch
+--- round sends. A write that lands after the take goes to the next round.
+function SoilValueMaps:takeSyncDirtyRows(key)
+    local out = {}
+    if self.layers[key] == nil then return out end
+    local st = syncState(self, key)
+    for gy in pairs(st.dirty) do out[#out + 1] = gy end
+    table.sort(out)
+    st.dirty, st.dirtyCount = {}, 0
+    return out
+end
+
+--- The cached checksum: the sum of states and the non-zero count over the cached
+--- rows, and how many rows are stale (0 means the pair describes the map as last
+--- read). A caller that needs the current map refreshes the stale rows first.
+function SoilValueMaps:getSyncChecksum(key)
+    if self.layers[key] == nil then return nil end
+    local st = syncState(self, key)
+    return st.sum, st.nonZero, st.staleCount
+end
+
+--- The full walk (the old sfComputeLayerChecksum): every grid point read once. The
+--- reference the bench holds the cache against; production never calls it.
+function SoilValueMaps:computeSyncChecksumFullWalk(key)
+    local sum, nonZero = 0, 0
+    for gy = 0, self:getSyncRowCount() - 1 do
+        local row = self:readSyncRow(key, gy)
+        if row then
+            for _, state in ipairs(row) do
+                sum = sum + state
+                if state > 0 then nonZero = nonZero + 1 end
+            end
+        end
+    end
+    return sum, nonZero
 end
 
 --- Read one sync row (grid row `gy`, 0-based) as an array of 4-bit states.
@@ -1332,6 +1879,7 @@ function SoilValueMaps:clearLayer(key)
         -half, -half, half, -half, -half, half,
         DensityCoordType.POINT_POINT_POINT)
     m:executeSet(0)
+    self:markSyncLayerDirty(key)
 end
 
 --- Apply one received sync row: paints stride-sized blocks with the state's
@@ -1366,6 +1914,8 @@ function SoilValueMaps:applySyncRow(key, gy, row)
         m:executeSet(raw)
         gx = gx + 1
     end
+    -- The receiving side's cache no longer describes this row; it owes no client a patch.
+    self:markSyncRowsStale(key, gy, gy)
 end
 
 -- ─────────────────────────────────────────────────────────

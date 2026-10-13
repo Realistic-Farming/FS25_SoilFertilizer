@@ -8,7 +8,7 @@
 -- The delegate is NEUTRAL, not a claim: nil means "we do not know", never
 -- "it was dry". A closed ground_material gate, a missing or unarmed wetness
 -- subsystem, a throwing read, and an empty record all return nil.
---!load: src/utils/Logger.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/ReleaseGate.lua, src/SoilFertilityManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/ReleaseGate.lua, src/SoilFertilityManager.lua
 
 g_server = g_server or {}
 

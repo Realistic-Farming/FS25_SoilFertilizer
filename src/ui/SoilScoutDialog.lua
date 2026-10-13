@@ -10,11 +10,10 @@
 -- =========================================================
 
 ---@class SoilScoutDialog
-SoilScoutDialog = {}
+SoilScoutDialog = SoilScoutDialog or {}
 local SoilScoutDialog_mt = Class(SoilScoutDialog, ScreenElement)
 
-local SF_SCOUT_MOD_NAME = g_currentModName
-local SF_SCOUT_MOD_DIR  = g_currentModDirectory
+local SF_SCOUT_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 SoilScoutDialog.INSTANCE = nil
 SoilScoutDialog.xmlPath  = nil
@@ -22,15 +21,20 @@ SoilScoutDialog.xmlPath  = nil
 -- ── i18n helper ───────────────────────────────────────────
 
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_SCOUT_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 local function chemName(id)
@@ -123,7 +127,19 @@ function SoilScoutDialog:_populate()
     -- Opening the Scout dialog on a field IS the act of scouting it: reveal the disease
     -- (flips the discovery gate) so the report shows the name + recommendation. Every
     -- other surface stays gated until it too is scouted / reported / dog-flagged.
-    local rep = sfm.soilSystem:scoutField(self._fieldId)
+    -- [RSF-F231] For the local player's own farm. Refused: the panel says so and
+    -- offers no chemical, so Apply has nothing to send.
+    local rep, refused = sfm.soilSystem:scoutField(self._fieldId, SoilFertilitySystem.localScoutFarmId())
+    if refused ~= nil then
+        setText(self.scoutDisease, tr("sf_scout_no_standing", "Your farm neither owns nor contracts this land. Nothing was scouted."))
+        setText(self.scoutSci, "")
+        setText(self.scoutPressure, "")
+        setText(self.scoutReco, "")
+        setText(self.scoutSelChem, "")
+        setText(self.scoutHint, "")
+        self._chemList, self._chemIdx = {}, 1
+        return
+    end
     if not rep then return end
     if rep.enabled == false then
         setText(self.scoutDisease, tr("sf_scout_disabled", "Disease system disabled"))
@@ -232,8 +248,14 @@ function SoilScoutDialog:onClickApply()
         return
     end
 
-    local ok, _, detail = sfm.soilSystem:applyNamedFungicide(self._fieldId, id, { charge = true })
-    if not ok then return end
+    -- The dialog acts for THIS machine's farm (row 116), as its scout does.
+    local ok, msgKey, detail = sfm.soilSystem:applyNamedFungicide(self._fieldId, id, { charge = true, farmId = SoilFertilitySystem.localScoutFarmId() })
+    if not ok then
+        if msgKey == "sf_treat_no_standing" then
+            setText(self.scoutHint, tr("sf_treat_no_standing", "Your farm neither owns nor contracts this land. Nothing was treated."))
+        end
+        return
+    end
     detail = detail or {}
     if detail.control ~= nil then
         setText(self.scoutHint, string.format(

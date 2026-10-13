@@ -8,7 +8,7 @@
 -- settings pages on dedicated server clients (GitHub #21).
 -- =========================================================
 ---@class UIHelper
-UIHelper = {}
+UIHelper = UIHelper or {}
 
 local function _trimCurrencyText(text)
     if type(text) ~= "string" then return "" end

@@ -24,7 +24,7 @@
 -- FarmTablet's System Settings app is read-only for now.
 -- =========================================================
 
-SoilSettingsHubBridge = {}
+SoilSettingsHubBridge = SoilSettingsHubBridge or {}
 
 -- FarmTablet's System Settings app renders the label string as-is (no l10n
 -- lookup on its end), so resolve each setting's human-readable name here from
@@ -53,6 +53,15 @@ local function applyChange(key, value)
     if mgr.settingsUI and mgr.settingsUI.refreshUI then
         mgr.settingsUI:refreshUI()
     end
+end
+
+-- [MAINTENANCE row 258] The hub asks for the live value (SettingsHub's read, row 258), so a change made in
+-- Soil's own settings (SoilSettingsUI:requestSettingChange, SoilNetworkEvents_RequestSettingChange, the console
+-- commands) shows in the Tablet without telling the hub. It reads the object applyChange writes.
+local function readValue(key)
+    local mgr = g_SoilFertilityManager
+    if mgr == nil or mgr.settings == nil then return nil end
+    return mgr.settings[key]
 end
 
 function SoilSettingsHubBridge.register(mgr)
@@ -99,6 +108,7 @@ function SoilSettingsHubBridge.register(mgr)
             -- the hub pushed a stale `enabled=false` over our real value every load,
             -- silently disabling the whole mod.
             selfPersisted = true,
+            read          = readValue,
         })
     end)
 

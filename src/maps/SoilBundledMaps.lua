@@ -19,11 +19,11 @@
 -- Author: TisonK
 -- =========================================================
 
--- Capture mod directory at source() time - g_currentModDirectory is nil after mission load
-local MOD_DIRECTORY = g_currentModDirectory
+-- Capture mod directory at source() time - (SoilFertilizerModDirectory or g_currentModDirectory) is nil after mission load
+local MOD_DIRECTORY = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 ---@class SoilBundledMaps
-SoilBundledMaps = {}
+SoilBundledMaps = SoilBundledMaps or {}
 local SoilBundledMaps_mt = Class(SoilBundledMaps)
 
 -- ─────────────────────────────────────────────────────────

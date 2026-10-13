@@ -19,7 +19,7 @@
 -- Loaded immediately after Constants.lua: it reads PHYSICAL_FUNGICIDE_ORDER and writes the
 -- derived entries back into SoilConstants, so every later module sees a complete picture.
 
-SoilBlends = {}
+SoilBlends = SoilBlends or {}
 
 SoilBlends.PREFIX = "BLEND_"
 

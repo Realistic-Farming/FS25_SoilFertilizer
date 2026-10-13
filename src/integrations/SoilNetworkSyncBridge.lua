@@ -42,7 +42,7 @@
 -- is order-independent.
 -- =========================================================
 
-SoilNetworkSyncBridge = {}
+SoilNetworkSyncBridge = SoilNetworkSyncBridge or {}
 
 -- Provisional module id. This is the network CHANNEL and the join-snapshot key, so
 -- it must be locked with Claude(A) before release (a later rename desyncs a mixed
@@ -66,6 +66,8 @@ SoilNetworkSyncBridge.SCALARS = {
     { key = "potassium",           def = FD.potassium,      min = LIM.MIN,     max = LIM.MAX },
     { key = "organicMatter",       def = FD.organicMatter,  min = LIM.MIN,     max = LIM.ORGANIC_MATTER_MAX },
     { key = "pH",                  def = FD.pH,             min = LIM.PH_MIN,  max = LIM.PH_MAX },
+    -- [SF-79] pH report validity beside the pH report (1 = current local report).
+    { key = "pHReportValid",       def = 1,                 min = 0,           max = 1, bool = true },
     { key = "rotationBonusDaysLeft", def = 0,               min = 0,           max = nil },
     { key = "lastHarvest",         def = 0,                 min = 0,           max = nil },
     { key = "fertilizerApplied",   def = 0,                 min = 0,           max = nil },
@@ -97,7 +99,7 @@ end
 --   fieldId, <each SCALARS value>, lastCrop, lastCrop2, lastCrop3, activeDisease,
 --   bufferCount, bufferCount x (fillTypeIndex, amount),
 --   organicState, organicStartDay, organicCertifiedDay, organicBreaches,
---   diseaseDiscovered, bandCount, bandCount x (fracMode, band)
+--   diseaseDiscovered, bandCount, bandCount x (fracMode, band), fieldEverScouted
 function SoilNetworkSyncBridge.serializeFields(fieldData)
     local arr = { 0 }   -- slot 1 reserved for the count
     local n = 0
@@ -106,9 +108,16 @@ function SoilNetworkSyncBridge.serializeFields(fieldData)
         arr[#arr + 1] = fieldId
         for _, s in ipairs(SoilNetworkSyncBridge.SCALARS) do
             local v = field[s.key]
-            if v == nil then v = s.def end
+            if s.bool then v = (v ~= false) and 1 or 0
+            elseif v == nil then v = s.def end
             arr[#arr + 1] = v
         end
+        -- RSF-F905: the amendment burn pair, written EXPLICITLY outside the SCALARS walk.
+        -- The walk can only read a key off the record; this flag is not stored, it is
+        -- the owner's own authority. Only the server serializes, so the flag is always
+        -- known and the value is authoritative, including an authoritative zero.
+        arr[#arr + 1] = field.amendBurnPenalty or 0
+        arr[#arr + 1] = 1
         arr[#arr + 1] = field.lastCrop      or ""
         arr[#arr + 1] = field.lastCrop2     or ""
         arr[#arr + 1] = field.lastCrop3     or ""
@@ -148,6 +157,8 @@ function SoilNetworkSyncBridge.serializeFields(fieldData)
         local bandFlat = ResistanceBands.encodeFieldBands(field)
         arr[#arr + 1] = math.floor(#bandFlat / 2)
         for _, v in ipairs(bandFlat) do arr[#arr + 1] = v end
+        -- CD-11: the durable scout bit rides after the bands, same order as NetworkEvents.
+        arr[#arr + 1] = field.fieldEverScouted and 1 or 0
     end
     arr[1] = n
     return arr
@@ -156,9 +167,15 @@ end
 -- Rebuild a { fieldId -> field } map from the flat array, applying the same clamps
 -- as SoilFieldUpdateEvent. Pure: no live apply / zone reconstruction / layer write
 -- (onReadState does those). Never crashes on a short or malformed array.
+-- RSF-F905: returns (out, ok). ok is true only when the walk over the declared field
+-- count lands exactly on #arr + 1. A misaligned array (a writer and reader that
+-- disagree on the per-field shape) must be refused whole by the caller: a shifted
+-- cursor corrupts every value after the shift, not just the one that moved.
+---@return table out  { fieldId -> field }
+---@return boolean ok  true when the array's shape matched the walk exactly
 function SoilNetworkSyncBridge.deserializeFields(arr)
     local out = {}
-    if type(arr) ~= "table" then return out end
+    if type(arr) ~= "table" then return out, false end
 
     local i = 1
     local count = tonumber(arr[i]) or 0
@@ -170,9 +187,15 @@ function SoilNetworkSyncBridge.deserializeFields(arr)
 
         local field = { initialized = true, coveredCells = {}, coveredCellCount = 0, zoneData = {} }
         for _, s in ipairs(SoilNetworkSyncBridge.SCALARS) do
-            field[s.key] = clamp(arr[i], s.min, s.max)
+            local v = clamp(arr[i], s.min, s.max)
             i = i + 1
+            if s.bool then field[s.key] = (v == 1) else field[s.key] = v end
         end
+        -- RSF-F905: the amendment burn pair, read at the matching explicit position.
+        -- An absent element clamps to zero AND to not-known, so a client never turns
+        -- a value it did not receive into a confirmed no-burn.
+        field.amendBurnPenalty = clamp(arr[i], 0, 1); i = i + 1
+        field.amendBurnKnown   = clamp(arr[i], 0, 1) == 1; i = i + 1
 
         local lc  = arr[i]; i = i + 1
         local lc2 = arr[i]; i = i + 1
@@ -213,10 +236,12 @@ function SoilNetworkSyncBridge.deserializeFields(arr)
             bandFlat[#bandFlat + 1] = arr[i]; i = i + 1
         end
         ResistanceBands.applyFieldBands(field, bandFlat)
+        -- CD-11 durable scout bit, read right after the bands and put on the new table.
+        field.fieldEverScouted = (tonumber(arr[i]) or 0) == 1; i = i + 1
 
         out[fieldId] = field
     end
-    return out
+    return out, (i == #arr + 1)
 end
 
 -- =========================================================
@@ -238,7 +263,20 @@ function SoilNetworkSyncBridge._onReadState(arr)
     local soilSys = sfm and sfm.soilSystem
     if soilSys == nil then return end
 
-    local incoming = SoilNetworkSyncBridge.deserializeFields(arr)
+    local incoming, shapeOk = SoilNetworkSyncBridge.deserializeFields(arr)
+    if not shapeOk then
+        -- RSF-F905: refuse a misaligned array whole. Writing a partially-shifted field
+        -- map would corrupt crop names, buffers, organic state and bands on every
+        -- field; skipping this apply leaves the client on its last good copy. This path
+        -- runs at 1 Hz, so warn once per mismatch, not once per second.
+        if not SoilNetworkSyncBridge._shapeWarned then
+            SoilNetworkSyncBridge._shapeWarned = true
+            SoilLogger.warning("NetworkSync: field payload shape mismatch (%d elements), apply refused; server and client SoilFertilizer versions must match",
+                type(arr) == "table" and #arr or -1)
+        end
+        return
+    end
+    SoilNetworkSyncBridge._shapeWarned = nil
     local pureClient = (g_server == nil)
 
     for fieldId, newField in pairs(incoming) do

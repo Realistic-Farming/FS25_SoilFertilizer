@@ -21,7 +21,7 @@
 -- =========================================================
 
 ---@class SoilCropTuning
-SoilCropTuning = {}
+SoilCropTuning = SoilCropTuning or {}
 local SoilCropTuning_mt = Class(SoilCropTuning)
 
 SoilCropTuning.SAVE_FILE = "soilCropTuning.xml"

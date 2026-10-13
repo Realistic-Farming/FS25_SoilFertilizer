@@ -211,7 +211,7 @@
     <e k="sf_hud_yield" v="Verim" eh="97345487" />
     <e k="sf_hud_estYield" v="Tahmini Verim" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="[EN] Post-harvest ├é┬À Fertilize" eh="61d2d595" />
+    <e k="sf_hud_post_harvest" v="[EN] Post-harvest · Fertilize" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Sürükle: taşı   Köşe: boyutlandır   Sağ Tık/Shift+H: tamam" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: taşı/boyutlandır" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
@@ -320,7 +320,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Oyuncu Başına HUD Seçenekleri" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Her oyuncu kendi HUD'ını kontrol eder - sunucuyla senkronize edilmez. Seçenekler: HUD'ı Göster (açık/kapalı), Konum (5 ön ayar + sürükleme), Renk Teması (Yeşil / Mavi / Kehribar / Mono), Yazı Tipi Boyutu (Küçük / Orta / Büyük), Şeffaflık (%25 ile %100 arası), İngiliz Birimleri (açık/kapalı)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Püskürtücü Oran Kontrolü" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Bir püskürtücü veya dağıtıcıdayken, uygulama oranını 0.10x ile 2.00x arasında ayarlamak için SF Rate Up (]) ve SF Rate Down ([) tuşlarını kullanın. Modun otomatik olarak optimal besin seviyelerini hedeflemesini sağlamak ve yanma riskini önlemek için Otomatik Oran Kontrolünü (Shift+L) açın." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Bir püskürtücü veya dağıtıcıdayken, uygulama oranını 0.10x ile 2.00x arasında ayarlamak için SF Rate Up ve SF Rate Down tuşlarını kullanın. Modun otomatik olarak optimal besin seviyelerini hedeflemesini sağlamak ve yanma riskini önlemek için Otomatik Oran Kontrolünü açın." eh="62c35b45" />
 
     <e k="helpLine_sf_mp_p1_title" v="Çok Oyunculu Nasıl Çalışır" eh="8a4ce30e" />
     <e k="helpLine_sf_mp_p1_auth_title" v="Sunucu Yetkili Simülasyonu" eh="8d324792" />
@@ -523,6 +523,7 @@
     <e k="sf_treat_action_optimal" v="Optimal - Eylem gerekmez." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="pH'ı yükseltmek için KİREÇ veya SIVI KİREÇ uygulayın." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="pH'ı düşürmek / yapıyı iyileştirmek için ALÇITAŞI uygulayın." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="KATI GÜBRE, KOMPOST karıştırın veya saman kıyın." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="İzleyin. Organik girdileri koruyun." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="UAN32, ÜRE veya ANHİDRE uygulayın." eh="ebc225b0" />
@@ -559,7 +560,6 @@
     <e k="sf_sprayer_burn_guaranteed" v="YANMA RİSKİ: GARANTİ" eh="422601c4" />
     <e k="sf_sprayer_burn_possible" v="YANMA RİSKİ: OLASI" eh="25b251b6" />
 
-    <e k="sf_notify_welcome" v="Toprak &amp; Gübre Modu Aktif | Ayarlar için Shift+O | Komutlar için 'soilfertility' yazın" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Bu sürümdeki yenilikler:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Modumu kullandığınız için teşekkürler, bu benim için çok değerli &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Hata mı buldunuz? Lütfen GitHub'da bildirin!" eh="728e2cf3" />
@@ -777,7 +777,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the - button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -792,7 +792,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 - 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -940,13 +940,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 - 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1-2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -986,9 +986,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2-3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5-7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1077,29 +1077,29 @@
 		<e k="sf_dis_late_leaf_spot" v="[EN] Late Leaf Spot" eh="a012753f" />
 		<e k="sf_dis_peanut_rust" v="[EN] Peanut Rust" eh="5e46fad0" />
 		<e k="sf_dis_pod_rot" v="[EN] Sclerotinia Pod Rot" eh="244ed19f" />
-		<e k="sf_chem_PROPICONAZOLE" v="[EN] Propiconazole" eh="920d7ec6" />
-		<e k="sf_chem_TEBUCONAZOLE" v="[EN] Tebuconazole" eh="3755d13c" />
-		<e k="sf_chem_PROTHIOCONAZOLE" v="[EN] Prothioconazole" eh="98cddda9" />
-		<e k="sf_chem_FLUSILAZOLE" v="[EN] Flusilazole" eh="f79343a9" />
-		<e k="sf_chem_CYPROCONAZOLE" v="[EN] Cyproconazole" eh="220d4dca" />
-		<e k="sf_chem_DIFENOCONAZOLE" v="[EN] Difenoconazole" eh="6f2dce44" />
-		<e k="sf_chem_AZOXYSTROBIN" v="[EN] Azoxystrobin" eh="34160dda" />
-		<e k="sf_chem_PYRACLOSTROBIN" v="[EN] Pyraclostrobin" eh="b5f07095" />
-		<e k="sf_chem_TRIFLOXYSTROBIN" v="[EN] Trifloxystrobin" eh="9d00f6d7" />
-		<e k="sf_chem_BOSCALID" v="[EN] Boscalid" eh="5c0a4c40" />
-		<e k="sf_chem_PENTHIOPYRAD" v="[EN] Penthiopyrad" eh="f790ed1a" />
-		<e k="sf_chem_CHLOROTHALONIL" v="[EN] Chlorothalonil" eh="67688d75" />
-		<e k="sf_chem_MANCOZEB" v="[EN] Mancozeb" eh="5117fb39" />
-		<e k="sf_chem_MANEB" v="[EN] Maneb" eh="879fac4d" />
-		<e k="sf_chem_METALAXYL" v="[EN] Metalaxyl" eh="2c4598e3" />
-		<e k="sf_chem_FOSETYL_AL" v="[EN] Fosetyl-Al" eh="d292d7c7" />
-		<e k="sf_chem_THIOPHANATE_METHYL" v="[EN] Thiophanate-methyl" eh="46dd6b58" />
+		<e k="sf_chem_PROPICONAZOLE" v="Propiconazole" eh="920d7ec6" />
+		<e k="sf_chem_TEBUCONAZOLE" v="Tebuconazole" eh="3755d13c" />
+		<e k="sf_chem_PROTHIOCONAZOLE" v="Prothioconazole" eh="98cddda9" />
+		<e k="sf_chem_FLUSILAZOLE" v="Flusilazole" eh="f79343a9" />
+		<e k="sf_chem_CYPROCONAZOLE" v="Cyproconazole" eh="220d4dca" />
+		<e k="sf_chem_DIFENOCONAZOLE" v="Difenoconazole" eh="6f2dce44" />
+		<e k="sf_chem_AZOXYSTROBIN" v="Azoxystrobin" eh="34160dda" />
+		<e k="sf_chem_PYRACLOSTROBIN" v="Pyraclostrobin" eh="b5f07095" />
+		<e k="sf_chem_TRIFLOXYSTROBIN" v="Trifloxystrobin" eh="9d00f6d7" />
+		<e k="sf_chem_BOSCALID" v="Boscalid" eh="5c0a4c40" />
+		<e k="sf_chem_PENTHIOPYRAD" v="Penthiopyrad" eh="f790ed1a" />
+		<e k="sf_chem_CHLOROTHALONIL" v="Chlorothalonil" eh="67688d75" />
+		<e k="sf_chem_MANCOZEB" v="Mancozeb" eh="5117fb39" />
+		<e k="sf_chem_MANEB" v="Maneb" eh="879fac4d" />
+		<e k="sf_chem_METALAXYL" v="Metalaxyl" eh="2c4598e3" />
+		<e k="sf_chem_FOSETYL_AL" v="Fosetyl-Al" eh="d292d7c7" />
+		<e k="sf_chem_THIOPHANATE_METHYL" v="Thiophanate-methyl" eh="46dd6b58" />
 		<e k="sf_chem_SULFUR" v="[EN] Sulfur" eh="529df3e8" />
 		<e k="sf_chem_COPPER_HYDROXIDE" v="[EN] Copper Hydroxide" eh="6b294851" />
-		<e k="sf_chem_FLUDIOXONIL" v="[EN] Fludioxonil" eh="d6448fdb" />
-		<e k="sf_chem_METALAXYL_M" v="[EN] Metalaxyl-M" eh="706a0ca9" />
-		<e k="sf_chem_THIRAM" v="[EN] Thiram" eh="63e2540c" />
-		<e k="sf_chem_CAPTAN" v="[EN] Captan" eh="dc89f49c" />
+		<e k="sf_chem_FLUDIOXONIL" v="Fludioxonil" eh="d6448fdb" />
+		<e k="sf_chem_METALAXYL_M" v="Metalaxyl-M" eh="706a0ca9" />
+		<e k="sf_chem_THIRAM" v="Thiram" eh="63e2540c" />
+		<e k="sf_chem_CAPTAN" v="Captan" eh="dc89f49c" />
     <e k="sf_treat_cycle" v="[EN] Next Fungicide" eh="50e1cf57" />
     <e k="sf_treat_apply" v="[EN] Apply Fungicide" eh="66b90889" />
 		<e k="sf_treat_vs" v="[EN] vs" eh="f4842dcb" />
@@ -1117,6 +1117,8 @@
 		<e k="sf_scout_clean_title" v="[EN] No active disease" eh="6bc14095" />
 		<e k="sf_scout_clean_hint" v="[EN] Field looks healthy. You can still apply a preventative." eh="b81cdbda" />
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
+		<e k="sf_scout_no_standing" v="[EN] Your farm neither owns nor contracts this land. Nothing was scouted." eh="79c48f91" />
+		<e k="sf_treat_no_standing" v="Çiftliğin bu arazinin sahibi değil ve bu arazi için bir sözleşmesi de yok. Hiçbir uygulama yapılmadı." eh="27d54bdd" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
         <e k="sf_propiconazole_title" v="[EN] Propiconazole" eh="920d7ec6" />
@@ -1379,8 +1381,13 @@
     <e k="sf_handful_grain_cell" v="this cell" />
     <e k="sf_handful_grain_field" v="field average" />
     <e k="sf_handful_unscouted" v="Unscouted" />
+    <e k="sf_handful_ph_unavailable" v="burada mevcut değil" />
+    <e k="sf_handful_ph_last_known" v="kayıtlı tarla değeri" />
+    <e k="sf_handful_ph_approx" v="yaklaşık" />
     <e k="sf_handful_kit_yes" v="Soil test kit in hand: exact figures" />
     <e k="sf_handful_kit_no" v="No soil test kit: readings are by hand, so they are qualitative" />
+    <e k="sf_handful_ppm" v="%d ppm" eh="62981443" />
+    <e k="sf_handful_kit_tile" v="%s %s" eh="29bf226e" />
     <e k="sf_handful_band_good" v="Good" />
     <e k="sf_handful_band_fair" v="Fair" />
     <e k="sf_handful_band_poor" v="Poor" />
@@ -1402,7 +1409,136 @@
     <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
     <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
     <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
-    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" />
+    <e k="sf_growth_label" v="[EN] Growth" eh="699aed86" />
+    <e k="sf_growth_blocked" v="[EN] Blocked" eh="4ecc0d90" />
+    <e k="sf_growth_excellent" v="[EN] Excellent" eh="fcc2d28a" />
+    <e k="sf_growth_normal" v="[EN] Normal" eh="960b44c5" />
+    <e k="sf_growth_unknown" v="[EN] Unknown, unscouted" eh="25f30088" />
+    <e k="sf_growth_cause" v="[EN] Cause" eh="50fc9b91" />
+    <e k="sf_growth_cause_unreported" v="[EN] Not yet reported" eh="84fb9c37" />
+    <e k="sf_growth_credit" v="[EN] Growth credit" eh="30ce7482" />
+    <e k="sf_growth_credit_days" v="[EN] %d days" eh="cdca48ec" />
+    <e k="sf_growth_credit_none" v="[EN] None" eh="6adf97f8" />
+    <e k="sf_growth_settled" v="[EN] Settled" eh="30533c6b" />
+    <e k="sf_growth_settled_today" v="[EN] Today" eh="1dd1c5fb" />
+    <e k="sf_growth_settled_day_ago" v="[EN] 1 day ago" eh="44ba1391" />
+    <e k="sf_growth_settled_days_ago" v="[EN] %d days ago" eh="2ed6918e" />
+    <e k="sf_pda_growth_blocked" v="[EN] Blocked %d%%" eh="acc5c966" />
+    <e k="sf_pda_growth_ahead" v="[EN] Ahead %d%%" eh="e19aed44" />
+    <e k="sf_res_title" v="Direnç" eh="9db444f7" />
+    <e k="sf_res_state_unknown" v="Tarla %d: direnç henüz bilinmiyor. Geçmişini öğrenmek için bu tarlayı keşfet." eh="ab16e14a" />
+    <e k="sf_res_state_waiting" v="Tarla %d: sunucunun direnç tablosu bekleniyor." eh="b3c62e5b" />
+    <e k="sf_res_state_known" v="Tarla %d: direnç geçmişi biliniyor." eh="8717924c" />
+    <e k="sf_res_mode" v="Mod %s" eh="fdbc9304" />
+    <e k="sf_res_band_unknown" v="Henüz bilinmiyor" eh="8f4a0706" />
+    <e k="sf_res_band_working" v="İyi etki" eh="75eb95bf" />
+    <e k="sf_res_band_slipping" v="Azalan etki" eh="cc4d1243" />
+    <e k="sf_res_band_finished" v="Etki yok" eh="dd802b99" />
+    <e k="sf_res_note" v="Tankla uygulanan fungisitler bu tarlada direnç oluşturur. Menüden yapılan uygulamalar bu direnç modelini kullanmaz ve tarla alanına göre ücretlendirilir." eh="effb087f" />
+    <e k="sf_res_pairs_btn" v="Tank eşleşmeleri" eh="fb0e4920" />
+    <e k="sf_res_pairs_title" v="Tarla %d için tank eşleşmeleri" eh="d2e9272f" />
+    <e k="sf_res_pairs_intro" v="Etki sözcükleri bu tarlanın güncel aralıklarıdır. Organik olarak işaretlenen bir eşleşme onaylı organik listededir. Burada hiçbir şey sıralanmaz, satın alınmaz veya karıştırılmaz." eh="efb73722" />
+    <e k="sf_res_pairs_line" v="%s (mod %s): %s. Şununla eşleşir: %s." eh="2a537b39" />
+    <e k="sf_res_pairs_all" v="diğer her fungisit" eh="2eee400b" />
+    <e k="sf_res_pairs_organic" v="organik eşleşme" eh="49f08add" />
+    <e k="sf_res_pairs_none" v="eşleşme tablosu yüklenmedi" eh="abbe2edb" />
+    <e k="sf_res_pairs_nothing" v="listelenen eş yok" eh="06752d51" />
+    <e k="sf_res_pairs_no_field" v="Önce tarlalarından birini seç." eh="dfc6d58d" />
+    <e k="sf_dog_field_warning" v="Köpeğiniz %s numaralı tarlada bir sorun olduğunu seziyor." eh="405d8e87" />
+    <e k="sf_dog_barn_warning" v="Köpeğiniz %s ahırında bir sorun olduğunu seziyor." eh="15ea2c1a" />
+    <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
+    <e k="sf_hud_status_fair" v="Fair" eh="f7f20cf0" />
+    <e k="sf_hud_status_poor" v="Poor" eh="0e94d017" />
+    <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
+    <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
+    <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="TARLA DURUMUNU AYARLA" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="TARLA HASTALIĞINI AYARLA" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Son:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Münavebe bonusu aktif. Sırayı koru." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="Aynı familya çok uzun süredir. Gelecek sezon ürünü değiştir." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Toprak yorgunluğunu önlemek için münavebe uygula." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="MÜNAVEBE" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Tarlalar %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Tarla %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Bilinmiyor" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Ürün" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Etki" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Durum" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Tarla %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="Yok" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s durdu: hedef gübreleme karışık, izin verilmeyen veya bilinmeyen zeminde duraklatıldı. Manuel uygulama hâlâ kullanılabilir." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Bir yardımcı durdu: hedef gübreleme karışık, izin verilmeyen veya bilinmeyen zeminde duraklatıldı. Manuel uygulama hâlâ kullanılabilir." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Hedef gübreleme" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Tarla %d: ürün harcandı ancak yerel N/P/K sonucu doğrulanmadı. Hedef otomatik durduruldu; manuel uygulama hâlâ kullanılabilir." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Son OTO geçişi" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="OTO: hedefe ulaşıldı" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="OTO: hedefin altında" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="OTO durdu: ürün harcandı" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="OTO: doz bekliyor" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="OTO: uygulama yok" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="OTO: hedef doz uygulamayla başlar" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="OTO: sunucu bekleniyor" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="OTO: hedef kullanılamıyor" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="OTO duraklatıldı: büyüyen ürün yok" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="OTO duraklatıldı: hedef kullanılamıyor" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="OTO duraklatıldı: ürün sınırı" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="OTO duraklatıldı: tarla sınırı" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="OTO duraklatıldı: bu araziye erişim yok" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="OTO duraklatıldı: geçersiz ürün" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="OTO duraklatıldı: hedef gübresiz ekim" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="OTO duraklatıldı: tüm seksiyonlar açık değil" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="OTO duraklatıldı: çalışma alanları çakışıyor" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="OTO duraklatıldı: kültivatörde hedef yok" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="OTO duraklatıldı: besleme yolu desteklenmiyor" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="OTO duraklatıldı: çift doz açık" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="OTO: çalışma izi hazırlanıyor" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Manuel uygulama için OTO'yu kapatın." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Bom altında toprak okuması yok." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="Bom harita kenarını aşıyor." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="İlk bom çizgisi, ücret alınmadı." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Bu iz için onaylandı, tüm tarla için değil." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Bu karışımdan fazlası %s değerini aşar." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="Makine bu hızda daha fazla uygulayamaz." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Tankta veya beslemede yeterli ürün yok." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="Doz bir toprak haritası adımının altında." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="Yerel N/P/K doğrulanmadı." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Bom bir toprak hücresini kapattığında ücretlenir." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Sunucudan güncel sonuç yok." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="altında" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="yaklaşıyor" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="aralıkta" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="üstünde" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="bilinmiyor" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s, %s üzerinde, tarla %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Bom izi, %s m toprak hücreleri" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, aralık %s - %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Sınırlayan besin: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Planlanan %s L, uygulanan %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Faydalı %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
+    <e k="sf_tgt_pda_title" v="OTO hedef" eh="015a43f5" />
+    <e k="sf_tgt_pda_window" v="Tarla raporu: N %s, P %s, K %s" eh="0fb4140e" />
+    <e k="sf_tgt_pda_window_none" v="Tarla raporu: ürün aralığı yok" eh="a5363bde" />
+    <e k="sf_tgt_pda_rel_below" v="düşük" eh="53cced8d" />
+    <e k="sf_tgt_pda_rel_near" v="yakın" eh="85f06cc8" />
+    <e k="sf_tgt_pda_rel_ok" v="iyi" eh="444bcb3a" />
+    <e k="sf_tgt_pda_rel_high" v="yüksek" eh="8d966b22" />
+    <e k="sf_tgt_pda_rel_unknown" v="?" eh="d1457b72" />
+    <e k="sf_tgt_pda_state_reached" v="Son geçiş: hedefe ulaşıldı" eh="e1958a65" />
+    <e k="sf_tgt_pda_state_binding" v="Son geçiş: eksik, karışım" eh="8c2318f6" />
+    <e k="sf_tgt_pda_state_hardware" v="Son geçiş: eksik, makine" eh="7ccf8639" />
+    <e k="sf_tgt_pda_state_supply" v="Son geçiş: eksik, bitti" eh="718f2cb2" />
+    <e k="sf_tgt_pda_state_quantized" v="Son geçiş: bir adımın altında" eh="03b4dc16" />
+    <e k="sf_tgt_pda_state_failed" v="Son geçiş: ürün harcandı" eh="15afe7ea" />
+    <e k="sf_tgt_pda_state_none" v="Son geçiş: bu üründe yok" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Son duraklama: ürün büyümüyor" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Manuel için OTO'yu kapatın" eh="05c625d3" />
+    <e k="sf_tgt_pda_scope" v="Tek iz, tüm tarla değil" eh="d96e3c9b" />
+    <e k="sf_tgt_pda_binding" v="Fazlası %s değerini aşar" eh="53a1a1fe" />
+    <e k="sf_tgt_pda_manual_targets" v="Manuel plan hedefleri" eh="e44e77d3" />
+</elements>
 
 
 </l10n>

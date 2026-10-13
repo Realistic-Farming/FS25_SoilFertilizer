@@ -31,17 +31,48 @@ const RULES = [
     severity: "error",
     msg: "goto/labels do not exist in Lua 5.1 (FS25). Use if/else or an early return.",
   },
+  {
+    // MAINTENANCE row 59: I18N.lua:186 returns "Missing '<key>' in l10n<suffix>.xml" for
+    // an absent key, never nil, so an `or` after getText never fires and the player is
+    // shown the engine's diagnostic. A hasText-gated ternary on the same line is fine.
+    // SHAPE CAUGHT (MAINTENANCE row 92): single-line only. The rule and its `unless` run
+    // one line at a time (the loop below), so it fires on a line holding
+    // `getText(...) or <not an i18n call>` with no hasText on THAT line. An `or` carried
+    // to the next line, or a hasText on the line above, is not seen by this rule.
+    name: "l10n-dead-or-fallback",
+    re: /getText\s*\([^()]*\)\s*\)*\s+or\s+(?!g?_?i18n[.:])/,
+    unless: /hasText/,
+    severity: "error",
+    msg: "an `or` after getText never fires (I18N.lua:186 never returns nil). Use SoilL10n.tr(key, fallback).",
+  },
 ];
+
+// MAINTENANCE row 60: a file that tests a translation against the "$l10n_" attribute
+// prefix (a string getText cannot return) must gate on hasText as well, or it gates
+// on nothing. File-level, because the defended helpers keep the prefix test as a
+// second line of defence AFTER hasText. The shared Esc door page used to be the one
+// allowed exception; MAINTENANCE row 79 repaired it in all ten door mods at once (its tr
+// now gates on hasText), so the rule has no exception left.
+// SHAPE CAUGHT (MAINTENANCE row 92): file-level, not per line. After the line rules, the
+// whole file (comments stripped) is tested for any "$l10n_" occurrence with no `hasText`
+// word anywhere in it. One hasText call anywhere in the file passes it, whichever site
+// that call guards; a per-site gate is the reviewer's to check, not this rule's.
+const PREFIX_RULE = {
+  name: "l10n-prefix-without-hastext",
+  allow: [],
+  msg: "compares against \"$l10n_\" without calling hasText anywhere in the file. hasText is the gate; the prefix test guards nothing on its own.",
+};
 
 const files = findLuaFiles();
 let errors = 0,
   warnings = 0;
 
 for (const file of files) {
-  const lines = stripComments(readFileSync(file, "utf8")).split("\n");
+  const code = stripComments(readFileSync(file, "utf8"));
+  const lines = code.split("\n");
   lines.forEach((line, i) => {
     for (const rule of RULES) {
-      if (rule.re.test(line)) {
+      if (rule.re.test(line) && !(rule.unless && rule.unless.test(line))) {
         const tag = rule.severity === "error" ? c.red("error") : c.yellow("warn ");
         if (rule.severity === "error") errors++;
         else warnings++;
@@ -50,6 +81,12 @@ for (const file of files) {
       }
     }
   });
+  const relPath = rel(file).replace(/\\/g, "/");
+  if (/\$l10n_/.test(code) && !/\bhasText\b/.test(code) && !PREFIX_RULE.allow.includes(relPath)) {
+    errors++;
+    console.log(`${c.red("error")} ${c.bold(rel(file))}  ${c.dim("[" + PREFIX_RULE.name + "]")}`);
+    console.log(`  ${PREFIX_RULE.msg}`);
+  }
 }
 
 const n = files.length;

@@ -37,7 +37,38 @@ g_currentMission = {
   missionInfo = {},
 }
 
-g_i18n = { getText = function(_self, key) return key end }
+-- The engine's own global: main.lua:33 sets it to "_en", and main.lua:1187 (and
+-- NPCManager.lua:358) reassign it to the client's language suffix at runtime. It is
+-- here because getText's missing sentence interpolates it, so a harness that
+-- hardcodes the suffix renders a sentence no client ever produces. A bar that wants
+-- a non-English client assigns this and puts it back.
+g_languageSuffix = "_en"
+
+-- i18n, modelled on the engine rather than on a convenient shim. I18N.lua:175
+-- getText returns texts[name] and, when the key is absent, the sentence
+-- "Missing '<key>' in l10n<suffix>.xml" with g_languageSuffix interpolated at
+-- I18N.lua:186 - never nil, never "" and never the
+-- "$l10n_" XML attribute prefix. I18N.lua:194 hasText answers whether the key
+-- exists at all, and is false for a nil name. The harness loads no locale file,
+-- so by default NO key exists: a gate written the engine's way takes its English
+-- fallback here, which is the honest result. A test that needs a translated
+-- string registers it with g_i18n:setText(key, text) or by assigning its own
+-- object, as several already do.
+g_i18n = {
+  texts = {},
+  setText = function(self, key, value) self.texts[key] = value end,
+  hasText = function(self, key)
+    if key == nil then return false end
+    return self.texts[key] ~= nil
+  end,
+  getText = function(self, key)
+    local ret = self.texts[key]
+    if ret == nil then
+      return string.format("Missing '%s' in l10n%s.xml", tostring(key), tostring(g_languageSuffix))
+    end
+    return ret
+  end,
+}
 g_messageCenter = { subscribe = function() end, unsubscribe = function() end, publish = function() end }
 
 -- Minimal in-memory XML mock: the file handle is a plain table keyed by the XML path
@@ -129,6 +160,23 @@ g_currentMission.fieldGroundSystem = g_currentMission.fieldGroundSystem or {
 Event = Event or { new = function(mt) return setmetatable({}, mt) end }
 function InitEventClass(class, name) class.className = name; return class end
 
+-- FarmManager: the farm-id wire width, which SoilScoutingMaskSyncEvent writes and
+-- reads on both sides. Value taken from the decompiled engine at
+-- farms/FarmManager.lua:2, not guessed: FARM_ID_SEND_NUM_BITS = 4.
+--
+-- Its absence is why that event had no round-trip test. The production code indexes
+-- FarmManager for its width, the harness did not stand in for it, so the event could
+-- not be exercised at all and its two UIntN sites were unguarded by construction.
+-- MAX_NUM_FARMS is here because sf22_private_mask_spec_test.lua:19 declares
+-- `FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4, MAX_NUM_FARMS = 8 }`.
+-- With this prelude stub present that `or` short-circuits, so the shared stub has to
+-- be the COMPLETE one or that file silently stops stubbing what its comment says it
+-- does. Nothing reads MAX_NUM_FARMS today, so it was latent rather than live.
+--
+-- A neat small instance of this document's own subject: the `or` idiom is exactly
+-- what makes the shadowing silent.
+FarmManager = FarmManager or { FARM_ID_SEND_NUM_BITS = 4, MAX_NUM_FARMS = 8 }
+
 -- ── Mock network stream ────────────────────────────────────
 -- A typed FIFO standing in for an FS25 streamId. Every streamWriteX pushes a
 -- {tag,value}; the paired streamReadX pops it and checks the tag. This turns the
@@ -136,17 +184,84 @@ function InitEventClass(class, name) class.className = name; return class end
 -- a local assertion: a correct writeStream/readStream pair drains the FIFO exactly,
 -- with zero type mismatches and zero underflows. No float32 truncation is modelled
 -- (values pass through as Lua doubles), matching the repo's other round-trip tests.
+--
+-- WIDTH IS NOW CHECKED, having been claimed and not checked since this mock was
+-- written. The comment above has always listed "wrong width" among the bugs it turns
+-- into an assertion, while streamWriteUIntN took the bit count as `_n` and threw it
+-- away. A 3-bit write read back as 4 bits round-tripped perfectly clean, which is a
+-- genuine desync: the engine packs and unpacks by that count, so the two sides
+-- disagree about where every following field begins.
+--
+-- Two faults are counted, and they are different failures:
+--   widthErrors  the read declared a different bit count than the write. In the
+--                engine the reader then consumes the wrong number of bits and every
+--                subsequent field is misaligned.
+--   rangeErrors  the value does not fit the declared width, which is a violation of
+--                the engine's own stated contract for this call.
+--
+--                An earlier draft of this comment said "the engine truncates
+--                silently". That was a model, not a fact: streamWriteUIntN is
+--                engine-native and its overflow behaviour is not observable from the
+--                decompile, so what happens to an out-of-range value is unknown here
+--                and this counter does not claim to know.
+--
+--                What IS verifiable is the contract, and the engine states it
+--                itself. Its debug wrapper at debug/WrapFunctions.lua:718-725 guards
+--                the identical predicate:
+--                    if 2 ^ numBits - 1 < value or value < 0 then
+--                        Logging.error("value %d out of bounds (%d bits, %d max)")
+--                        printCallstack()
+--                so both bounds and both failure directions are the engine's, not
+--                ours.
+--
+--                And the guard REPORTS without PREVENTING. There is no early return
+--                after Logging.error and printCallstack: storeStats runs and the
+--                function ends `return engineStreamWriteUIntN(...)`, so the
+--                out-of-range write proceeds regardless. That is why a bench check
+--                earns its place, and it needs no assumption about which builds the
+--                wrapper is active in. (Which is just as well: nothing in the
+--                decompiled tree references WrapFunctions at all, so its activation
+--                condition is not observable from here either. An earlier draft said
+--                "runs only in debug builds", which was another model.)
+--
+--                Engine callers hold the contract at the call site rather than
+--                relying on the primitive: NetworkUtil.lua:67 writes
+--                math.floor(value * (2 ^ numBits - 1)), ForestryPhysicsRope.lua:162
+--                scales by (2 ^ NUM_LENGTH_BITS - 1), and precisionFarming's
+--                ExtendedCombine.lua:51 writes
+--                math.min(math.floor(x), YIELD_MAX_VALUE) against the paired
+--                YIELD_NUM_BITS. So an out-of-range write is a caller-contract
+--                violation, true whatever the native function does with it.
+--
+-- Neither raises, for the same reason the existing counters do not: a test should see
+-- the whole picture rather than dying on the first fault.
 function _sfMockStream()
-  return { q = {}, r = 1, typeErrors = 0, underflows = 0 }
+  return { q = {}, r = 1, typeErrors = 0, underflows = 0, widthErrors = 0, rangeErrors = 0 }
 end
 
-local function _sfPush(s, tag, v) s.q[#s.q + 1] = { t = tag, v = v } end
-local function _sfPull(s, tag)
+local function _sfPush(s, tag, v, width)
+  if width ~= nil and type(v) == "number" then
+    -- Values are unsigned by contract; 2^width - 1 is the largest that survives.
+    if v < 0 or v > (2 ^ width) - 1 then s.rangeErrors = s.rangeErrors + 1 end
+  end
+  s.q[#s.q + 1] = { t = tag, v = v, w = width }
+end
+
+local function _sfPull(s, tag, width)
   local e = s.q[s.r]
   if e == nil then s.underflows = s.underflows + 1; return nil end
   s.r = s.r + 1
   if e.t ~= tag then s.typeErrors = s.typeErrors + 1 end
+  if e.w ~= width then s.widthErrors = s.widthErrors + 1 end
   return e.v
+end
+
+--- Total faults on a stream. Prefer this to adding counters by hand at each call
+--- site: a round-trip row written before widthErrors existed would keep passing
+--- while ignoring it, which is how the width claim went unchecked in the first place.
+function _sfStreamFaults(s)
+  if s == nil then return -1 end
+  return s.typeErrors + s.underflows + s.widthErrors + s.rangeErrors
 end
 
 function streamWriteInt32(s, v)    _sfPush(s, "i32", v) end
@@ -159,8 +274,10 @@ function streamWriteString(s, v)    _sfPush(s, "str", v) end
 function streamReadString(s)        return _sfPull(s, "str") end
 function streamWriteBool(s, v)      _sfPush(s, "bool", v and true or false) end
 function streamReadBool(s)          return _sfPull(s, "bool") end
-function streamWriteUIntN(s, v, _n) _sfPush(s, "uN", v) end
-function streamReadUIntN(s, _n)     return _sfPull(s, "uN") end
+function streamWriteUIntN(s, v, n)  _sfPush(s, "uN", v, n) end
+function streamReadUIntN(s, n)      return _sfPull(s, "uN", n) end
+function streamWriteUInt16(s, v)    _sfPush(s, "u16", v) end
+function streamReadUInt16(s)         return _sfPull(s, "u16") end
 
 -- ── tiny test framework ────────────────────────────────────
 -- Results are emitted as ##TEST_ lines that run-tests.mjs parses out of stdout, so

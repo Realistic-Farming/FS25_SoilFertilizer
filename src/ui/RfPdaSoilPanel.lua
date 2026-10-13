@@ -8,7 +8,7 @@
 -- N/P/K/status/fert = colored text only (no nil-filename Bitmaps).
 -- =========================================================
 
-RfPdaSoilPanel = {}
+RfPdaSoilPanel = RfPdaSoilPanel or {}
 -- Cross-mod: WC/CS may source RfPdaMenuPage last (their env has no RfPdaSoilPanel).
 -- getfenv(0) is Soil modEnv only - still publish for same-env callers.
 -- Mission soft-detect is the reliable cross-mod bridge (also set in RfSoilEscJoiner).
@@ -59,7 +59,7 @@ local function resolveFarmId()
     return farmId
 end
 
-local function appendFieldEntry(page, sfm, fieldId)
+local function appendFieldEntry(page, sfm, fieldId, eligible)
     local ok, info = pcall(function()
         return sfm.soilSystem:getFieldInfo(fieldId)
     end)
@@ -77,6 +77,10 @@ local function appendFieldEntry(page, sfm, fieldId)
         fieldId = fieldId,
         info = info,
         urgency = urgency or 0,
+        -- CD-11 3.5: only rows from the owned roster may carry the resistance section.
+        -- The all-fields fallback below is a diagnostic view of foreign ground and is
+        -- appended with eligible = false, so the card stays down for it.
+        resistanceEligible = eligible == true,
     })
 end
 
@@ -96,6 +100,9 @@ end
 ---@param page table RfPdaMenuPage instance
 function RfPdaSoilPanel.rebuildFieldData(page)
     page.fieldData = {}
+    -- Panel show / roster rebuild: the resistance card re-reads on its next paint even
+    -- when the selected field id has not moved (the bands may have, e.g. after a scout).
+    page._resistanceDirty = true
     local sfm = g_SoilFertilityManager
     if sfm == nil and type(getfenv) == "function" then
         local env0 = getfenv(0)
@@ -119,14 +126,14 @@ function RfPdaSoilPanel.rebuildFieldData(page)
         for fieldId, _ in pairs(sfm.soilSystem.fieldData) do
             local owner = g_farmlandManager:getFarmlandOwner(fieldId)
             if owner == farmId then
-                appendFieldEntry(page, sfm, fieldId)
+                appendFieldEntry(page, sfm, fieldId, true)
             end
         end
     end
 
     if #page.fieldData == 0 then
         for fieldId, _ in pairs(sfm.soilSystem.fieldData) do
-            appendFieldEntry(page, sfm, fieldId)
+            appendFieldEntry(page, sfm, fieldId, false)
         end
         if usedOwnedFilter and #page.fieldData > 0 then
             local msg = string.format(
@@ -223,7 +230,14 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
     local urgent = (entry.urgency or 0) >= 60
     local okStatus = (entry.urgency or 0) < 25 and not info.needsFertilization
     if statusEl then
-        if urgent then
+        if info.simDisabled then
+            -- Field Sentry (#651): a slept field's soil is frozen by intent, so its row
+            -- says so instead of an urgency it cannot act on (tester xrhec, Field 33).
+            -- The same word the field detail dialog and the HUD use, read through the
+            -- page's translator like every other cell here; N/P/K/pH stay as they are.
+            statusEl:setText(tr("sf_fieldsentry_asleep", "sim asleep"))
+            statusEl:setTextColor(unpack(COLOR_DIM))
+        elseif urgent then
             statusEl:setText(tr("rf_pda_status_urgent", "URGENT"))
             statusEl:setTextColor(unpack(COLOR_POOR))
         elseif okStatus then
@@ -286,13 +300,57 @@ function RfPdaSoilPanel.populateFieldRow(page, index, cell)
     end
 end
 
+--- BUILD 09:19 (PB-05): what the two-line WHAT IF effect cell holds.
+--- 110px wide at 14px is roughly 22 glyphs a line against this card's own ~6px-per-glyph
+--- calibration at 17px, so two lines is ~44. See the XML note on soilRotationIf1Effect.
+local WHATIF_EFFECT_BUDGET = 44
+
 --- Paint the three What-if rows (crop / status / effect) from RotationPlannerData.
 --- Read-only projection only: pickCandidates + project + statusWord + effectText.
 --- Never invents a crop - a candidate with no projection prints honest dashes.
 local function paintWhatIfRows(page, entry, tr, clip)
     local rows = page.soilRotationIfRows
     local hdr  = page.soilRotationWhatIfHeader
-    if rows == nil then return end
+    -- BUILD 09:19 (PB-05). This used to be a bare `if rows == nil then return end`, and that
+    -- silence is the "WHAT IF row not showing" mechanism Brian hit: on a door whose XML lacks
+    -- the soilRotationIf* ids the whole section evaporated with no log line and no on-screen
+    -- trace, leaving the WHAT IF heading and its three column captions standing over nothing.
+    -- Sam's law for this card is that WHAT IF paints or is hidden for a visible reason, never
+    -- silently. So: warn once (the same shape as refreshRotationCard's thin-door guard right
+    -- below) and take the orphaned heading and captions down with it, so the card reads as a
+    -- card that does not have this section rather than as a section that failed to fill.
+    --
+    -- The nil TABLE is only half the thin-door shape and not the half that actually bites.
+    -- The host builds soilRotationIfRows unconditionally (RfPdaMenuPage:_resolveIds seeds it
+    -- to {} and then fills three entries), so on a door whose XML has no soilRotationIf* ids
+    -- the table is present and every crop/status/effect inside it is nil. The loop below then
+    -- ran to completion writing into nothing at all - which is the same invisible failure,
+    -- reached by a different route, and the one that survives a bare nil-table check. Treat a
+    -- first row with no resolved elements as the same absent-section case.
+    local rowsUsable = rows ~= nil and rows[1] ~= nil
+        and (rows[1].crop ~= nil or rows[1].status ~= nil or rows[1].effect ~= nil)
+    if not rowsUsable then
+        for _, el in ipairs({ hdr, page.soilRotationIfColCrop,
+                              page.soilRotationIfColStatus, page.soilRotationIfColEffect }) do
+            if el ~= nil then
+                if el.setText then el:setText("") end
+                if el.setVisible then el:setVisible(false) end
+            end
+        end
+        if not page._whatIfRowsWarned then
+            page._whatIfRowsWarned = true
+            -- Through the logger, not a raw print. The neighbouring rotation-card guard
+            -- still prints directly and the validator has always flagged it for that; this
+            -- one does not add a second DEBUG_CODE warning to the count.
+            local msg = "RfPdaSoilPanel: WHAT IF row ids absent on this door - section hidden (ROTATION glance unaffected)"
+            if SoilLogger ~= nil and type(SoilLogger.warning) == "function" then
+                SoilLogger.warning("%s", msg)
+            elseif Logging ~= nil and type(Logging.warning) == "function" then
+                Logging.warning("[RfEsc] %s", msg)
+            end
+        end
+        return
+    end
 
     local function setEl(el, s)
         if el ~= nil then
@@ -340,7 +398,15 @@ local function paintWhatIfRows(page, entry, tr, clip)
                 local eff = (type(rpd.effectText) == "function") and rpd.effectText(proj) or ""
                 setEl(r.crop,   clip(label, 16))
                 setEl(r.status, clip(word, 10))
-                setEl(r.effect, clip(eff, 18))
+                -- BUILD 09:19 (PB-05). Was clip(eff, 18) against a one-line 110px cell, which
+                -- dropped a whole consequence off the end of a comma-joined list: the player was
+                -- told the fatigue and not the disease. The cell is now two 14px lines (see
+                -- RF_ProductCellEffect), and effectText's output is a closed set whose longest
+                -- real string is "x1.15 depletion, +N, less disease" at 33 characters, so at
+                -- roughly 22 glyphs a line this budget is never actually reached by live data.
+                -- It stays as a fence for a translation longer than the English, and it drops
+                -- whole comma items rather than half a word when it does fire.
+                setEl(r.effect, clip(eff, WHATIF_EFFECT_BUDGET))
             end
         end
     end
@@ -391,11 +457,53 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
         if sEl ~= nil and sEl.setVisible then sEl:setVisible(false) end
     end
 
-    --- Trim to fit the narrow What-if effect column (pic 1 feel).
+    --- BUILD 15:39 (PB-09). Fit the narrow What-if columns WITHOUT cutting a
+    --- word in half.
+    ---
+    --- This used to be a flat `s:sub(1, n - 3) .. "..."`, which is how a status
+    --- reached Brian as `burn t...`. Half a word plus three dots is not shorter
+    --- information, it is unreadable information, and DESIGN 15:00 §4 rules it
+    --- out: no mid-word clipping against a neighbour, and an ellipsis only once
+    --- the source is genuinely long.
+    ---
+    --- The order of preference is:
+    ---   1. It fits. Print it.
+    ---   2. It is a comma-joined list (the effect column is). Drop whole items
+    ---      from the end until what is left fits - you lose an item, not half a
+    ---      word, and every item still on screen is complete.
+    ---   3. Single long phrase. Cut at the last space that fits, so the last
+    ---      thing shown is a whole word.
+    ---   4. One unbroken token longer than the column. Only here is a hard cut
+    ---      unavoidable, and only then does the ellipsis appear.
+    local ELLIPSIS_FLOOR = 28   -- DESIGN 15:00 §4
     local function clip(s, n)
         s = tostring(s or "")
         if #s <= n then return s end
-        return s:sub(1, math.max(1, n - 3)) .. "..."
+
+        if string.find(s, ", ", 1, true) ~= nil then
+            local kept = nil
+            for part in string.gmatch(s, "([^,]+)") do
+                part = part:gsub("^%s+", ""):gsub("%s+$", "")
+                local try = (kept == nil) and part or (kept .. ", " .. part)
+                if #try <= n then kept = try else break end
+            end
+            if kept ~= nil then return kept end
+        end
+
+        local cut = string.sub(s, 1, n)
+        local sp  = string.find(string.reverse(cut), " ")
+        if sp ~= nil then
+            local wordEnd = n - sp
+            if wordEnd >= 3 then
+                return string.sub(cut, 1, wordEnd)
+            end
+        end
+
+        -- A single token wider than its column. Ellipsis only past the floor.
+        if #s >= ELLIPSIS_FLOOR then
+            return string.sub(s, 1, math.max(1, n - 3)) .. "..."
+        end
+        return cut
     end
 
     local function set(el, text)
@@ -454,6 +562,395 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
     set(tipEl, tip)
 end
 
+-- ── CD-11 resistance readout (BUILD 10:52, George DESIGN 10:40) ──────────────
+--
+-- Read-only band card in the TREATMENT strip, under the three existing cards. It paints
+-- on panel show and on owned-field select only: the host re-runs refreshTreatmentPlan on
+-- its 2 s tick, so the painter remembers what it last painted and returns before any band
+-- work unless the selection moved or rebuildFieldData flagged it dirty.
+--
+-- Bands come from the public getters only (SoilFertilitySystem:getResistanceBand /
+-- getResistanceBandForChemical, modes via getModeForFillType). Raw scores, ratios and
+-- next-spray multipliers never enter this file. Meanings are fixed: UNKNOWN = not yet
+-- known, WORKING = good control, SLIPPING = reduced control, FINISHED = no control, and
+-- UNKNOWN never borrows the good-control colour. Nothing here ranks, buys, mixes, applies
+-- or writes; the only durable write in CD-11 is the server's scout bit in scoutField.
+
+local COLOR_HINT = {0.659, 0.678, 0.702, 1.0}   -- RF_HintText's own grey, for resets
+local RES_MAX_CHIPS = 7                          -- seven FRAC groups across eight jugs
+
+local function resistanceBandIds()
+    local B = SoilConstants and SoilConstants.RESISTANCE and SoilConstants.RESISTANCE.BANDS
+    if B ~= nil then return B end
+    return { UNKNOWN = -1, WORKING = 0, SLIPPING = 1, FINISHED = 2 }
+end
+
+--- The Soil manager and system, or nil when the section must stand down: manager absent,
+--- getter missing (an older Soil), Soil switched off, or Soil disabled by Precision Farming.
+--- No PF hook: the stand-down rides Soil's own flags.
+local function resistanceSource()
+    local sfm = g_currentMission and g_currentMission.soilFertilityManager
+    local sys = sfm and sfm.soilSystem
+    if sys == nil or type(sys.getResistanceBand) ~= "function" then return nil end
+    if sfm.settings ~= nil and sfm.settings.enabled == false then return nil end
+    if sfm._disabledByPF then return nil end
+    return sfm, sys
+end
+
+--- Player-facing chemical name via the existing sf_chem_<ID> keys (same as SoilScoutDialog).
+local function chemDisplayName(id)
+    if g_i18n ~= nil and g_i18n.hasText and g_i18n:hasText("sf_chem_" .. id) then
+        return g_i18n:getText("sf_chem_" .. id)
+    end
+    local s = string.lower(tostring(id)):gsub("_", " ")
+    return (s:gsub("(%a)([%w]*)", function(a, b) return string.upper(a) .. b end))
+end
+
+--- The modes the mod knows, in PHYSICAL_FUNGICIDE_ORDER first-seen order, each with the
+--- physical products that use it. Product vocabulary stays primary; the mode is its label.
+local function resistanceModeRows()
+    local rows, byMode = {}, {}
+    local order = SoilConstants and SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}
+    local getMode = SoilFertilitySystem and SoilFertilitySystem.getModeForFillType
+    if type(getMode) ~= "function" then return rows end
+    for _, id in ipairs(order) do
+        local mode = getMode(id)
+        if mode ~= nil then
+            local row = byMode[mode]
+            if row == nil then
+                row = { mode = mode, products = {} }
+                byMode[mode] = row
+                rows[#rows + 1] = row
+            end
+            row.products[#row.products + 1] = id
+        end
+    end
+    return rows
+end
+
+local function bandWord(tr, band)
+    local B = resistanceBandIds()
+    if band == B.WORKING then
+        return tr("sf_res_band_working", "Good control"), COLOR_GOOD
+    elseif band == B.SLIPPING then
+        return tr("sf_res_band_slipping", "Reduced control"), COLOR_FAIR
+    elseif band == B.FINISHED then
+        return tr("sf_res_band_finished", "No control"), COLOR_POOR
+    end
+    return tr("sf_res_band_unknown", "Not yet known"), COLOR_DIM
+end
+
+local function resEl(page, id)
+    local el = page[id]
+    if el == nil and page.getDescendantById then
+        el = page:getDescendantById(id)
+    end
+    return el
+end
+
+local function setTextColored(el, text, color)
+    if el == nil then return end
+    if el.setText then el:setText(text or "") end
+    if color ~= nil and el.setTextColor then el:setTextColor(unpack(color)) end
+end
+
+--- Paint the resistance card for the selected entry. Never throws past its caller: the
+--- host wraps it in pcall the same way it wraps the rotation card, and PRODUCTS paints on.
+---@param page table RfPdaMenuPage instance (may be a thin door without the card ids)
+---@param entry table|nil selected field entry from page.fieldData
+function RfPdaSoilPanel.refreshResistanceCard(page, entry)
+    if page == nil then return end
+    local cardEl = resEl(page, "soilResistanceCard")
+    if cardEl == nil then
+        -- Thin doors, or a door built from another mod's copy of RfPdaMenuPage.xml.
+        if not page._resistanceCardWarned then
+            page._resistanceCardWarned = true
+            print("[SoilFertilizer] resistance card ids absent on this door - skipping card (PRODUCTS unaffected)")
+        end
+        return
+    end
+
+    local fieldId  = entry and entry.fieldId or nil
+    local eligible = entry ~= nil and entry.resistanceEligible == true and fieldId ~= nil
+    local key      = eligible and fieldId or false
+
+    -- Timer fence: same field, nothing flagged dirty -> no band work at all.
+    if page._resistancePaintedKey == key and not page._resistanceDirty then return end
+    page._resistancePaintedKey = key
+    page._resistanceDirty = false
+
+    local sfm, sys = resistanceSource()
+    if not eligible or sys == nil then
+        if cardEl.setVisible then cardEl:setVisible(false) end
+        return
+    end
+    if cardEl.setVisible then cardEl:setVisible(true) end
+
+    local tr = page._rfTr or function(k, fb) return fb or k end
+    setTextColored(resEl(page, "soilResistanceTitle"), tr("sf_res_title", "Resistance"))
+    setTextColored(resEl(page, "soilResistanceNote"),
+        tr("sf_res_note", "Tank-applied fungicides build resistance on this field. Menu treatments do not use this resistance model and charge by field area."))
+    local btn = resEl(page, "soilResistancePairsBtn")
+    if btn ~= nil and btn.setText then btn:setText(tr("sf_res_pairs_btn", "Tank pairs")) end
+
+    -- Knowledge state. Revealed is the durable server bit only (ResistanceBands.isFieldRevealed);
+    -- a pure client that has not had its first field delivery yet is told it is waiting rather
+    -- than being shown "not yet known" as if nobody had ever scouted.
+    local field    = sys.fieldData and sys.fieldData[fieldId]
+    local revealed = ResistanceBands ~= nil and type(ResistanceBands.isFieldRevealed) == "function"
+        and ResistanceBands.isFieldRevealed(field) == true
+    local pureClient = not (ResistanceBands ~= nil and type(ResistanceBands.hasServerPicture) == "function"
+        and ResistanceBands.hasServerPicture())
+    local stateText, stateColor
+    if pureClient and (field == nil or field.resistanceBandsReceived ~= true) then
+        stateText  = string.format(tr("sf_res_state_waiting", "Field %d: waiting for the server's resistance picture."), fieldId)
+        stateColor = COLOR_FAIR
+    elseif revealed then
+        stateText  = string.format(tr("sf_res_state_known", "Field %d: resistance history known."), fieldId)
+        stateColor = COLOR_HINT
+    else
+        stateText  = string.format(tr("sf_res_state_unknown", "Field %d: resistance not yet known. Scout this field to learn its history."), fieldId)
+        stateColor = COLOR_DIM
+    end
+    setTextColored(resEl(page, "soilResistanceState"), stateText, stateColor)
+
+    -- One chip per mode: header "Mode 3", the products that use it, and the band word.
+    local rows = resistanceModeRows()
+    for i = 1, RES_MAX_CHIPS do
+        local head = resEl(page, "soilResMode" .. i .. "Head")
+        local prod = resEl(page, "soilResMode" .. i .. "Prod")
+        local band = resEl(page, "soilResMode" .. i .. "Band")
+        local row  = rows[i]
+        if row == nil then
+            setTextColored(head, "")
+            setTextColored(prod, "")
+            setTextColored(band, "")
+        else
+            local names = {}
+            for _, id in ipairs(row.products) do names[#names + 1] = chemDisplayName(id) end
+            local value = sys:getResistanceBand(fieldId, row.mode)
+            local word, color = bandWord(tr, value)
+            setTextColored(head, string.format(tr("sf_res_mode", "Mode %s"), tostring(row.mode)))
+            setTextColored(prod, table.concat(names, ", "))
+            setTextColored(band, word, color)
+        end
+    end
+end
+
+--- Inspectable pair context (George: disclosure, not a second list of all 28 blends).
+--- One line per physical product: its mode, this field's band for it, and the partners the
+--- blend table allows, with the organic-approved pairs marked by APPROVED_INPUTS membership
+--- only. Reads getters and the tables; ranks, buys, mixes and applies nothing.
+---@param page table RfPdaMenuPage instance
+function RfPdaSoilPanel.showResistancePairs(page)
+    if page == nil then return end
+    local tr = page._rfTr or function(k, fb) return fb or k end
+    local entry = nil
+    for _, e in ipairs(page.fieldData or {}) do
+        if e.fieldId == page.selectedFieldId then entry = e; break end
+    end
+    local text
+    local _, sys = resistanceSource()
+    if entry == nil or entry.resistanceEligible ~= true or sys == nil then
+        text = tr("sf_res_pairs_no_field", "Select one of your fields first.")
+    else
+        local fieldId = entry.fieldId
+        local lines = {
+            string.format(tr("sf_res_pairs_title", "Tank pairs for field %d"), fieldId),
+            tr("sf_res_pairs_intro", "Control words are this field's current bands. A pair marked organic is on the organic approved list. Nothing here ranks, buys or mixes."),
+            "",
+        }
+        local products = SoilConstants and SoilConstants.PHYSICAL_FUNGICIDE_ORDER or {}
+        local approved = SoilConstants and SoilConstants.ORGANIC and SoilConstants.ORGANIC.APPROVED_INPUTS or {}
+        local partners = {}
+        local blendsOk = SoilBlends ~= nil and type(SoilBlends.ORDER) == "table" and type(SoilBlends.getPartners) == "function"
+        if blendsOk then
+            for _, key in ipairs(SoilBlends.ORDER) do
+                local pair = SoilBlends.getPartners(key)
+                if type(pair) == "table" and pair[1] ~= nil and pair[2] ~= nil then
+                    local organic = approved[key] == true
+                    partners[pair[1]] = partners[pair[1]] or {}
+                    partners[pair[2]] = partners[pair[2]] or {}
+                    table.insert(partners[pair[1]], { id = pair[2], organic = organic })
+                    table.insert(partners[pair[2]], { id = pair[1], organic = organic })
+                end
+            end
+        end
+        local getMode = SoilFertilitySystem and SoilFertilitySystem.getModeForFillType
+        for _, id in ipairs(products) do
+            local mode = type(getMode) == "function" and getMode(id) or nil
+            local word = bandWord(tr, sys:getResistanceBandForChemical(fieldId, id))
+            local list = partners[id] or {}
+            local withText
+            if not blendsOk then
+                withText = tr("sf_res_pairs_none", "pair table not loaded")
+            elseif #list == 0 then
+                withText = tr("sf_res_pairs_nothing", "no listed partner")
+            elseif #list >= #products - 1 then
+                local organicNames = {}
+                for _, p in ipairs(list) do
+                    if p.organic then organicNames[#organicNames + 1] = chemDisplayName(p.id) end
+                end
+                withText = tr("sf_res_pairs_all", "every other fungicide")
+                if #organicNames > 0 then
+                    withText = withText .. " (" .. tr("sf_res_pairs_organic", "organic pair") .. ": "
+                        .. table.concat(organicNames, ", ") .. ")"
+                end
+            else
+                local names = {}
+                for _, p in ipairs(list) do
+                    local n = chemDisplayName(p.id)
+                    if p.organic then n = n .. " (" .. tr("sf_res_pairs_organic", "organic pair") .. ")" end
+                    names[#names + 1] = n
+                end
+                withText = table.concat(names, ", ")
+            end
+            lines[#lines + 1] = string.format(tr("sf_res_pairs_line", "%s (mode %s): %s. Pairs with %s."),
+                chemDisplayName(id), tostring(mode or "?"), word, withText)
+        end
+        text = table.concat(lines, "\n")
+    end
+    if InfoDialog ~= nil and type(InfoDialog.show) == "function" then
+        InfoDialog.show(text)
+    elseif g_gui ~= nil and g_gui.showInfoDialog then
+        g_gui:showInfoDialog({ text = text })
+    end
+end
+
+-- The page class is sourced after this file (src/main.lua order) and opens with
+-- `RfPdaMenuPage = RfPdaMenuPage or {}`, so a method placed on the table here survives.
+-- The XML resolves onClick names against the page target when the door is built
+-- (GuiElement:addCallback), long after every sourceFile has run, so the button finds it.
+RfPdaMenuPage = RfPdaMenuPage or {}
+function RfPdaMenuPage:onClickSoilResistancePairs()
+    if RfPdaSoilPanel ~= nil and type(RfPdaSoilPanel.showResistancePairs) == "function" then
+        RfPdaSoilPanel.showResistancePairs(self)
+    end
+end
+
+-- ── SF-73 section 7, W1b: the TREATMENT card's target card ─────────────────
+-- The door's soilTargetCard (the W1 door set, placement B: the TREATMENT card's lower zone
+-- under the target levels). It shows only while SF-73's release lock is open and a field is
+-- selected. Two scopes, each titled: the AUTO crop window is a field report (FIELD_REPORT,
+-- Wizard :40), never a local reading; the last pass is one footprint's confirmed result
+-- (:38, :46), never a field-reached claim, and only for the field's current crop. Nothing
+-- in it is compared, summed or aligned with the legacy target levels or the PRODUCTS rows
+-- (:30): those stay the manual planner's, and their heading says so while the card shows.
+-- A door without the card (another mod's older copy won) draws nothing new.
+
+-- One state line per footprint outcome, the same kinds as the HUD's TARGET_STATE_COPY
+-- (shorter for the 180px card); the note gives the binding nutrient, the failure, or the scope.
+RfPdaSoilPanel.TARGET_PDA_STATE = {
+    REACHED            = { line = "sf_tgt_pda_state_reached",   note = "sf_tgt_pda_scope",   color = "good" },
+    SHORT_BINDING      = { line = "sf_tgt_pda_state_binding",   note = "sf_tgt_pda_binding", color = "fair" },
+    SHORT_HARDWARE     = { line = "sf_tgt_pda_state_hardware",  note = "sf_tgt_pda_scope",   color = "fair" },
+    SHORT_SUPPLY       = { line = "sf_tgt_pda_state_supply",    note = "sf_tgt_pda_scope",   color = "fair" },
+    SHORT_QUANTIZED    = { line = "sf_tgt_pda_state_quantized", note = "sf_tgt_pda_scope",   color = "fair" },
+    APPLICATION_FAILED = { line = "sf_tgt_pda_state_failed",    note = "sf_tgt_n_failed",    color = "poor" },
+}
+-- The field's last no-crop pause (an AUTO refusal for no growing crop), in the card's "Last ..."
+-- form so it never reads as a pass. Its note is the manual hint (W1a's sf_tgt_n_manual meaning,
+-- sized for the 180px card), which Iris allows for this reason only; nothing was spent, so the
+-- litres line stays empty. Drawn in the card's fair colour.
+RfPdaSoilPanel.TARGET_PDA_PAUSE = { line = "sf_tgt_pda_state_paused", note = "sf_tgt_pda_pause_hint" }
+RfPdaSoilPanel.TARGET_PDA_REL = {
+    BELOW = "sf_tgt_pda_rel_below", APPROACHING = "sf_tgt_pda_rel_near", IDEAL = "sf_tgt_pda_rel_ok",
+    ABOVE = "sf_tgt_pda_rel_high", UNDETERMINED = "sf_tgt_pda_rel_unknown",
+}
+RfPdaSoilPanel.TARGET_PDA_KEYS = {
+    title = "sf_tgt_pda_title", window = "sf_tgt_pda_window", windowNone = "sf_tgt_pda_window_none",
+    none = "sf_tgt_pda_state_none", litres = "sf_tgt_d_litres", manual = "sf_tgt_pda_manual_targets",
+}
+-- English fallbacks for the page translator (tr(key, fallback)), the en file's own text.
+RfPdaSoilPanel.TARGET_PDA_EN = {
+    sf_tgt_pda_title = "AUTO target", sf_tgt_pda_window = "Field report: N %s, P %s, K %s",
+    sf_tgt_pda_window_none = "Field report: crop window unavailable",
+    sf_tgt_pda_rel_below = "low", sf_tgt_pda_rel_near = "near", sf_tgt_pda_rel_ok = "ok", sf_tgt_pda_rel_high = "high",
+    sf_tgt_pda_rel_unknown = "?",
+    sf_tgt_pda_state_reached = "Last pass: target reached", sf_tgt_pda_state_binding = "Last pass: short, blend limit",
+    sf_tgt_pda_state_hardware = "Last pass: short, machine limit", sf_tgt_pda_state_supply = "Last pass: short, ran out",
+    sf_tgt_pda_state_quantized = "Last pass: short, under a map step", sf_tgt_pda_state_failed = "Last pass: product spent",
+    sf_tgt_pda_state_none = "Last pass: none on this crop",
+    sf_tgt_pda_scope = "One footprint, not the whole field", sf_tgt_pda_binding = "More would overshoot %s",
+    sf_tgt_n_failed = "Local N/P/K is not confirmed.", sf_tgt_d_litres = "Planned %s L, applied %s L",
+    sf_tgt_pda_manual_targets = "Manual plan targets",
+    sf_tgt_pda_state_paused = "Last pause: no growing crop", sf_tgt_pda_pause_hint = "Turn AUTO off to apply manually",
+}
+
+local function targetPdaLitres(x)
+    if type(x) ~= "number" or x ~= x or x == math.huge or x == -math.huge then return "?" end
+    return string.format(math.abs(x) < 10 and "%.2f" or "%.1f", x)
+end
+
+--- Paint the target card for the selected entry. Never throws past its caller: the host
+--- wraps it in pcall, as it wraps the rotation and resistance cards, and PRODUCTS paints on.
+--- Sets page._targetCardShown, which the legacy heading reads.
+---@param page table RfPdaMenuPage instance (may be a door without the card)
+---@param entry table|nil selected field entry from page.fieldData
+function RfPdaSoilPanel.refreshTargetCard(page, entry)
+    if page == nil then return end
+    page._targetCardShown = false
+    local cardEl = resEl(page, "soilTargetCard")
+    if cardEl == nil then return end
+    local function hide() if cardEl.setVisible then cardEl:setVisible(false) end end
+    local fieldId = entry and entry.fieldId or nil
+    local sfm = g_SoilFertilityManager
+    local ss = sfm and sfm.soilSystem
+    if fieldId == nil or ss == nil or type(ss.isTargetGateOpen) ~= "function" or ss:isTargetGateOpen() ~= true then
+        hide()
+        return
+    end
+    local trPage = page._rfTr or function(k, fb) return fb or k end
+    local EN = RfPdaSoilPanel.TARGET_PDA_EN
+    local function tr(key) return trPage(key, EN[key]) end
+    local K = RfPdaSoilPanel.TARGET_PDA_KEYS
+
+    -- The AUTO crop window: a field report over the field's scalars, never a local reading.
+    local rel = type(ss.getCropNutrientRelationship) == "function" and ss:getCropNutrientRelationship(fieldId) or nil
+    local windowText
+    if rel ~= nil and rel.cropKey ~= nil and type(rel.nutrients) == "table" then
+        local words = {}
+        for _, n in ipairs({ "N", "P", "K" }) do
+            local x = rel.nutrients[n]
+            words[#words + 1] = tr(RfPdaSoilPanel.TARGET_PDA_REL[x and x.relationship or "UNDETERMINED"]
+                or RfPdaSoilPanel.TARGET_PDA_REL.UNDETERMINED)
+        end
+        windowText = string.format(tr(K.window), words[1], words[2], words[3])
+    else
+        windowText = tr(K.windowNone)
+    end
+
+    -- The last pass: one footprint's confirmed outcome on this field, for its current crop only.
+    local pass = type(ss.getLastTargetPassForField) == "function" and ss:getLastTargetPassForField(fieldId) or nil
+    if pass ~= nil and (rel == nil or rel.cropKey == nil or pass.cropKey ~= rel.cropKey) then pass = nil end
+    -- The last no-crop pause, under the same current-crop rule: the pause names no crop, so it
+    -- carries the field report's crop from when it was noted. The newer of the pass and the
+    -- pause is the field's state; on a tie, the pass.
+    local pause = type(ss.getLastTargetPauseForField) == "function" and ss:getLastTargetPauseForField(fieldId) or nil
+    if pause ~= nil and (rel == nil or rel.cropKey == nil or pause.fieldCrop ~= rel.cropKey) then pause = nil end
+    if pause ~= nil and pass ~= nil and not ((pause.notedAt or 0) > (pass.notedAt or 0)) then pause = nil end
+    local copy = pass ~= nil and RfPdaSoilPanel.TARGET_PDA_STATE[pass.doseState] or nil
+    local stateText, noteText, detailText, stateColor = tr(K.none), "", "", COLOR_DIM
+    if pause ~= nil then
+        local p = RfPdaSoilPanel.TARGET_PDA_PAUSE
+        stateText, noteText, stateColor = tr(p.line), tr(p.note), COLOR_FAIR
+    elseif copy ~= nil then
+        stateText = tr(copy.line)
+        noteText = tr(copy.note)
+        if pass.doseState == "SHORT_BINDING" then noteText = string.format(noteText, tostring(pass.binding or "?")) end
+        detailText = string.format(tr(K.litres), targetPdaLitres(pass.plannedLitres), targetPdaLitres(pass.physicalLitres))
+        stateColor = (copy.color == "good" and COLOR_GOOD) or (copy.color == "poor" and COLOR_POOR) or COLOR_FAIR
+    end
+
+    setTextColored(resEl(page, "soilTargetTitle"), tr(K.title))
+    setTextColored(resEl(page, "soilTargetWindow"), windowText, COLOR_LIME_BRIGHT)
+    setTextColored(resEl(page, "soilTargetState"), stateText, stateColor)
+    setTextColored(resEl(page, "soilTargetReason"), noteText, COLOR_DIM)
+    setTextColored(resEl(page, "soilTargetDetail"), detailText, COLOR_DIM)
+    if cardEl.setVisible then cardEl:setVisible(true) end
+    page._targetCardShown = true
+end
+
 function RfPdaSoilPanel.refreshTreatmentPlan(page)
     local tr = page._rfTr or function(k, fb) return fb or k end
     local fieldId = page.selectedFieldId
@@ -477,6 +974,31 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
         if not okCard and not page._rotationCardErrLogged then
             page._rotationCardErrLogged = true
             print("[SoilFertilizer] rotation card paint failed (PRODUCTS continues): " .. tostring(errCard))
+        end
+    end
+
+    -- CD-11 resistance card (BUILD 10:52). Same guard shape: a painter fault must never
+    -- take PRODUCTS down. Runs on nil entries too so the card hides when nothing is selected.
+    if type(RfPdaSoilPanel.refreshResistanceCard) == "function" then
+        local okRes, errRes = pcall(RfPdaSoilPanel.refreshResistanceCard, page, entry)
+        if not okRes and not page._resistanceCardErrLogged then
+            page._resistanceCardErrLogged = true
+            print("[SoilFertilizer] resistance card paint failed (PRODUCTS continues): " .. tostring(errRes))
+        end
+    end
+
+    -- SF-73 W1b target card (the door set's placement B). Same guard shape; it runs on nil
+    -- entries too so the card hides when nothing is selected, and its shown flag decides the
+    -- legacy heading below.
+    page._targetCardShown = false
+    if type(RfPdaSoilPanel.refreshTargetCard) == "function" then
+        local okTgt, errTgt = pcall(RfPdaSoilPanel.refreshTargetCard, page, entry)
+        if not okTgt then
+            page._targetCardShown = false
+            if not page._targetCardErrLogged then
+                page._targetCardErrLogged = true
+                print("[SoilFertilizer] target card paint failed (PRODUCTS continues): " .. tostring(errTgt))
+            end
         end
     end
 
@@ -566,6 +1088,16 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
             local tpl = tr("rf_pda_treatment_selected", "Selected field: Field %s")
             local okFmt, formatted = pcall(string.format, tpl, tostring(fieldId))
             local text = okFmt and formatted or ("Field " .. tostring(fieldId))
+            -- Field Sentry (#651): a slept field carries its state and reason on the
+            -- selected line, the way SoilFieldDetailDialog shows it, so a plan drawn
+            -- for frozen soil is never read as live advice.
+            local info = entry and entry.info or nil
+            if info ~= nil and info.simDisabled then
+                local reasonText = info.simDisabledReasonKey
+                    and tr(info.simDisabledReasonKey, info.simDisabledReason)
+                    or tostring(info.simDisabledReason)
+                text = text .. "  (" .. tr("sf_fieldsentry_asleep", "sim asleep") .. ": " .. reasonText .. ")"
+            end
             page.treatSelectedLabel:setText(text)
             if page.treatSelectedLabel.setTextColor then
                 page.treatSelectedLabel:setTextColor(unpack(COLOR_LIME_BRIGHT))
@@ -616,7 +1148,14 @@ function RfPdaSoilPanel.refreshTreatmentPlan(page)
 
     -- F5: separate Text lines (Giants Text often shows literal \n / broken l10n backticks)
     if page.treatTargetsHeading then
-        page.treatTargetsHeading:setText(tr("rf_pda_treatment_targets_heading", "Target levels"))
+        -- While the SF-73 target card shows in this card, these lines are the manual plan's
+        -- targets (the PRODUCTS planner computes against them) and say so, so two target
+        -- bands for the same nutrients never read as synonyms (W1b's pre-build ruling).
+        if page._targetCardShown == true then
+            page.treatTargetsHeading:setText(tr(RfPdaSoilPanel.TARGET_PDA_KEYS.manual, "Manual plan targets"))
+        else
+            page.treatTargetsHeading:setText(tr("rf_pda_treatment_targets_heading", "Target levels"))
+        end
     end
     if page.treatTargetN then
         page.treatTargetN:setText(string.format("N %d-%d%%", nLo, nHi))

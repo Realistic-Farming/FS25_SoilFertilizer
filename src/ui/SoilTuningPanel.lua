@@ -10,10 +10,10 @@
 -- =========================================================
 
 ---@class SoilTuningPanel
-SoilTuningPanel = {}
+SoilTuningPanel = SoilTuningPanel or {}
 local SoilTuningPanel_mt = Class(SoilTuningPanel)
 
-local SF_TUN_MOD_NAME = g_currentModName
+local SF_TUN_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 -- ── Panel geometry (matches SoilSettingsPanel for visual consistency) ─────
 local PW     = 0.60

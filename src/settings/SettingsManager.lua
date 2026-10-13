@@ -7,10 +7,10 @@
 -- Author: TisonK
 -- =========================================================
 ---@class SettingsManager
-SettingsManager = {}
+SettingsManager = SettingsManager or {}
 local SettingsManager_mt = Class(SettingsManager)
 
-SettingsManager.MOD_NAME = g_currentModName or "FS25_SoilFertilizer"
+SettingsManager.MOD_NAME = (SoilFertilizerModName or g_currentModName) or "FS25_SoilFertilizer"
 SettingsManager.XMLTAG = "SoilFertilityManager"
 
 -- Default config is now derived from schema

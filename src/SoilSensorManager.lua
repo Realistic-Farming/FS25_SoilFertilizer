@@ -13,7 +13,7 @@
 -- =========================================================
 
 ---@class SoilSensorManager
-SoilSensorManager = {}
+SoilSensorManager = SoilSensorManager or {}
 SoilSensorManager.__index = SoilSensorManager
 
 -- Nutrient level (0-100) above which the nutrient sensor skips spraying.

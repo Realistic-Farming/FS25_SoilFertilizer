@@ -9,16 +9,59 @@
 -- =========================================================
 ---@class SoilHUD
 
-SoilHUD = {}
+-- BUILD 17:57 + ATTN 18:02 (Wizard hot-reload law, FS25-HotReload-Guide.md Part 1):
+-- reuse the existing class table on Ctrl+R reload so updated methods land on the
+-- table live metatables already reference, instead of orphaning it.
+SoilHUD = SoilHUD or {}
 local SoilHUD_mt = Class(SoilHUD)
+
+-- RSF-F345 wave 1: the status tokens "Good" / "Fair" / "Poor" / "Unknown" are internal
+-- values (colour keys in statusColor, comparisons in overallStatus and the grade fold).
+-- They are translated at the render call only; nothing that produces or compares
+-- them changes. hasText gates getText, which is what closes the missing-key hole:
+-- the engine's I18N:getText returns a "Missing '<key>' in l10n" string on a miss,
+-- never nil, so a bare `getText(key) or fallback` can put that on screen. The
+-- "$l10n_<key>" rejection mirrors this file's sibling tr() helpers, which guard
+-- the placeholder shape other i18n shims in the ecosystem hand back. A missing
+-- key renders today's bare English token and never a key name.
+SoilHUD.STATUS_TEXT_KEYS = {
+    Good    = "sf_hud_status_good",
+    Fair    = "sf_hud_status_fair",
+    Poor    = "sf_hud_status_poor",
+    Unknown = "sf_hud_status_unknown",
+}
+function SoilHUD.statusText(status)
+    local key = SoilHUD.STATUS_TEXT_KEYS[status]
+    if key and g_i18n and g_i18n.hasText and g_i18n.getText then
+        local ok, has = pcall(g_i18n.hasText, g_i18n, key)
+        if ok and has == true then
+            local okText, text = pcall(g_i18n.getText, g_i18n, key)
+            if okText and type(text) == "string" and text ~= "" and text ~= ("$l10n_" .. key) then
+                return text
+            end
+        end
+    end
+    return status
+end
 
 -- ── Scale / resize ──────────────────────────────────────
 SoilHUD.MIN_SCALE          = 0.60
 SoilHUD.MAX_SCALE          = 1.80
 SoilHUD.RESIZE_HANDLE_SIZE = 0.008
+-- Wizard 2026-08-21 width wave: left/right edge drag adjusts a width multiplier,
+-- independent of corner-scale (NPCFavor/Workplace pattern, suite-wide). Interior
+-- text anchors already derive proportionally from the panel width (see BASE_W
+-- note above), so the content stretches with the pane.
+SoilHUD.MIN_WIDTH_MULT = 0.7
+SoilHUD.MAX_WIDTH_MULT = 2.5
+SoilHUD.EDGE_BAND_W    = 0.008
+SoilHUD.EDGE_SENS      = 3.0
 
 -- ── Base panel dimensions at scale 1.0 ─────────────────
-SoilHUD.BASE_W = 0.190
+-- BUILD 14:39 (Sam DESIGN 14:20): 0.190 -> 0.180. Every panel surface, column and
+-- text anchor in this file derives proportionally from BASE_W * scale, so the whole
+-- layout adapts to the narrower width - no absolute offsets to clip.
+SoilHUD.BASE_W = 0.180
 SoilHUD.BASE_H = 0.228   -- Default fallback height
 
 -- ── Layout constants at scale 1.0 ──────────────────────
@@ -26,7 +69,9 @@ SoilHUD.TITLE_H   = 0.024   -- title accent bar height
 SoilHUD.ROW_H     = 0.022   -- nutrient row height
 SoilHUD.LINE_H    = 0.018   -- text-only row height
 SoilHUD.PAD       = 0.006   -- inner padding
-SoilHUD.BAR_H     = 0.010   -- nutrient bar fill height
+-- Six pixels at 1080p: the same bar height used by FillLevelsDisplay and the
+-- base-game feed-mixer HUD extension.
+SoilHUD.BAR_H     = 0.005556
 SoilHUD.BAR_W     = 0.095   -- nutrient bar width
 
 -- ── Colors ──────────────────────────────────────────────
@@ -52,6 +97,21 @@ SoilHUD.C_EDIT_HDL   = {0.20, 0.60, 1.00, 0.85}
 -- ── Field detection throttle ────────────────────────────
 SoilHUD.FIELD_DETECT_INTERVAL = 0.5   -- seconds between position queries
 
+-- MasterHUD owns the shared base-game chrome objects when it is installed.
+-- Every caller keeps its existing graph_pixel fallback so SoilFertilizer still
+-- works standalone, in line with the suite's delegate-when-present contract.
+function SoilHUD.getBaseGameRenderer()
+    local hud = (g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD
+    if hud ~= nil and hud.renderer ~= nil then
+        return hud.renderer
+    end
+    return nil
+end
+
+function SoilHUD.getSeparatorHeight()
+    return g_pixelSizeY or (1 / 1080)
+end
+
 function SoilHUD.new(soilSystem, settings)
     local self = setmetatable({}, SoilHUD_mt)
 
@@ -67,7 +127,7 @@ function SoilHUD.new(soilSystem, settings)
     self.lastHudPosition = nil
 
     -- Scale & edit state
-    self.scale            = 1.0
+    self.scale            = 1.085710   -- factory suite layout (Wizard 2026-08-22)
     self.editMode         = false
     self.dragging         = false
     self.resizing         = false
@@ -79,11 +139,22 @@ function SoilHUD.new(soilSystem, settings)
     self.hoverCorner      = nil
     self.animTimer        = 0
 
+    -- Width state (edge-drag, NPCFavor/Workplace pattern)
+    self.widthMult          = 0.967188   -- factory suite layout (Wizard 2026-08-22 21:xx capture)
+    self.edgeDragging       = nil   -- nil | "left" | "right"
+    self.edgeDragStartX     = 0
+    self.edgeDragStartWidth = 1.0
+
     -- Sub-panel free positioning (independent mode)
-    self.freePos        = { varRate = {}, smartSensor = {} }
+    self.freePos        = { appRate = {}, varRate = {}, smartSensor = {} }
     self.draggingSubKey = nil   -- key into freePos while dragging a sub-panel
     self.subDragOffX    = 0
     self.subDragOffY    = 0
+    self.subDragMoved   = false
+    self.subDragStartX  = 0
+    self.subDragStartY  = 0
+    self.subDragHadPos  = false
+    self.appRateDrawRect = nil
 
     -- Loaded-from-disk collapsed states applied on first panel draw
     self.savedCollapsed = { varRate = false, smartSensor = false }
@@ -115,6 +186,9 @@ function SoilHUD.new(soilSystem, settings)
     self._cachedFillType   = nil
     self._cachedProfile    = nil
     self._cachedRateMult   = 1.0
+    self._cachedTargetMode = false
+    self._cachedTargetView = nil   -- SF-73 section 7: the rate panel's target block
+    self._targetMemory     = {}    -- vehicle -> what this HUD saw of its target results
 
     -- Height dirty flag: set by refreshFieldData, cleared after calculateHeight()
     self._heightDirty = true
@@ -195,6 +269,7 @@ end
 function SoilHUD:enterEditMode()
     self.editMode = true
     self.dragging = false
+    self.subDragMoved = false
     self.movedInEditMode = false
     if g_inputBinding and g_inputBinding.setShowMouseCursor then
         g_inputBinding:setShowMouseCursor(true, true)
@@ -223,11 +298,17 @@ function SoilHUD:enterEditMode()
 end
 
 function SoilHUD:exitEditMode()
+    if self.draggingSubKey and not self.subDragMoved and not self.subDragHadPos then
+        self.freePos[self.draggingSubKey] = nil
+    end
     self.editMode       = false
     self.dragging       = false
     self.resizing       = false
+    self.edgeDragging   = nil
     self.hoverCorner    = nil
     self.draggingSubKey = nil
+    self.subDragMoved   = false
+    self.subDragHadPos  = false
     self.savedCamRotX, self.savedCamRotY, self.savedCamRotZ = nil, nil, nil
     self.savedVehicleCamRotX = nil
     self.savedVehicleCamRotY = nil
@@ -268,9 +349,17 @@ function SoilHUD:saveLayout()
         xml:setFloat("hudLayout.panelX",  self.panelX)
         xml:setFloat("hudLayout.panelY",  self.panelY)
         xml:setFloat("hudLayout.scale",   self.scale)
+        xml:setFloat("hudLayout.widthMult", self.widthMult or 1.0)
         xml:setBool("hudLayout.visible",  self.visible)
 
         -- Sub-panel free positions
+        do
+            local fp = self.freePos["appRate"]
+            if fp and fp.x ~= nil then
+                xml:setFloat("hudLayout.freePosX_appRate", fp.x)
+                xml:setFloat("hudLayout.freePosY_appRate", fp.y)
+            end
+        end
         do
             local fp = self.freePos["varRate"]
             if fp and fp.x ~= nil then
@@ -308,9 +397,16 @@ function SoilHUD:loadLayout()
         self.panelX  = xml:getFloat("hudLayout.panelX",  self.panelX)
         self.panelY  = xml:getFloat("hudLayout.panelY",  self.panelY)
         self.scale   = xml:getFloat("hudLayout.scale",   self.scale)
+        self.widthMult = math.max(SoilHUD.MIN_WIDTH_MULT, math.min(SoilHUD.MAX_WIDTH_MULT,
+            xml:getFloat("hudLayout.widthMult", self.widthMult or 1.0)))
         self.visible = xml:getBool("hudLayout.visible",  self.visible)
 
         -- Sub-panel free positions
+        do
+            local x = xml:getFloat("hudLayout.freePosX_appRate", nil)
+            local y = xml:getFloat("hudLayout.freePosY_appRate", nil)
+            if x ~= nil and y ~= nil then self.freePos["appRate"] = { x = x, y = y } end
+        end
         do
             local x = xml:getFloat("hudLayout.freePosX_varRate", nil)
             local y = xml:getFloat("hudLayout.freePosY_varRate", nil)
@@ -334,6 +430,51 @@ function SoilHUD:loadLayout()
 end
 
 -- ── Geometry helpers ─────────────────────────────────────
+function SoilHUD:getDetailRowCount(info)
+    if info == nil or info.simDisabled then return 0 end
+
+    local rows = 0
+    local mgr = g_SoilFertilityManager
+    if mgr and mgr.settings then
+        if mgr.settings.weedPressure
+            and ((info.weedPressure or 0) > 0 or info.herbicideActive) then rows = rows + 1 end
+        if mgr.settings.pestPressure
+            and ((info.pestPressure or 0) > 0 or info.insecticideActive) then rows = rows + 1 end
+        if mgr.settings.diseasePressure
+            and ((info.diseasePressure or 0) > 0 or info.fungicideActive) then rows = rows + 1 end
+        if self._cachedSprayer then
+            if (info.coverageFraction or 0) > 0 then rows = rows + 1 end
+            if (info.sessionCoverageFraction or 0) > 0 then rows = rows + 1 end
+        end
+        if mgr.settings.compactionEnabled and (info.compaction or 0) > 0 then
+            rows = rows + 1
+        end
+    end
+    -- RSF-F905: both burn rows need a KNOWN value. A client that has not received the
+    -- pair draws neither, so the count must skip both or the panel height lies.
+    local burnKnown = info.amendBurnKnown == true
+    if burnKnown and (info.amendBurnPenalty or 0) > 0 then rows = rows + 1 end
+    if burnKnown and (info.amendBurnPenalty or 0) <= 0 and info.amendBurnRisk == true then rows = rows + 1 end
+    if info.yieldEfficiency then rows = rows + 1 end
+    return rows
+end
+
+--- Leave the owning suite edit session when one exists; otherwise close the
+--- standalone Soil editor and its two independently positioned vehicle panels.
+function SoilHUD:exitOwningEditMode()
+    local masterHUD = (g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD
+    if masterHUD ~= nil and masterHUD.layoutEditMode
+        and masterHUD.setLayoutEditMode ~= nil then
+        masterHUD:setLayoutEditMode(false)
+        return
+    end
+
+    self:exitEditMode()
+    local sfm = g_SoilFertilityManager
+    if sfm and sfm.sprayerInfoPanel then sfm.sprayerInfoPanel:exitEditMode() end
+    if sfm and sfm.harvesterPanel   then sfm.harvesterPanel:exitEditMode()   end
+end
+
 function SoilHUD:calculateHeight()
     local h = SoilHUD.TITLE_H + SoilHUD.PAD
 
@@ -355,29 +496,11 @@ function SoilHUD:calculateHeight()
 
         h = h + SoilHUD.ROW_H   -- pH bar row
         h = h + SoilHUD.LINE_H  -- OM text row
-        h = h + SoilHUD.LINE_H  -- gap between OM row and divider (matches drawPanel extra subtract)
-        h = h + SoilHUD.PAD * 1.3
-        
-        local mgr = g_SoilFertilityManager
-        if mgr and mgr.settings then
-            if mgr.settings.weedPressure    and ((info.weedPressure    or 0) > 0 or info.herbicideActive)  then h = h + SoilHUD.LINE_H end
-            if mgr.settings.pestPressure    and ((info.pestPressure    or 0) > 0 or info.insecticideActive) then h = h + SoilHUD.LINE_H end
-            if mgr.settings.diseasePressure and ((info.diseasePressure or 0) > 0 or info.fungicideActive)   then h = h + SoilHUD.LINE_H end
-            if self._cachedSprayer then
-                -- Coverage can be two rows: daily coverage + per-pass (PASS). Reserve one
-                -- LINE_H per row that will actually draw, or the second row overlaps the row below.
-                local covLines = 0
-                if (info.coverageFraction or 0) > 0 then covLines = covLines + 1 end
-                if (info.sessionCoverageFraction or 0) > 0 then covLines = covLines + 1 end
-                h = h + SoilHUD.LINE_H * covLines
-            end
-            if mgr.settings.compactionEnabled and (info.compaction or 0) > 0 then h = h + SoilHUD.LINE_H end
-        end
-        if (info.amendBurnPenalty or 0) > 0 then h = h + SoilHUD.LINE_H end
-        -- Burn-risk row (#684) is mutually exclusive with the burn row above.
-        if (info.amendBurnPenalty or 0) <= 0 and info.amendBurnRisk == true then h = h + SoilHUD.LINE_H end
-        if info.yieldEfficiency then h = h + SoilHUD.LINE_H end
-        
+        local detailRows = self:getDetailRowCount(info)
+        -- One separator band before the hint is always present. A second band
+        -- below OM is needed only when detail rows actually sit between them.
+        if detailRows > 0 then h = h + SoilHUD.PAD * 1.3 end
+        h = h + SoilHUD.LINE_H * detailRows
         h = h + SoilHUD.PAD * 1.3
     else
         h = h + SoilHUD.LINE_H
@@ -390,10 +513,25 @@ function SoilHUD:calculateHeight()
     self.currentHeight = h
 end
 
+-- ONE width source; every consumer (rect, draw, clamp, hit tests) reads this so
+-- an edge-drag reshapes everything together.
+function SoilHUD:getW()
+    return SoilHUD.BASE_W * (self.widthMult or 1.0) * self.scale
+end
+
+-- Keep bounded gauges inside a width-resized panel while retaining the
+-- trailer-sized maximum at normal/wide layouts. labelOffset is the space from
+-- the content origin to the bar; rightReserve protects value/status text.
+function SoilHUD:getMetricBarWidth(panelWidth, scale, labelOffset, rightReserve)
+    local fixed = (SoilHUD.PAD * 2 + labelOffset + rightReserve) * scale
+    local available = panelWidth - fixed
+    return math.max(0.025 * scale, math.min(SoilHUD.BAR_W * scale, available))
+end
+
 function SoilHUD:getHUDRect()
     local s = self.scale
     local h = self.currentHeight or SoilHUD.BASE_H
-    return self.panelX, self.panelY, SoilHUD.BASE_W * s, h * s
+    return self.panelX, self.panelY, self:getW(), h * s
 end
 
 function SoilHUD:isPointerOverHUD(posX, posY)
@@ -423,10 +561,20 @@ function SoilHUD:hitTestCorner(posX, posY)
     return nil
 end
 
+function SoilHUD:hitTestEdge(posX, posY)
+    local band = SoilHUD.EDGE_BAND_W
+    local px, py, pw, ph = self:getHUDRect()
+    if posY >= py and posY <= py + ph then
+        if posX >= px - band / 2 and posX <= px + band / 2 then return "left" end
+        if posX >= px + pw - band / 2 and posX <= px + pw + band / 2 then return "right" end
+    end
+    return nil
+end
+
 function SoilHUD:clampPosition()
     local s = self.scale
     local h = self.currentHeight or SoilHUD.BASE_H
-    local pw, ph = SoilHUD.BASE_W * s, h * s
+    local pw, ph = self:getW(), h * s
     self.panelX = math.max(0.01, math.min(1.0 - pw - 0.01, self.panelX))
     self.panelY = math.max(0.01, math.min(0.98 - ph, self.panelY))
 end
@@ -461,45 +609,72 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     -- receive their RMB events uninterrupted.
     if isDown and button == Input.MOUSE_BUTTON_RIGHT then
         if self.editMode then
-            self:exitEditMode()
-            local sfm = g_SoilFertilityManager
-            if sfm and sfm.sprayerInfoPanel then sfm.sprayerInfoPanel:exitEditMode() end
-            if sfm and sfm.harvesterPanel   then sfm.harvesterPanel:exitEditMode()   end
+            self:exitOwningEditMode()
             return true
         end
         return false
     end
 
+    -- BUILD 20:40 one-shot drag diagnostic (Brian 20:07: Soil orange, drag dead).
+    -- Every gate below this comment reads correct from source, so the first LMB
+    -- press in edit mode logs every gate's live value once - whichever one is
+    -- false live is the fault, and if all print true while drag still fails, the
+    -- press is dying UPSTREAM of this handler (listener order), which is engine
+    -- territory, not this file's.
+    if isDown and button == Input.MOUSE_BUTTON_LEFT and self.editMode and not self._dragDiagLogged then
+        self._dragDiagLogged = true
+        local px, py, pw, ph = self:getHUDRect()
+        SoilLogger.info(
+            "SoilHUD drag diag: enabled=%s showHUD=%s visible=%s over=%s click=%.3f,%.3f rect=%.3f,%.3f,%.3f,%.3f",
+            tostring(self.settings.enabled), tostring(self.settings.showHUD),
+            tostring(self.visible), tostring(self:isPointerOverHUD(posX, posY)),
+            posX, posY, px, py, pw, ph)
+    end
+
     if not self.settings.enabled then return false end
-    if not self.settings.showHUD then return false end
-    if not self.visible then return false end
+    if not self.settings.showHUD and not self.editMode then return false end
+    if not self.visible and not self.editMode then return false end
     if not self.editMode then return false end
+
+    -- Respect UI/input handlers that already claimed a new click. Ongoing Soil
+    -- drags still receive move/up events below, so a captured edit cannot get
+    -- stranded when another HUD reports the event as used.
+    if isDown and button == Input.MOUSE_BUTTON_LEFT and eventUsed then
+        return false
+    end
 
     -- LMB down: start drag or resize
     if isDown and button == Input.MOUSE_BUTTON_LEFT then
-        -- 1. Check Main Panel
-        local corner = self:hitTestCorner(posX, posY)
-        if corner then
-            self.resizing = true ; self.dragging = false
-            self.resizeStartX = posX ; self.resizeStartY = posY
-            self.resizeStartScale = self.scale
-            self.movedInEditMode = true
-            return true
-        end
-        if self:isPointerOverHUD(posX, posY) then
-            self.dragging = true ; self.resizing = false
-            self.dragOffsetX = posX - self.panelX
-            self.dragOffsetY = posY - self.panelY
-            self.movedInEditMode = true
-            return true
+        local sfm = g_SoilFertilityManager
+
+        -- These two panels render after SoilHUD and therefore sit above it.
+        -- The shared mouse listener dispatches SoilHUD first, so explicitly
+        -- yield clicks inside their cached edit rectangles; their own handlers
+        -- will claim the event later in the same dispatch.
+        if sfm then
+            local directPanels = { sfm.harvesterPanel, sfm.sprayerInfoPanel }
+            for _, panel in ipairs(directPanels) do
+                local px = panel and panel._lastPanelX
+                local py = panel and panel._lastPanelY
+                local pw = panel and panel._lastPanelW
+                local ph = panel and panel._lastPanelH
+                if panel and panel.editMode
+                    and type(px) == "number" and type(py) == "number"
+                    and type(pw) == "number" and type(ph) == "number"
+                    and posX >= px and posX <= px + pw
+                    and posY >= py and posY <= py + ph then
+                    return false
+                end
+            end
         end
 
-        -- 2. Check sub-panel collapse buttons (must be before drag so click doesn't start drag)
-        local sfm = g_SoilFertilityManager
+        -- Sub-panels render after the main monitor, so they own overlapping
+        -- pixels. Smart Sensor renders after Variable Rate and is tested first.
         if sfm then
             local subPanels = {
-                { panel = sfm.variableRatePanel, key = "varRate" },
                 { panel = sfm.smartSensorPanel,  key = "smartSensor" },
+                { panel = sfm.variableRatePanel, key = "varRate" },
+                { rect = self.appRateDrawRect,    key = "appRate" },
             }
             for _, sp in ipairs(subPanels) do
                 local p = sp.panel
@@ -509,20 +684,49 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
                     return true
                 end
             end
-            -- 4. Sub-panel drag (independent mode only)
-            if self.settings and self.settings.independentPanels then
-                for _, sp in ipairs(subPanels) do
-                    local p = sp.panel
-                    if p and self:hitRect(posX, posY, p.lastDrawRect) then
-                        self.draggingSubKey = sp.key
-                        local fp = self.freePos[sp.key] or {}
-                        self.subDragOffX = posX - (fp.x or posX)
-                        self.subDragOffY = posY - (fp.y or posY)
-                        self.movedInEditMode = true
-                        return true
-                    end
+            for _, sp in ipairs(subPanels) do
+                local p = sp.panel
+                local rect = sp.rect or (p and p.lastDrawRect)
+                if self:hitRect(posX, posY, rect) then
+                    self.draggingSubKey = sp.key
+                    self.subDragMoved = false
+                    local fp = self.freePos[sp.key]
+                    self.subDragHadPos = fp ~= nil and fp.x ~= nil and fp.y ~= nil
+                    self.subDragStartX = rect.x
+                    self.subDragStartY = rect.y
+                    self.subDragOffX = posX - rect.x
+                    self.subDragOffY = posY - rect.y
+                    return true
                 end
             end
+        end
+
+        -- Main panel: corner scale, edge width, then body move.
+        local corner = self:hitTestCorner(posX, posY)
+        if corner then
+            self.resizing = true ; self.dragging = false
+            self.edgeDragging = nil
+            self.resizeStartX = posX ; self.resizeStartY = posY
+            self.resizeStartScale = self.scale
+            self.movedInEditMode = true
+            return true
+        end
+        local edge = self:hitTestEdge(posX, posY)
+        if edge then
+            self.edgeDragging       = edge
+            self.dragging           = false
+            self.resizing           = false
+            self.edgeDragStartX     = posX
+            self.edgeDragStartWidth = self.widthMult or 1.0
+            self.movedInEditMode    = true
+            return true
+        end
+        if self:isPointerOverHUD(posX, posY) then
+            self.dragging = true ; self.resizing = false
+            self.dragOffsetX = posX - self.panelX
+            self.dragOffsetY = posY - self.panelY
+            self.movedInEditMode = true
+            return true
         end
         return false
     end
@@ -530,12 +734,20 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     -- LMB up: release drag/resize
     if isUp and button == Input.MOUSE_BUTTON_LEFT then
         if self.draggingSubKey then
+            local moved = self.subDragMoved
+            local key = self.draggingSubKey
+            if not moved and not self.subDragHadPos then
+                self.freePos[key] = nil
+            end
             self.draggingSubKey = nil
-            self:saveLayout()
+            self.subDragMoved = false
+            self.subDragHadPos = false
+            if moved then self:saveLayout() end
             return true
         end
-        if self.dragging or self.resizing then
+        if self.dragging or self.resizing or self.edgeDragging then
             self.dragging = false ; self.resizing = false
+            self.edgeDragging = nil
             self:clampPosition()
             return true
         end
@@ -545,14 +757,44 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     -- Mouse move
     if self.draggingSubKey then
         local fp = self.freePos[self.draggingSubKey]
-        if not fp then self.freePos[self.draggingSubKey] = {} ; fp = self.freePos[self.draggingSubKey] end
-        fp.x = posX - self.subDragOffX
-        fp.y = posY - self.subDragOffY
+        if not fp then
+            fp = { x = self.subDragStartX, y = self.subDragStartY }
+            self.freePos[self.draggingSubKey] = fp
+        elseif fp.x == nil or fp.y == nil then
+            fp.x = self.subDragStartX
+            fp.y = self.subDragStartY
+        end
+        local sfm = g_SoilFertilityManager
+        local panel = nil
+        if sfm and self.draggingSubKey == "varRate" then
+            panel = sfm.variableRatePanel
+        elseif sfm and self.draggingSubKey == "smartSensor" then
+            panel = sfm.smartSensorPanel
+        end
+        local rect = self.draggingSubKey == "appRate" and self.appRateDrawRect
+            or (panel and panel.lastDrawRect or nil)
+        local panelW = rect and rect.w or self:getW()
+        local panelH = rect and rect.h or 0
+        local nextX = math.max(0, math.min(1 - panelW, posX - self.subDragOffX))
+        local nextY = math.max(0, math.min(1 - panelH, posY - self.subDragOffY))
+        if not self.subDragMoved
+            and (math.abs(nextX - self.subDragStartX) > 0.00001
+                or math.abs(nextY - self.subDragStartY) > 0.00001) then
+            self.subDragMoved = true
+            if self.settings and not self.settings.independentPanels then
+                self.settings.independentPanels = true
+                if self.settings.save then self.settings:save() end
+            end
+        end
+        if self.subDragMoved then
+            fp.x = nextX
+            fp.y = nextY
+        end
         return true
     end
 
     if self.dragging then
-        local pw = SoilHUD.BASE_W * self.scale
+        local pw = self:getW()
         self.panelX = math.max(0.0, math.min(1.0 - pw, posX - self.dragOffsetX))
         self.panelY = math.max(0.05, math.min(0.95, posY - self.dragOffsetY))
         return true
@@ -566,6 +808,17 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         local delta = (currDist - startDist) * 2.5
         self.scale = math.max(SoilHUD.MIN_SCALE,
             math.min(SoilHUD.MAX_SCALE, self.resizeStartScale + delta))
+        self:clampPosition()
+        return true
+    end
+
+    -- Edge width drag: dx scaled by EDGE_SENS, left edge inverted so pulling
+    -- outward always widens (NPCFavor/Workplace pattern).
+    if self.edgeDragging then
+        local dx = posX - self.edgeDragStartX
+        if self.edgeDragging == "left" then dx = -dx end
+        self.widthMult = math.max(SoilHUD.MIN_WIDTH_MULT,
+            math.min(SoilHUD.MAX_WIDTH_MULT, self.edgeDragStartWidth + dx * SoilHUD.EDGE_SENS))
         self:clampPosition()
         return true
     end
@@ -627,10 +880,7 @@ function SoilHUD:update(dt)
             end
         end
         if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then
-            self:exitEditMode()
-            local sfm = g_SoilFertilityManager
-            if sfm and sfm.sprayerInfoPanel then sfm.sprayerInfoPanel:exitEditMode() end
-            if sfm and sfm.harvesterPanel   then sfm.harvesterPanel:exitEditMode()   end
+            self:exitOwningEditMode()
         end
         if not self.dragging and not self.resizing then
             if g_inputBinding and g_inputBinding.mousePosXLast then
@@ -652,6 +902,13 @@ function SoilHUD:update(dt)
     local _sprRoot = sprayer and sprayer.rootVehicle
     local _rateVehId = sprayer and ((_sprRoot and _sprRoot ~= sprayer) and (_sprRoot.id or 0) or sprayer.id) or 0
     self._cachedRateMult = (rm and sprayer) and rm:getMultiplier(_rateVehId) or 1.0
+    -- SF-73 section 7 (:89): under target mode the projection below cannot stand in for
+    -- the plan's confirmed footprint result, so the N/P/K ghost draws nothing.
+    local _ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    self._cachedTargetMode = sprayer ~= nil and _ss ~= nil and type(_ss.isTargetModeForDisplay) == "function"
+        and _ss:isTargetModeForDisplay(sprayer) == true or false
+    -- SF-73 section 7: the rate panel's target block, read once here (draw only renders it).
+    self._cachedTargetView = self:buildTargetView(sprayer, _ss, rm, _rateVehId, self._cachedProfile)
 
     -- updateFieldInfoBox() no longer runs here - soil data is injected directly into the
     -- base game's native FIELD INFO box via HookManager:installNativeFieldInfoHook()
@@ -700,8 +957,13 @@ function SoilHUD:update(dt)
         end
         -- Amendment burn text (lime/OM applied to a growing crop → big yield burn, #437).
         -- Surfaces the reason for a low yield once the burnDaysLeft warning has lapsed.
+        -- RSF-F905: three states. Known non-zero shows the percentage; known zero shows
+        -- the pre-emptive risk row (when at risk); not-known (a client that has not yet
+        -- received the pair) shows neither, because the warning would assert a
+        -- confirmed no-burn the client cannot support.
         local burn = info.amendBurnPenalty or 0
-        if burn > 0 then
+        local burnKnown = info.amendBurnKnown == true
+        if burnKnown and burn > 0 then
             self._fmt_burnText = string.format(g_i18n:getText("sf_hud_amend_burn"), math.floor(burn * 100 + 0.5))
         else
             self._fmt_burnText = nil
@@ -709,7 +971,7 @@ function SoilHUD:update(dt)
         -- Pre-emptive amendment-burn-risk warning (#684): the crop is established enough that
         -- liming or manuring it NOW would scorch it. Only shown before any burn has hit (the
         -- burn row above already explains it after the fact).
-        if info.amendBurnRisk == true and burn <= 0 then
+        if burnKnown and info.amendBurnRisk == true and burn <= 0 then
             self._fmt_burnRiskText = g_i18n:getText("sf_hud_burn_risk")
         else
             self._fmt_burnRiskText = nil
@@ -792,7 +1054,7 @@ function SoilHUD:buildFieldInfoLines(info)
     -- boxes could show e.g. 84% and -27% for the same field. Formatting
     -- yieldEfficiency directly here guarantees the FIELD INFO box and the
     -- Soil Monitor panel can never disagree again.
-    local yieldStr = g_i18n:getText("sf_hud_optimal") or g_i18n:getText("sf_report_rec_optimal") or "Optimal"
+    local yieldStr = SoilL10n.tr("sf_hud_optimal", SoilL10n.tr("sf_report_rec_optimal", "Optimal"))
     if info.yieldEfficiency ~= nil then
         local pct = math.floor(info.yieldEfficiency + 0.5)
         yieldStr = string.format("%d%%", pct)
@@ -802,11 +1064,11 @@ function SoilHUD:buildFieldInfoLines(info)
     -- ── Crop rotation label ─────────────────────────────────
     local rotStr
     if info.rotationStatus then
-        if     info.rotationStatus == "Bonus"   then rotStr = g_i18n:getText("sf_report_rotation_bonus")   or "Bonus"
+        if     info.rotationStatus == "Bonus"   then rotStr = SoilL10n.tr("sf_report_rotation_bonus", "Bonus")
         elseif info.rotationStatus == "Fatigue" then
-            rotStr = g_i18n:getText("sf_report_rotation_fatigue") or "Fatigue"
+            rotStr = SoilL10n.tr("sf_report_rotation_fatigue", "Fatigue")
             if grade == "Good" then grade = "Fair" end
-        else                                         rotStr = g_i18n:getText("sf_report_rotation_ok")      or "OK"
+        else                                         rotStr = SoilL10n.tr("sf_report_rotation_ok", "OK")
         end
     end
 
@@ -830,7 +1092,9 @@ function SoilHUD:buildFieldInfoLines(info)
     -- Pre-emptive warning that liming/manuring THIS crop RIGHT NOW would scorch it.
     -- Same condition the standalone Soil Monitor panel uses (amendBurnRisk and no burn
     -- already in progress) so the two never disagree about when to show it.
-    local showBurnRisk = info.amendBurnRisk == true and (info.amendBurnPenalty or 0) <= 0
+    -- RSF-F905: and only when the burn value is KNOWN (never on a client that has not
+    -- received the pair).
+    local showBurnRisk = info.amendBurnKnown == true and info.amendBurnRisk == true and (info.amendBurnPenalty or 0) <= 0
 
     -- ── Sim asleep status (FieldSentry, #651) ────────────────
     -- A slept field's soil values are frozen by design (e.g. far from any active player) --
@@ -838,9 +1102,7 @@ function SoilHUD:buildFieldInfoLines(info)
     -- Only shown when actually asleep; active fields don't need a row saying so.
     local simStatusStr = nil
     if info.simDisabled then
-        simStatusStr = (info.simDisabledReasonKey and g_i18n:getText(info.simDisabledReasonKey))
-            or info.simDisabledReason
-            or g_i18n:getText("sf_fieldsentry_asleep") or "asleep"
+        simStatusStr = SoilL10n.tr(info.simDisabledReasonKey, info.simDisabledReason or SoilL10n.tr("sf_fieldsentry_asleep", "asleep"))
     end
 
     -- ── Needs summary (actionable issues list) ─────────────
@@ -852,12 +1114,12 @@ function SoilHUD:buildFieldInfoLines(info)
     if     info.potassium.status  == "Poor" then table.insert(needs, "K!")
     elseif info.potassium.status  == "Fair" then table.insert(needs, "K")  end
     if info.pH and (info.pH < phGoodLow or info.pH > phGoodHigh) then table.insert(needs, "pH") end
-    if weedPct    >= weedMed    then table.insert(needs, g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label")   or "Weed Risk")   end
-    if pestPct    >= pestMed    then table.insert(needs, g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label")   or "Pests")   end
-    if diseasePct >= diseaseMed and not diseaseHidden then table.insert(needs, g_i18n:getText("sf_hud_disease") or g_i18n:getText("sf_pda_disease_label") or "Disease") end
-    if compPct    > 10          then table.insert(needs, g_i18n:getText("sf_hud_compaction") or g_i18n:getText("sf_map_layer_compaction") or "Compaction") end
+    if weedPct    >= weedMed    then table.insert(needs, SoilL10n.tr("sf_hud_weeds", SoilL10n.tr("sf_pda_weed_label", "Weed Risk")))   end
+    if pestPct    >= pestMed    then table.insert(needs, SoilL10n.tr("sf_hud_pests", SoilL10n.tr("sf_pda_pest_label", "Pests")))   end
+    if diseasePct >= diseaseMed and not diseaseHidden then table.insert(needs, SoilL10n.tr("sf_hud_disease", SoilL10n.tr("sf_pda_disease_label", "Disease"))) end
+    if compPct    > 10          then table.insert(needs, SoilL10n.tr("sf_hud_compaction", SoilL10n.tr("sf_map_layer_compaction", "Compaction"))) end
 
-    local protected = g_i18n:getText("sf_hud_protected") or "(protected)"
+    local protected = SoilL10n.tr("sf_hud_protected", "(protected)")
     local function pressureLine(pct, active)
         if active then return string.format("%d%% (%s)", pct, protected) end
         return string.format("%d%%", pct)
@@ -865,44 +1127,46 @@ function SoilHUD:buildFieldInfoLines(info)
 
     -- ── Assemble rows ────────────────────────────────────────
     -- Each row carries a `group` ("early" or "late") that controls where it lands in the
-    -- native FIELD INFO box. That box updates an existing label in place rather than
-    -- re-inserting it, so a row's on-screen position is fixed by whichever native call
-    -- first creates it -- not by the order we build `lines` in here. installNativeFieldInfoHook
-    -- appends "early" rows right after the native Farmland/Owned by rows (fieldAddFarmland),
-    -- and "late" rows right after the native Crop type/Growth rows (fieldAddFruit), which is
-    -- what actually produces:
-    --   Farmland, Owned by, Soil Grade, Yield, pH, OM, Needs, Rotation, Crop type, Growth, Amend. burn risk
+    -- native FIELD INFO box. That box draws rows in the order addLine is called, so a row's
+    -- on-screen position is fixed by the native call it is appended after -- not by the order
+    -- we build `lines` in here. installNativeFieldInfoHook appends "early" rows right after
+    -- the native Farmland/Owned by rows (fieldAddFarmland), and "late" rows right after the
+    -- native Crop type/Growth/Yield bonus rows (fieldAddField), which is what actually produces:
+    --   Farmland, Owned by, Soil Grade, pH, OM, Needs, Rotation, Crop type, Growth, Yield bonus,
+    --   Yield (only when there is no Yield bonus row), Amend. burn risk, Drilling, then the
+    --   native weed and field-action rows
     if simStatusStr then
         table.insert(lines, {
             group = "early",
-            label = g_i18n:getText("sf_fieldinfo_sim_status") or "Sim Status",
-            value = (g_i18n:getText("sf_fieldsentry_asleep") or "sim asleep") .. " (" .. simStatusStr .. ")"
+            label = SoilL10n.tr("sf_fieldinfo_sim_status", "Sim Status"),
+            value = SoilL10n.tr("sf_fieldsentry_asleep", "sim asleep") .. " (" .. simStatusStr .. ")"
         })
     end
-    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_grade") or "Soil Grade", value = grade })
-    table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_yield") or "Yield",      value = yieldStr })
+    table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_grade", "Soil Grade"), value = SoilHUD.statusText(grade) })
+    -- "late": appended in the fieldAddField pass after the native Yield bonus row has taken
+    -- this number, so the hook can skip it when that row exists (one yield row, not two).
+    table.insert(lines, { group = "late",  label = SoilL10n.tr("sf_fieldinfo_yield", "Yield"),      value = yieldStr })
     -- N/P/K (ppm) and Compaction are intentionally NOT duplicated here -- they're already
     -- shown live with bar graphs on the Soil Monitor HUD panel, so repeating them as plain
     -- numbers in this box was redundant. Compaction still feeds the "Needs" summary below
     -- via compPct even though its own row is gone.
-    table.insert(lines, { group = "early", label = "pH",      value = string.format("%.1f", info.pH) })
+    table.insert(lines, { group = "early", label = "pH",      value = info.pH and string.format("%.1f", info.pH) or "--" })
     table.insert(lines, { group = "early", label = "OM",      value = string.format("%.1f%%", info.organicMatter) })
-    if weedPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_weeds")   or g_i18n:getText("sf_pda_weed_label") or "Weed Risk", value = pressureLine(weedPct,    info.herbicideActive) }) end
-    if pestPct    > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_pests")   or g_i18n:getText("sf_pda_pest_label") or "Pests",     value = pressureLine(pestPct,    info.insecticideActive) }) end
+    if weedPct    > 0 then table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_weeds", SoilL10n.tr("sf_pda_weed_label", "Weed Risk")), value = pressureLine(weedPct,    info.herbicideActive) }) end
+    if pestPct    > 0 then table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_pests", SoilL10n.tr("sf_pda_pest_label", "Pests")),     value = pressureLine(pestPct,    info.insecticideActive) }) end
     if diseaseHidden then
-        local unknownStr = (g_i18n:hasText("sf_hud_disease_unknown") and g_i18n:getText("sf_hud_disease_unknown"))
-            or g_i18n:getText("sf_hud_disease") or "? (scout to identify)"
-        table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease", value = unknownStr })
+        local unknownStr = SoilL10n.tr("sf_hud_disease_unknown", SoilL10n.tr("sf_hud_disease", "? (scout to identify)"))
+        table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_disease", "Disease"), value = unknownStr })
     else
-        if diseasePct > 0 then table.insert(lines, { group = "early", label = g_i18n:getText("sf_hud_disease") or "Disease",   value = pressureLine(diseasePct, info.fungicideActive) }) end
+        if diseasePct > 0 then table.insert(lines, { group = "early", label = SoilL10n.tr("sf_hud_disease", "Disease"),   value = pressureLine(diseasePct, info.fungicideActive) }) end
         if activeDiseaseStr then
-            table.insert(lines, { group = "early", label = g_i18n:getText("sf_fieldinfo_disease") or "Active Disease", value = activeDiseaseStr })
+            table.insert(lines, { group = "early", label = SoilL10n.tr("sf_fieldinfo_disease", "Active Disease"), value = activeDiseaseStr })
         end
     end
     table.insert(lines, {
         group = "early",
-        label = g_i18n:getText("sf_fieldinfo_needs") or "Needs",
-        value = #needs > 0 and table.concat(needs, ", ") or (g_i18n:getText("sf_report_rec_optimal") or "All good")
+        label = SoilL10n.tr("sf_fieldinfo_needs", "Needs"),
+        value = #needs > 0 and table.concat(needs, ", ") or SoilL10n.tr("sf_report_rec_optimal", "All good")
     })
     -- Crop Rotation: always shown (Bonus/Fatigue/OK, or a neutral fallback when rotation
     -- tracking has no data for this field yet -- e.g. crop rotation setting disabled, or
@@ -910,11 +1174,11 @@ function SoilHUD:buildFieldInfoLines(info)
     -- info.rotationStatus was set, which made it look "missing" rather than informative.
     table.insert(lines, {
         group = "early",
-        label = g_i18n:getText("sf_fieldinfo_rotation") or "Rotation",
-        value = rotStr or (g_i18n:getText("sf_report_rotation_na") or "N/A")
+        label = SoilL10n.tr("sf_fieldinfo_rotation", "Rotation"),
+        value = rotStr or SoilL10n.tr("sf_report_rotation_na", "N/A")
     })
     if showBurnRisk then
-        table.insert(lines, { group = "late", label = g_i18n:getText("sf_fieldinfo_burn_risk") or "Amend. burn risk", value = "Yes" })
+        table.insert(lines, { group = "late", label = SoilL10n.tr("sf_fieldinfo_burn_risk", "Amend. burn risk"), value = "Yes" })
     end
 
     -- The drilling-window advisory (SF-55-wave2 brief): whether the coming days
@@ -928,8 +1192,8 @@ function SoilHUD:buildFieldInfoLines(info)
             if verdictKey ~= nil then
                 table.insert(lines, {
                     group = "late",
-                    label = g_i18n:getText("sf_fieldinfo_drilling") or "Drilling",
-                    value = g_i18n:getText(verdictKey) or verdictKey,
+                    label = SoilL10n.tr("sf_fieldinfo_drilling", "Drilling"),
+                    value = SoilL10n.tr(verdictKey, verdictKey),
                 })
             end
         end
@@ -959,7 +1223,7 @@ function SoilHUD:updateFieldInfoBox()
     if not g_SoilFertilityManager or not g_SoilFertilityManager.settings.enabled then return end
 
     box:clear()
-    box:setTitle(g_i18n:getText("sf_fieldinfo_box_title") or "Soil Nutrients")
+    box:setTitle(SoilL10n.tr("sf_fieldinfo_box_title", "Soil Nutrients"))
 
     for _, line in ipairs(self:buildFieldInfoLines(info)) do
         box:addLine(line.label, line.value)
@@ -993,7 +1257,7 @@ function SoilHUD:refreshFieldData()
         if fieldId ~= prevId and self.cachedFieldInfo then
             local info = self.cachedFieldInfo
             local ppm  = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
-            SoilLogger.debug("HUD field → %s | N=%d (raw) → %dppm | P=%d → %dppm | K=%d → %dppm | pH=%.1f | OM=%.1f",
+            SoilLogger.debug("HUD field → %s | N=%d (raw) → %dppm | P=%d → %dppm | K=%d → %dppm | pH=%s | OM=%.1f",
                 tostring(fieldId),
                 math.floor(info.nitrogen.value + 0.5),
                 math.floor(info.nitrogen.value   * ppm.N + 0.5),
@@ -1001,7 +1265,7 @@ function SoilHUD:refreshFieldData()
                 math.floor(info.phosphorus.value * ppm.P + 0.5),
                 math.floor(info.potassium.value  + 0.5),
                 math.floor(info.potassium.value  * ppm.K + 0.5),
-                info.pH,
+                tostring(info.pH),
                 info.organicMatter
             )
             SoilLogger.debug("HUD status → N:%s P:%s K:%s",
@@ -1032,7 +1296,7 @@ function SoilHUD:refreshFieldData()
         else
             self._fmt_cropText = g_i18n:getText("sf_hud_fallow")
         end
-        self._fmt_pHStr = string.format("%.1f",  info.pH)
+        self._fmt_pHStr = info.pH and string.format("%.1f",  info.pH) or "--"
         self._fmt_omStr = string.format("%.1f%%", info.organicMatter)
         -- N/P/K value strings pre-computed here; ghost-bar delta is still live in draw()
         local ppm = SoilConstants.PPM_DISPLAY or { N=1, P=1, K=1 }
@@ -1312,8 +1576,8 @@ end
 function SoilHUD:draw()
     if not self.initialized then return end
     if not self.settings.enabled then return end
-    if not self.settings.showHUD then return end
-    if not self.visible then return end
+    if not self.settings.showHUD and not self.editMode then return end
+    if not self.visible and not self.editMode then return end
     if not g_currentMission then return end
 
     if not self.editMode then
@@ -1340,7 +1604,7 @@ function SoilHUD:drawPanel()
     local s   = self.scale
     local px  = self.panelX
     local py  = self.panelY
-    local pw  = SoilHUD.BASE_W * s
+    local pw  = self:getW()
     local ph  = (self.currentHeight or SoilHUD.BASE_H) * s
 
     local alpha = SoilConstants.HUD.TRANSPARENCY_LEVELS[self.settings.hudTransparency or 3]
@@ -1354,22 +1618,21 @@ function SoilHUD:drawPanel()
     local bgG = 0.05 + theme.g * 0.04
     local bgB = 0.05 + theme.b * 0.04
 
-    -- Shadow
-    self:drawRect(px + 0.003*s, py - 0.003*s, pw, ph, SoilHUD.C_SHADOW)
-
-    -- Background (tinted by color theme, alpha set by transparency level)
-    self:drawRect(px, py, pw, ph, {bgR, bgG, bgB, 1}, alpha)
-
-    -- Title bar
     local titleH = SoilHUD.TITLE_H * s
-    self:drawRect(px, py + ph - titleH, pw, titleH, SoilHUD.C_TITLE_BG)
-
-    -- Permanent border
-    local bw = 0.001
-    self:drawRect(px,           py,            pw, bw, SoilHUD.C_BORDER)
-    self:drawRect(px,           py + ph - bw,   pw, bw, SoilHUD.C_BORDER)
-    self:drawRect(px,           py,            bw, ph, SoilHUD.C_BORDER)
-    self:drawRect(px + pw - bw,  py,            bw, ph, SoilHUD.C_BORDER)
+    local renderer = SoilHUD.getBaseGameRenderer()
+    local usedNativePanel = renderer ~= nil and renderer.renderPanel ~= nil
+        and renderer:renderPanel(px, py, pw, ph, alpha)
+    if not usedNativePanel then
+        -- Standalone fallback: retain the original custom panel.
+        self:drawRect(px + 0.003*s, py - 0.003*s, pw, ph, SoilHUD.C_SHADOW)
+        self:drawRect(px, py, pw, ph, {bgR, bgG, bgB, 1}, alpha)
+        self:drawRect(px, py + ph - titleH, pw, titleH, SoilHUD.C_TITLE_BG)
+        local bw = 0.001
+        self:drawRect(px,           py,            pw, bw, SoilHUD.C_BORDER)
+        self:drawRect(px,           py + ph - bw,   pw, bw, SoilHUD.C_BORDER)
+        self:drawRect(px,           py,            bw, ph, SoilHUD.C_BORDER)
+        self:drawRect(px + pw - bw, py,             bw, ph, SoilHUD.C_BORDER)
+    end
 
     -- Edit mode chrome
     if self.editMode then
@@ -1383,6 +1646,14 @@ function SoilHUD:drawPanel()
             local isHover = (self.hoverCorner == key)
             self:drawRect(r.x, r.y, r.w, r.h, SoilHUD.C_EDIT_HDL, isHover and 1.0 or 0.65)
         end
+
+        -- Left/right edge width handles (suite width vocabulary)
+        local ehW   = 0.004
+        local inset = ph * 0.15
+        self:drawRect(px - ehW / 2,      py + inset, ehW, ph - inset * 2,
+            SoilHUD.C_EDIT_HDL, self.edgeDragging == "left" and 1.0 or 0.65)
+        self:drawRect(px + pw - ehW / 2, py + inset, ehW, ph - inset * 2,
+            SoilHUD.C_EDIT_HDL, self.edgeDragging == "right" and 1.0 or 0.65)
     end
 
     -- ── Content ───────────────────────────────────────────
@@ -1433,7 +1704,7 @@ function SoilHUD:drawPanel()
         -- Asleep / disabled field (#692): one explanatory line in place of the soil metrics,
         -- bracketed by dividers so the compact panel still reads as a deliberate state.
         cy = cy - pad * 0.8
-        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
         cy = cy - pad * 0.8
         cy = cy - SoilHUD.LINE_H * s
         setTextAlignment(RenderText.ALIGN_CENTER)
@@ -1442,7 +1713,7 @@ function SoilHUD:drawPanel()
             g_i18n:getText("sf_hud_asleep"))
         setTextAlignment(RenderText.ALIGN_LEFT)
         cy = cy - pad * 0.8
-        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
         cy = cy - pad * 0.8
     end
 
@@ -1450,7 +1721,7 @@ function SoilHUD:drawPanel()
     -- so the user sees the unit context once, not repeated on every row.
     if not asleep then
         cy = cy - pad * 0.8
-        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.60)
         renderText(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"))
@@ -1472,7 +1743,7 @@ function SoilHUD:drawPanel()
 
         -- Divider
         cy = cy - pad * 0.5
-        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
         cy = cy - pad * 0.8
 
         -- pH bar row (issue #438: center-anchored bar with ghost bar)
@@ -1488,11 +1759,15 @@ function SoilHUD:drawPanel()
         setTextColor(omCol[1], omCol[2], omCol[3], 1.0)
         renderText(omValX + 0.015*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "")
 
-        -- Divider below pH/OM row
-        cy = cy - SoilHUD.LINE_H * s
-        cy = cy - pad * 0.5
-        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
-        cy = cy - pad * 0.8
+        local hasDetailRows = self:getDetailRowCount(info) > 0
+        if hasDetailRows then
+            -- Divider below pH/OM only when another detail section follows.
+            -- With no details, the footer divider below is the single boundary
+            -- before the hint (avoids a doubled empty separator band).
+            cy = cy - pad * 0.5
+            self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
+            cy = cy - pad * 0.8
+        end
 
         -- Weed / pest / disease pressure rows
         local mgr = g_SoilFertilityManager
@@ -1599,7 +1874,7 @@ function SoilHUD:drawPanel()
 
         -- Divider before hint
         cy = cy - pad * 0.5
-        self:drawRect(px + pad, cy, pw - pad*2, 0.0005, SoilHUD.C_DIVIDER)
+        self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
         cy = cy - pad * 0.8
     elseif not info then
         cy = cy - SoilHUD.LINE_H * s * 4  -- skip nutrient rows space (no field; asleep draws its own line)
@@ -1608,11 +1883,14 @@ function SoilHUD:drawPanel()
     -- Hint row
     setTextAlignment(RenderText.ALIGN_CENTER)
     setTextColor(SoilHUD.C_HINT[1], SoilHUD.C_HINT[2], SoilHUD.C_HINT[3], SoilHUD.C_HINT[4])
-    if self.editMode then
-        renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_edit"))
-    else
-        renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, g_i18n:getText("sf_hud_hint_normal"))
+    -- [SF-66] Both hint strings ship "Shift+H" while the modDesc default for
+    -- SF_HUD_DRAG is Right Shift+P, so this row has been telling every player
+    -- the wrong key in every language. Rewrite to the live binding at draw.
+    local hintText = g_i18n:getText(self.editMode and "sf_hud_hint_edit" or "sf_hud_hint_normal")
+    if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+        hintText = SoilLiveHint.rewrite(hintText, { "SF_HUD_DRAG" })
     end
+    renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, hintText)
 
     -- Reset text state
     setTextBold(false)
@@ -1628,7 +1906,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     local pad   = SoilHUD.PAD * s
     local rowH  = SoilHUD.ROW_H * s
     local barH  = SoilHUD.BAR_H * s
-    local barW  = SoilHUD.BAR_W * s
+    local barW  = self:getMetricBarWidth(pw, s, 0.015, 0.055)
     local tx    = px + pad
     local col   = self:statusColor(nutrient.status)
 
@@ -1655,20 +1933,19 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
     renderText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, label)
 
-    -- Bar background + fill
+    -- Bar geometry. Rendering is deferred until the projected value has been
+    -- calculated so one native three-part bar can draw track, ghost and fill.
     local barX = tx + 0.015*s
     local barY = cy + (rowH - barH) * 0.5
-    self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
-    
     local fill = math.max(0, math.min(1, nutrient.value / 100))
-    if fill > 0 then
-        self:drawRect(barX, barY, barW * fill, barH, displayCol)
-    end
 
     -- Projected "Ghost Bar" (V1.7 Realism Update)
     -- Shows the expected nutrient gain for the remainder of the current application pass.
     local projectedDelta = 0
-    if profile and profile[label] and info and info.nutrientBuffer then
+    local ghostFill = 0
+    -- Not under SF-73 target mode: the plan, not this field-wide projection, decides what
+    -- goes down (section 7 :89; the honest footprint surface is Wizard's, DESIGN-CHECK 138).
+    if profile and profile[label] and info and info.nutrientBuffer and not self._cachedTargetMode then
         local fillTypeIndex = fillType and fillType.index
         if fillTypeIndex then
             local currentBuffer = info.nutrientBuffer[fillTypeIndex] or 0
@@ -1682,7 +1959,19 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
 
                 -- Ghost bar shows the gain remaining to reach the 90% threshold
                 local threshold = targetVolume * (SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD or 0.90)
-                local remaining = math.max(0, threshold - currentBuffer)
+                -- RSF-F196 U3 (site 4 of 4): the buffer is litres and the threshold is
+                -- kg-derived. The SAME function applyFertilizer's fully-treated check
+                -- uses converts the litres, so the ghost bar and the threshold can never
+                -- disagree. Guarded only for a bench that loads the HUD alone.
+                local bufferMass = currentBuffer
+                if HookManager and type(HookManager.massEquivalent) == "function" then
+                    bufferMass = HookManager.massEquivalent(fillType, currentBuffer)
+                else
+                    -- Observable, never silent (#976 cold review): a bar can assert this
+                    -- branch was not taken.
+                    SoilHUD.unitRuleFallbacks = (SoilHUD.unitRuleFallbacks or 0) + 1
+                end
+                local remaining = math.max(0, threshold - bufferMass)
                 
                 if remaining > 0 then
                     -- Apply replenishment rate multiplier: the actual nutrient gain in
@@ -1693,12 +1982,23 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
                         SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS and
                         SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
                     projectedDelta = profile[label] * (remaining / 1000) / (info.fieldArea or 1.0) * rrMult
-                    local ghostFill = math.min(1.0 - fill, projectedDelta / 100)
-                    if ghostFill > 0 then
-                        self:drawRect(barX + barW * fill, barY, barW * ghostFill, barH, displayCol, 0.35)
-                    end
+                    ghostFill = math.min(1.0 - fill, projectedDelta / 100)
                 end
             end
+        end
+    end
+
+    local renderer = SoilHUD.getBaseGameRenderer()
+    local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
+        and renderer:renderProgressBar(barX, barY, barW, barH, fill,
+            displayCol, fill + ghostFill, displayCol)
+    if not usedNativeBar then
+        self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
+        if fill > 0 then
+            self:drawRect(barX, barY, barW * fill, barH, displayCol)
+        end
+        if ghostFill > 0 then
+            self:drawRect(barX + barW * fill, barY, barW * ghostFill, barH, displayCol, 0.35)
         end
     end
 
@@ -1755,7 +2055,7 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     -- Status label
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, displayStatus)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, SoilHUD.statusText(displayStatus))
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy
@@ -1770,7 +2070,7 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     local pad  = SoilHUD.PAD * s
     local rowH = SoilHUD.ROW_H * s
     local barH = SoilHUD.BAR_H * s
-    local barW = SoilHUD.BAR_W * s
+    local barW = self:getMetricBarWidth(pw, s, 0.015, 0.055)
     local tx   = px + pad
 
     cy = cy - rowH
@@ -1785,18 +2085,24 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     local PH_MIN, PH_MAX, PH_OPT = 5.0, 8.5, 6.75
     local phRange = PH_MAX - PH_MIN
 
-    local pH = info.pH or PH_OPT
+    local pH = info.pH
+    local phKnown = (pH ~= nil)
+    if not phKnown then pH = PH_OPT end   -- layout only; text/status report unknown
     local phNorm  = (math.max(PH_MIN, math.min(PH_MAX, pH)) - PH_MIN) / phRange
     local optNorm = (PH_OPT - PH_MIN) / phRange
 
-    local pHCol = self:pHColor(pH)
+    local pHCol = phKnown and self:pHColor(pH) or {0.5, 0.5, 0.5, 1.0}
 
-    -- Background
-    self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
-
-    -- Left-fill: from left edge to current pH position
-    if phNorm > 0 then
-        self:drawRect(barX, barY, phNorm * barW, barH, pHCol)
+    -- Same rounded fill-level track as the N/P/K rows. Directional pH preview
+    -- remains a translucent overlay because it can move either left or right.
+    local renderer = SoilHUD.getBaseGameRenderer()
+    local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
+        and renderer:renderProgressBar(barX, barY, barW, barH, phKnown and phNorm or 0, pHCol)
+    if not usedNativeBar then
+        self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
+        if phKnown and phNorm > 0 then
+            self:drawRect(barX, barY, phNorm * barW, barH, pHCol)
+        end
     end
 
     -- Ghost bar: directional preview if a pH-modifying product is loaded
@@ -1825,16 +2131,17 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     local valX = barX + barW + 0.006*s
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
     renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
-               string.format("%.1f", pH))
+               phKnown and string.format("%.1f", pH) or "--")
 
     -- Status text (right-aligned)
     local phStatus
-    if pH >= 6.5 and pH <= 7.0 then phStatus = "Good"
+    if not phKnown then phStatus = "Unknown"
+    elseif pH >= 6.5 and pH <= 7.0 then phStatus = "Good"
     elseif pH >= 5.5 and pH <= 7.5 then phStatus = "Fair"
     else phStatus = "Poor" end
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, phStatus)
+    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, SoilHUD.statusText(phStatus))
     setTextAlignment(RenderText.ALIGN_LEFT)
 
     return cy
@@ -1848,7 +2155,7 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     local pad      = SoilHUD.PAD * s
     local rowH     = SoilHUD.LINE_H * s
     local barH     = SoilHUD.BAR_H * s
-    local barW     = SoilHUD.BAR_W * s
+    local barW     = self:getMetricBarWidth(pw, s, 0.038, 0.035)
     local textSize = 0.010 * fontMult * s
     local tx       = px + pad
 
@@ -1881,10 +2188,15 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     -- Bar - centred in row, horizontally aligned with nutrient bars
     local barX = tx + 0.038*s
     local barY = cy + (rowH - barH) * 0.5
-    self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
     local fill = math.max(0, math.min(1, pressure / 100))
-    if fill > 0 then
-        self:drawRect(barX, barY, barW * fill, barH, col)
+    local renderer = SoilHUD.getBaseGameRenderer()
+    local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
+        and renderer:renderProgressBar(barX, barY, barW, barH, fill, col)
+    if not usedNativeBar then
+        self:drawRect(barX, barY, barW, barH, SoilHUD.C_BAR_BG)
+        if fill > 0 then
+            self:drawRect(barX, barY, barW * fill, barH, col)
+        end
     end
 
     -- Value + protection tag - left-aligned right after bar (matches N/P/K value position)
@@ -1933,18 +2245,75 @@ function SoilHUD:getSprayerFillType(sprayer)
         end
     end
 
-    -- Priority 4: fall back to generic fill unit query (works when parked)
+    -- Priority 4: fall back to generic fill unit query (works when parked).
+    --
+    -- [FIX-4] Only consider fill types this mod can actually APPLY. The old loop
+    -- took the first non-empty unit, and on a tractor or a self-propelled machine
+    -- that is the fuel tank -- so auto-rate read DIESEL, found it absent from
+    -- FERTILIZER_PROFILES, and pinned the rate at 1.00x. Measured live: 1,226 LIME
+    -- applications went down at full rate while the log repeated
+    -- "Auto-rate calc: DIESEL NOT in FERTILIZER_PROFILES - holding 1.0x", which is
+    -- exactly the over-liming the player saw. Auto-rate cannot back off a product
+    -- it does not know it is spreading.
+    --
+    -- Two passes on purpose: prefer a unit holding something we have a profile for,
+    -- and only then accept any other non-fuel product, so an unrecognised custom
+    -- fertiliser still resolves rather than falling back to diesel.
     if not fillTypeIndex then
-        local ok, units = pcall(function() return sprayer:getFillUnits() end)
-        if ok and units then
-            for i = 1, #units do
-                local ft = sprayer:getFillUnitFillType(i)
-                if ft and ft > 0 and ft ~= FillType.UNKNOWN then
-                    fillTypeIndex = ft
-                    break
+        local profiles = SoilConstants.FERTILIZER_PROFILES or {}
+        local NON_PRODUCT = {
+            DIESEL = true, DEF = true, ADBLUE = true, AIR = true, ELECTRICCHARGE = true,
+            METHANE = true, LIQUIDMANURE = false,   -- liquid manure IS a product
+        }
+        -- Search the machine AND anything attached to it: on a tractor + spreader the
+        -- lime is in the implement's hopper, never in the tractor. Filtering fuel out
+        -- without also looking at implements just turned "reads DIESEL" into "reads
+        -- nothing", and auto-rate bailed instead of pinning -- worse, not better.
+        local candidates = { sprayer }
+        local function addImplements(v, depth)
+            if v == nil or depth > 3 then return end
+            local ok, impls = pcall(function()
+                return v.getAttachedImplements and v:getAttachedImplements() or nil
+            end)
+            if not ok or impls == nil then return end
+            for _, impl in ipairs(impls) do
+                local obj = impl and impl.object
+                if obj ~= nil then
+                    candidates[#candidates + 1] = obj
+                    addImplements(obj, depth + 1)
                 end
             end
         end
+        addImplements(sprayer, 1)
+        local root = sprayer.rootVehicle
+        if root and root ~= sprayer then
+            candidates[#candidates + 1] = root
+            addImplements(root, 1)
+        end
+
+        local firstOther
+        for _, v in ipairs(candidates) do
+            if fillTypeIndex then break end
+            local ok, units = pcall(function() return v:getFillUnits() end)
+            if ok and units then
+                for i = 1, #units do
+                    local ft = v:getFillUnitFillType(i)
+                    if ft and ft > 0 and ft ~= FillType.UNKNOWN then
+                        local desc = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(ft)
+                        local name = desc and desc.name
+                        if name and NON_PRODUCT[name] ~= true then
+                            if profiles[name] ~= nil then
+                                fillTypeIndex = ft   -- known product: take it
+                                break
+                            elseif firstOther == nil then
+                                firstOther = ft      -- plausible product, keep as fallback
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if not fillTypeIndex then fillTypeIndex = firstOther end
     end
 
     if not fillTypeIndex then return nil end
@@ -2069,55 +2438,398 @@ function SoilHUD:_calcCropTargetRateIdx(fillType)
     return bestIdx
 end
 
+-- ── SF-73 section 7: the rate panel's target block ──────────────────────────
+-- The host's own floor for target automatic (Implementation v1.1 section 7, the Wizard
+-- brief sections 2 and 3, Iris's answer of 2026-10-02 section 1). It is built only from
+-- the soil system's reads: the machine-pass result (getApplicationTargetResult), the
+-- target-mode read (isTargetModeForDisplay) and the release lock (isTargetGateOpen).
+-- Locked, there is no block and the panel is today's. Under target mode the block
+-- replaces the legacy "Target:" line, which is built from field info and defaults and
+-- "cannot stand in for the new confirmed implement-footprint result" (:89).
+
+-- The refusal reason the block names when a cycle carries several, and the three result
+-- classifiers, are TargetNutrientCore's (W1b's pre-build ruling): the HUD and the PDA read
+-- one order and one test, so both name the same reason for the same result. These names
+-- are the core's own objects, not copies. TargetNutrientCore is sourced before this file
+-- (main.lua); without it (a bench that loads the HUD alone) they are nil and the block is
+-- never built, as the lock read answers closed without a target engine.
+SoilHUD.TARGET_REASON_PRIORITY = TargetNutrientCore and TargetNutrientCore.REASON_DISPLAY_ORDER or nil
+SoilHUD.isTargetOutcome        = TargetNutrientCore and TargetNutrientCore.isOutcome or nil
+SoilHUD.isTargetHold           = TargetNutrientCore and TargetNutrientCore.isHold or nil
+SoilHUD.targetPrimaryReason    = TargetNutrientCore and TargetNutrientCore.primaryReason or nil
+
+-- One state line per reason, and a note where the line alone does not tell the
+-- reasons apart. UNKNOWN_GROUND and OUTSIDE_MAP share Iris's line and differ by note.
+SoilHUD.TARGET_REASON_COPY = {
+    UNSUPPORTED_CROP            = { line = "sf_tgt_r_unsupported_crop", tone = "paused" },
+    UNKNOWN_GROUND              = { line = "sf_tgt_r_unavailable", note = "sf_tgt_n_unknown_ground", tone = "paused" },
+    OUTSIDE_MAP                 = { line = "sf_tgt_r_unavailable", note = "sf_tgt_n_outside_map", tone = "paused" },
+    MIXED_CROP                  = { line = "sf_tgt_r_mixed_crop", tone = "paused" },
+    MIXED_FIELD                 = { line = "sf_tgt_r_mixed_field", tone = "paused" },
+    FARM_ACCESS                 = { line = "sf_tgt_r_farm_access", tone = "paused" },
+    UNKNOWN_PRODUCT             = { line = "sf_tgt_r_unknown_product", tone = "paused" },
+    SOWABILITY_UNKNOWN          = { line = "sf_tgt_r_sowability", tone = "paused" },
+    NOZZLE_PARTIAL              = { line = "sf_tgt_r_nozzle_partial", tone = "paused" },
+    CELL_OVERLAP                = { line = "sf_tgt_r_cell_overlap", tone = "paused" },
+    CULTIVATION_NO_TARGET       = { line = "sf_tgt_r_cultivation", tone = "paused" },
+    SOURCE_CONTRACT_UNAVAILABLE = { line = "sf_tgt_r_source_contract", tone = "paused" },
+    DOUBLED_AMOUNT_ACTIVE       = { line = "sf_tgt_r_doubled", tone = "paused" },
+    -- the first boom line is observed, not a paid pass, and not a refusal (no notice)
+    FOOTPRINT_PRIMING           = { line = "sf_tgt_r_priming", note = "sf_tgt_n_priming", tone = "neutral", notRefusal = true },
+}
+-- Iris's manual hint: only when no growing crop is the cycle's one reason, and never
+-- past denied access, an invalid product or a failed write.
+SoilHUD.TARGET_MANUAL_HINT = "sf_tgt_n_manual"
+
+-- A closed footprint's outcome. The four shortfalls share a line and name their kind
+-- in the note (the Wizard brief :46: binding, hardware, supply, quantization).
+SoilHUD.TARGET_STATE_COPY = {
+    REACHED            = { line = "sf_tgt_state_reached", note = "sf_tgt_n_reached", tone = "good" },
+    SHORT_BINDING      = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_binding", tone = "short" },
+    SHORT_HARDWARE     = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_hardware", tone = "short" },
+    SHORT_SUPPLY       = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_supply", tone = "short" },
+    SHORT_QUANTIZED    = { line = "sf_tgt_state_short", note = "sf_tgt_n_short_quantized", tone = "short" },
+    APPLICATION_FAILED = { line = "sf_tgt_state_failed", note = "sf_tgt_n_failed", tone = "failed" },
+}
+
+-- The block's situations with no footprint outcome to show.
+SoilHUD.TARGET_VIEW_COPY = {
+    pending     = { line = "sf_tgt_state_pending", note = "sf_tgt_n_pending", tone = "neutral" },
+    idle        = { line = "sf_tgt_state_idle", tone = "neutral" },
+    ready       = { line = "sf_tgt_state_ready", tone = "neutral" },
+    waiting     = { line = "sf_tgt_state_waiting", tone = "neutral" },
+    expired     = { line = "sf_tgt_state_unavailable", note = "sf_tgt_n_expired", tone = "neutral" },
+    unavailable = { line = "sf_tgt_state_unavailable", tone = "neutral" },
+}
+
+SoilHUD.TARGET_REL_COPY = {
+    BELOW = "sf_tgt_rel_below", APPROACHING = "sf_tgt_rel_approaching", IDEAL = "sf_tgt_rel_ideal",
+    ABOVE = "sf_tgt_rel_above", UNDETERMINED = "sf_tgt_rel_unknown",
+}
+
+-- The other keys the block reads: the title of a final result, the detail rows, the
+-- notice's join. The notice's title and a client's failure notice reuse
+-- sf_target_failed_title and sf_target_failed_body.
+SoilHUD.TARGET_KEYS = {
+    title = "sf_tgt_title_last", pass = "sf_tgt_d_pass", footprint = "sf_tgt_d_footprint",
+    nutrient = "sf_tgt_d_nutrient", binding = "sf_tgt_d_binding", litres = "sf_tgt_d_litres",
+    useful = "sf_tgt_d_useful", notify = "sf_tgt_notify",
+}
+
+SoilHUD.TARGET_TONE = {
+    good    = {0.40, 1.00, 0.40, 1.00},
+    short   = {0.95, 0.75, 0.20, 1.00},
+    paused  = {1.00, 0.62, 0.20, 1.00},
+    failed  = {1.00, 0.30, 0.30, 1.00},
+    neutral = {0.82, 0.82, 0.82, 1.00},
+    note    = {0.78, 0.78, 0.78, 0.90},
+    detail  = {0.80, 0.90, 0.80, 0.90},
+}
+
+-- The block's helpers, one table (the file keeps its count of top-level locals).
+local tgt = {}
+tgt.NUTRIENTS = { "N", "P", "K" }
+
+function tgt.finite(x)
+    return type(x) == "number" and x == x and x ~= math.huge and x ~= -math.huge
+end
+
+--- The product carries N/P/K (the target product rule, TargetApplication's carriesNPK).
+function SoilHUD.carriesNPK(profile)
+    if type(profile) ~= "table" then return false end
+    for _, n in ipairs(tgt.NUTRIENTS) do
+        if tgt.finite(profile[n]) and profile[n] > 0 then return true end
+    end
+    return false
+end
+
+--- The block for a result. `confirmed` is the last footprint outcome this HUD saw in the
+--- same epoch: the held cycles between closures show it rather than replacing it with a
+--- blank, since a hold confirms nothing new. A final (inactive) result stays inspectable
+--- until the next activation (the Wizard brief :42).
+function SoilHUD.targetViewForResult(r, confirmed)
+    local final = r.active == false
+    local shown = r
+    if SoilHUD.isTargetHold(r) and confirmed ~= nil and confirmed.epoch == r.epoch then shown = confirmed end
+    local view = { final = final, result = shown }
+    if SoilHUD.isTargetOutcome(shown) then
+        local c = SoilHUD.TARGET_STATE_COPY[shown.doseState]
+        view.line, view.note, view.tone = c.line, c.note, c.tone
+        if shown.doseState == "SHORT_BINDING" then view.noteArg = shown.binding or "?" end
+        view.details = true
+        return view
+    end
+    local reason = SoilHUD.targetPrimaryReason(shown)
+    if reason ~= nil then
+        local c = SoilHUD.TARGET_REASON_COPY[reason]
+        view.line, view.note, view.tone, view.reason = c.line, c.note, c.tone, reason
+        if reason == "UNSUPPORTED_CROP" and #shown.reasons == 1 and not final then
+            view.note = SoilHUD.TARGET_MANUAL_HINT
+        end
+        return view
+    end
+    local kind = "unavailable"
+    if SoilHUD.isTargetHold(shown) then
+        -- a final hold was never charged: the deactivation dropped the held region
+        kind = final and "unavailable" or "pending"
+    elseif shown.doseState == "INACTIVE" and #(shown.reasons or {}) == 0 then
+        kind = "idle"
+    end
+    local c = SoilHUD.TARGET_VIEW_COPY[kind]
+    view.line, view.note, view.tone, view.kind = c.line, c.note, c.tone, kind
+    return view
+end
+
+function tgt.text(key)
+    return g_i18n:getText(key)
+end
+
+function tgt.number(x, decimals)
+    if not tgt.finite(x) then return "?" end
+    return string.format("%." .. decimals .. "f", x)
+end
+
+function tgt.litres(x)
+    if not tgt.finite(x) then return "?" end
+    return string.format(math.abs(x) < 10 and "%.2f" or "%.1f", x)
+end
+
+function tgt.productTitle(r)
+    if r.productFillType ~= nil and g_fillTypeManager ~= nil then
+        local ok, ft = pcall(g_fillTypeManager.getFillTypeByIndex, g_fillTypeManager, r.productFillType)
+        if ok and ft ~= nil and type(ft.title) == "string" and ft.title ~= "" then return ft.title end
+    end
+    return r.productName or "?"
+end
+
+function tgt.cropTitle(r)
+    if r.cropFruitIndex ~= nil and g_fruitTypeManager ~= nil then
+        local ok, desc = pcall(g_fruitTypeManager.getFruitTypeByIndex, g_fruitTypeManager, r.cropFruitIndex)
+        local ft = ok and desc ~= nil and desc.fillType or nil
+        if ft ~= nil and type(ft.title) == "string" and ft.title ~= "" then return ft.title end
+    end
+    if type(r.cropKey) == "string" and SoilUtils ~= nil and SoilUtils.getCropDisplayName ~= nil then
+        local ok, name = pcall(SoilUtils.getCropDisplayName, r.cropKey)
+        if ok and name ~= nil then return name end
+    end
+    return "?"
+end
+
+--- The block's text rows for a view, formatted once in update() (draw only renders).
+function SoilHUD.formatTargetRows(view)
+    local rows = {}
+    local K = SoilHUD.TARGET_KEYS
+    if view.final then rows[#rows + 1] = { text = tgt.text(K.title), tone = "note" } end
+    rows[#rows + 1] = { text = tgt.text(view.line), tone = view.tone, bold = true }
+    if view.note ~= nil then
+        local note = tgt.text(view.note)
+        if view.noteArg ~= nil then note = string.format(note, tostring(view.noteArg)) end
+        rows[#rows + 1] = { text = note, tone = "note" }
+    end
+    local r = view.details and view.result or nil
+    if r == nil then return rows end
+    rows[#rows + 1] = { text = string.format(tgt.text(K.pass), tgt.productTitle(r), tgt.cropTitle(r),
+        tostring(r.fieldId or "?")), tone = "detail" }
+    if tgt.finite(r.grainMetres) and r.grainMetres > 0 then
+        rows[#rows + 1] = { text = string.format(tgt.text(K.footprint), tgt.number(r.grainMetres, 1)), tone = "detail" }
+    end
+    if r.doseState ~= "APPLICATION_FAILED" then
+        -- a failed write confirms no local N/P/K: no reading is shown as if it were
+        local ppmTable = SoilConstants.PPM_DISPLAY or {}
+        for _, n in ipairs(tgt.NUTRIENTS) do
+            local x = r.nutrients and r.nutrients[n]
+            if x ~= nil then
+                local ppm = ppmTable[n] or 1
+                local value = tgt.finite(x.after) and x.after or x.reading
+                local relKey = SoilHUD.TARGET_REL_COPY[x.relationship] or SoilHUD.TARGET_REL_COPY.UNDETERMINED
+                rows[#rows + 1] = { text = string.format(tgt.text(K.nutrient), n,
+                    tgt.number(tgt.finite(value) and value * ppm or nil, 1),
+                    tgt.number(tgt.finite(x.lower) and x.lower * ppm or nil, 1),
+                    tgt.number(tgt.finite(x.upper) and x.upper * ppm or nil, 1),
+                    tgt.text(relKey)), tone = "detail" }
+            end
+        end
+        if r.binding ~= nil then
+            rows[#rows + 1] = { text = string.format(tgt.text(K.binding), tostring(r.binding)), tone = "detail" }
+        end
+    end
+    rows[#rows + 1] = { text = string.format(tgt.text(K.litres), tgt.litres(r.plannedLitres),
+        tgt.litres(r.physicalLitres)), tone = "detail" }
+    if tgt.finite(r.agronomicLitres) then
+        -- useful litres only where the equivalent is known, never a guessed figure
+        rows[#rows + 1] = { text = string.format(tgt.text(K.useful), tgt.litres(r.agronomicLitres)), tone = "detail" }
+    end
+    return rows
+end
+
+--- One notice on entering a refusal (Iris, 2026-10-02 section 1): once per reason in an
+--- AUTO activation (the result's epoch) for this vehicle, never per cycle, through the
+--- soil system's helper, which respects showNotifications. A client also hears of an
+--- APPLICATION_FAILED here; on the server and host TA:notifyFailure has already said it.
+--- A failure is always the final result (TA:fail stops target automatic before storing
+--- it), so only a final refusal stays quiet: AUTO is already off.
+function SoilHUD:notifyTargetEntry(ss, mem, r, view)
+    if type(ss.showNotification) ~= "function" or g_i18n == nil then return end
+    local key, body
+    if r.doseState == "APPLICATION_FAILED" then
+        if g_server ~= nil then return end
+        key = "APPLICATION_FAILED"
+        body = string.format(tgt.text("sf_target_failed_body"), tonumber(r.fieldId) or 0)
+    elseif r.active ~= false and view.reason ~= nil and not SoilHUD.TARGET_REASON_COPY[view.reason].notRefusal then
+        key = view.reason
+        body = tgt.text(view.line)
+        if view.note ~= nil then
+            body = string.format(tgt.text(SoilHUD.TARGET_KEYS.notify), body, tgt.text(view.note))
+        end
+    else
+        return
+    end
+    if mem.notified[key] then return end
+    mem.notified[key] = true
+    pcall(function() ss:showNotification(tgt.text("sf_target_failed_title"), body) end)
+end
+
+--- Forget what this HUD saw of a deleted vehicle (a later object never inherits it).
+function SoilHUD:pruneTargetMemory()
+    for vehicle in pairs(self._targetMemory) do
+        if type(vehicle) ~= "table" or vehicle.isDeleted == true then self._targetMemory[vehicle] = nil end
+    end
+end
+
+--- This frame's target block for the sprayer the player sits in, or nil for today's panel.
+---@return table|nil view { line, note, tone, rows, ... }
+function SoilHUD:buildTargetView(sprayer, ss, rm, rateVehId, profile)
+    if self._targetMemory == nil then self._targetMemory = {} end
+    self:pruneTargetMemory()
+    if sprayer == nil or ss == nil or type(ss.isTargetGateOpen) ~= "function" then return nil end
+    if ss:isTargetGateOpen() ~= true then return nil end
+    local mem = self._targetMemory[sprayer]
+    if mem == nil then
+        mem = { notified = {} }
+        self._targetMemory[sprayer] = mem
+    end
+    local r = type(ss.getApplicationTargetResult) == "function" and ss:getApplicationTargetResult(sprayer) or nil
+    local view
+    if r ~= nil then
+        if mem.epoch ~= r.epoch then mem.epoch, mem.confirmed, mem.notified = r.epoch, nil, {} end
+        mem.seen = true
+        if SoilHUD.isTargetOutcome(r) then mem.confirmed = r end
+        view = SoilHUD.targetViewForResult(r, mem.confirmed)
+        self:notifyTargetEntry(ss, mem, r, view)
+    else
+        local isAuto = rm ~= nil and rm:getAutoMode(rateVehId) == true and self.settings.autoRateControl
+        if not isAuto or not SoilHUD.carriesNPK(profile) then return nil end
+        local kind
+        if g_server ~= nil then
+            if type(ss.isTargetModeForDisplay) ~= "function" or ss:isTargetModeForDisplay(sprayer) ~= true then
+                return nil
+            end
+            kind = "ready"
+        else
+            -- a client: nothing yet from the server, or the last active result expired
+            kind = mem.seen and "expired" or "waiting"
+        end
+        local c = SoilHUD.TARGET_VIEW_COPY[kind]
+        view = { kind = kind, line = c.line, note = c.note, tone = c.tone }
+    end
+    view.rows = SoilHUD.formatTargetRows(view)
+    return view
+end
+
 
 function SoilHUD:drawSprayerRatePanel()
+    self.appRateDrawRect = nil
     local sprayer = self:getCurrentSprayer()
-    if sprayer == nil then return end
-
     local rm = g_SoilFertilityManager and g_SoilFertilityManager.sprayerRateManager
-    if rm == nil then return end
+    if not self.editMode and (sprayer == nil or rm == nil) then return end
 
     local s          = self.scale
     local steps      = SoilConstants.SPRAYER_RATE.STEPS
-    local _sprRoot2 = sprayer.rootVehicle
-    local _rateVehId2 = (_sprRoot2 and _sprRoot2 ~= sprayer) and (_sprRoot2.id or 0) or sprayer.id
-    local currentIdx = rm:getIndex(_rateVehId2)
+    local _sprRoot2  = sprayer and sprayer.rootVehicle or nil
+    local _rateVehId2 = sprayer
+        and (((_sprRoot2 and _sprRoot2 ~= sprayer) and (_sprRoot2.id or 0)) or sprayer.id)
+        or 0
+    local currentIdx = (sprayer and rm and rm:getIndex(_rateVehId2))
+        or SoilConstants.SPRAYER_RATE.DEFAULT_INDEX
+    currentIdx = math.max(1, math.min(#steps, currentIdx or 1))
     local fontMult   = SoilConstants.HUD.FONT_SIZE_MULTIPLIERS[self.settings.hudFontSize or 2]
-    local fillType   = self:getSprayerFillType(sprayer)
+    local fillType   = sprayer and self:getSprayerFillType(sprayer) or nil
     local rateConfig = self:getRateConfig(fillType)
-    local curMult    = steps[currentIdx]
+    local curMult    = steps[currentIdx] or 1.0
+    local burnGuaranteed = curMult >= SoilConstants.SPRAYER_RATE.BURN_GUARANTEED_THRESHOLD
+    local burnPossible = not burnGuaranteed
+        and curMult > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD
 
     -- Panel geometry
-    local pw      = SoilHUD.BASE_W * s
+    local pw      = self:getW()
     local padV    = self:py(5)  * s
-    local barH    = self:py(4)  * s
+    local barH    = self:py(6)  * s
     local scrollH = self:py(22) * s
     local headerH = self:py(16) * s
-    local panelH  = padV + barH + padV + scrollH + padV + headerH
+    local warningH = (burnGuaranteed or burnPossible) and (self:py(16) * s) or 0
+    -- SF-73 section 7: the target block sits under the header and grows the panel by the
+    -- rows it draws (a height change, never a reposition). Built in update() for this sprayer.
+    local tview = self._cachedTargetView
+    if tview ~= nil and (sprayer == nil or self._cachedSprayer ~= sprayer) then tview = nil end
+    local tRows = tview and tview.rows or nil
+    local tLineH = math.max(self:py(12) * s, 0.0105 * fontMult * s)
+    local blockH = (tRows ~= nil and #tRows > 0) and (#tRows * tLineH + padV) or 0
+    local panelH  = warningH + padV + barH + padV + scrollH + padV + headerH + blockH
     local gap     = self:py(6) * s
-    local panelX  = self.panelX
-    local panelY  = self.panelY - gap - panelH
+    local stackedX = self.panelX
+    local stackedY = self.panelY - gap - panelH
+    local independent = self.settings and self.settings.independentPanels == true
+    local panelX, panelY
+    if independent then
+        panelX, panelY = self:getFreePos("appRate", stackedX, stackedY)
+    else
+        panelX, panelY = stackedX, stackedY
+    end
+    panelX = math.max(0, math.min(1 - pw, panelX))
+    panelY = math.max(0, math.min(1 - panelH, panelY))
+    if independent then
+        local fp = self.freePos and self.freePos.appRate
+        if fp then fp.x, fp.y = panelX, panelY end
+    end
     local cx      = panelX + pw * 0.5
+    local contentY = panelY + warningH
+    self.appRateDrawRect = { x = panelX, y = panelY, w = pw, h = panelH }
 
-    -- Shadow + background + border (match main panel theme + transparency)
+    -- Base-game HUD-extension chrome, with the former panel retained as the
+    -- standalone fallback when MasterHUD is absent.
     local rTheme = SoilConstants.HUD.COLOR_THEMES[self.settings.hudColorTheme or 1]
     local rBgR = 0.05 + rTheme.r * 0.04
     local rBgG = 0.05 + rTheme.g * 0.04
     local rBgB = 0.05 + rTheme.b * 0.04
     local rAlpha = SoilConstants.HUD.TRANSPARENCY_LEVELS[self.settings.hudTransparency or 3]
-    self:drawRect(panelX + 0.002*s, panelY - 0.002*s, pw, panelH, SoilHUD.C_SHADOW)
-    self:drawRect(panelX, panelY, pw, panelH, {rBgR, rBgG, rBgB, 1}, rAlpha)
-    local bw = 0.001
-    self:drawRect(panelX,           panelY,               pw, bw, SoilHUD.C_BORDER)
-    self:drawRect(panelX,           panelY + panelH - bw,  pw, bw, SoilHUD.C_BORDER)
-    self:drawRect(panelX,           panelY,               bw, panelH, SoilHUD.C_BORDER)
-    self:drawRect(panelX + pw - bw,  panelY,               bw, panelH, SoilHUD.C_BORDER)
+    local renderer = SoilHUD.getBaseGameRenderer()
+    local usedNativePanel = renderer ~= nil and renderer.renderPanel ~= nil
+        and renderer:renderPanel(panelX, panelY, pw, panelH, rAlpha)
+    if not usedNativePanel then
+        self:drawRect(panelX + 0.002*s, panelY - 0.002*s, pw, panelH, SoilHUD.C_SHADOW)
+        self:drawRect(panelX, panelY, pw, panelH, {rBgR, rBgG, rBgB, 1}, rAlpha)
+        local bw = 0.001
+        self:drawRect(panelX,          panelY,              pw, bw, SoilHUD.C_BORDER)
+        self:drawRect(panelX,          panelY + panelH - bw, pw, bw, SoilHUD.C_BORDER)
+        self:drawRect(panelX,          panelY,              bw, panelH, SoilHUD.C_BORDER)
+        self:drawRect(panelX + pw - bw, panelY,             bw, panelH, SoilHUD.C_BORDER)
+    end
+
+    if self.editMode then
+        local pulse = 0.55 + 0.45 * math.sin((self.animTimer or 0) * 0.004)
+        local ebw = 0.0015
+        self:drawRect(panelX, panelY, pw, ebw, {1.0, 0.55, 0.10, pulse})
+        self:drawRect(panelX, panelY + panelH - ebw, pw, ebw, {1.0, 0.55, 0.10, pulse})
+        self:drawRect(panelX, panelY, ebw, panelH, {1.0, 0.55, 0.10, pulse})
+        self:drawRect(panelX + pw - ebw, panelY, ebw, panelH, {1.0, 0.55, 0.10, pulse})
+    end
 
     -- Header: "APP. RATE  AUTO: OFF [<key>]" or "APP. RATE  ( AUTO: ON )".
     -- The toggle key is read live from the input binding. SF_TOGGLE_AUTO ships
     -- unbound, so if the player has not bound it we show no key hint at all.
     -- isAuto = auto rate mode active on this vehicle AND the setting is enabled
-    local isAuto = rm:getAutoMode(_rateVehId2) and self.settings.autoRateControl
+    local isAuto = sprayer ~= nil and rm ~= nil
+        and rm:getAutoMode(_rateVehId2) and self.settings.autoRateControl
     local autoKey = ""   -- stays empty until a real bound key is found below
     if g_inputDisplayManager ~= nil then
         local ok, helpElement = pcall(function()
@@ -2156,16 +2868,34 @@ function SoilHUD:drawSprayerRatePanel()
         0.009 * fontMult * s, headerText)
     setTextBold(false)
 
+    -- SF-73 section 7: the target block, one row per line, under the header. A row too
+    -- wide for the panel is drawn smaller rather than spilling past its edge.
+    if tRows ~= nil then
+        local top = panelY + panelH - headerH
+        local maxW = pw * 0.94
+        setTextAlignment(RenderText.ALIGN_CENTER)
+        for i, row in ipairs(tRows) do
+            local size = (row.bold and 0.0085 or 0.0075) * fontMult * s
+            local w = getTextWidth(size, row.text)
+            if w ~= nil and w > maxW and w > 0 then size = size * maxW / w end
+            local col = SoilHUD.TARGET_TONE[row.tone] or SoilHUD.TARGET_TONE.neutral
+            setTextBold(row.bold == true)
+            setTextColor(col[1], col[2], col[3], col[4])
+            renderText(cx, top - i * tLineH + tLineH * 0.22, size, row.text)
+        end
+        setTextBold(false)
+    end
+
     -- Rate scroll row base Y
-    local scrollY = panelY + padV + barH + padV
+    local scrollY = contentY + padV + barH + padV
 
     -- Current rate color (burn-aware or auto-aware)
     local curCol
     if isAuto then
         curCol = {0.4, 1.0, 0.4, 1.0}
-    elseif curMult >= SoilConstants.SPRAYER_RATE.BURN_GUARANTEED_THRESHOLD then
+    elseif burnGuaranteed then
         curCol = {1.0, 0.20, 0.20, 1.0}
-    elseif curMult > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
+    elseif burnPossible then
         curCol = {0.95, 0.65, 0.10, 1.0}
     else
         curCol = {1.0, 1.0, 1.0, 1.0}
@@ -2179,8 +2909,10 @@ function SoilHUD:drawSprayerRatePanel()
     renderText(cx, scrollY + self:py(7)*s, 0.013 * fontMult * s, curRateStr)
     setTextBold(false)
 
-    -- In Auto-Mode, show what we are targeting below the rate
-    if isAuto and fillType then
+    -- In Auto-Mode, show what we are targeting below the rate. Under SF-73 target mode the
+    -- target block above stands in its place: this line is built from field info and
+    -- defaults and cannot stand in for a confirmed footprint result (section 7, :89).
+    if isAuto and fillType and tRows == nil then
         local profile = SoilConstants.FERTILIZER_PROFILES[fillType.name]
         if profile then
             local targetText = g_i18n:getText("sf_sprayer_target")
@@ -2233,10 +2965,14 @@ function SoilHUD:drawSprayerRatePanel()
     local progress = (currentIdx - 1) / (#steps - 1)
     local barPad   = pw * 0.06
     local barW     = pw - barPad * 2
-    local barY     = panelY + padV
-    self:drawRect(panelX + barPad, barY, barW, barH, SoilHUD.C_BAR_BG)
-    if progress > 0 then
-        self:drawRect(panelX + barPad, barY, barW * progress, barH, curCol)
+    local barY     = contentY + padV
+    local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
+        and renderer:renderProgressBar(panelX + barPad, barY, barW, barH, progress, curCol)
+    if not usedNativeBar then
+        self:drawRect(panelX + barPad, barY, barW, barH, SoilHUD.C_BAR_BG)
+        if progress > 0 then
+            self:drawRect(panelX + barPad, barY, barW * progress, barH, curCol)
+        end
     end
 
     -- Crop-optimal rate marker (cyan tick on the progress bar)
@@ -2252,15 +2988,17 @@ function SoilHUD:drawSprayerRatePanel()
         self:drawRect(tickX, tickY, tickW, tickH, {0.20, 0.85, 0.85, 1.0})
     end
 
-    -- Burn warning below panel
-    local warnY = panelY - self:py(14) * s
+    -- Burn warning occupies a reserved band inside the panel so a stacked HUD
+    -- below cannot cover it and the cached edit rectangle matches what is drawn.
+    local warnFontSize = 0.010 * fontMult * s
+    local warnY = panelY + math.max(self:py(1) * s, (warningH - warnFontSize) * 0.5)
     setTextAlignment(RenderText.ALIGN_CENTER)
-    if curMult >= SoilConstants.SPRAYER_RATE.BURN_GUARANTEED_THRESHOLD then
+    if burnGuaranteed then
         setTextColor(1.0, 0.15, 0.15, 1.0)
-        renderText(cx, warnY, 0.010 * fontMult * s, g_i18n:getText("sf_sprayer_burn_guaranteed"))
-    elseif curMult > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
+        renderText(cx, warnY, warnFontSize, g_i18n:getText("sf_sprayer_burn_guaranteed"))
+    elseif burnPossible then
         setTextColor(0.95, 0.65, 0.10, 1.0)
-        renderText(cx, warnY, 0.010 * fontMult * s, g_i18n:getText("sf_sprayer_burn_possible"))
+        renderText(cx, warnY, warnFontSize, g_i18n:getText("sf_sprayer_burn_possible"))
     end
 
     setTextAlignment(RenderText.ALIGN_LEFT)
@@ -2355,3 +3093,29 @@ end
 -- ── Pixel helpers ────────────────────────────────────────
 function SoilHUD:px(pixels) return pixels / 1920 end
 function SoilHUD:py(pixels) return pixels / 1080 end
+
+-- =========================================================
+-- BUILD 17:57 + ATTN 18:02 (hot-reload guide Part 2): force-patch the live
+-- instance after a Ctrl+R reload - mission.soilFertilityManager published in src/main.lua; holds .soilHUD.
+if g_currentMission ~= nil and g_currentMission.soilFertilityManager ~= nil and g_currentMission.soilFertilityManager.soilHUD ~= nil then
+    local inst = g_currentMission.soilFertilityManager.soilHUD
+    for k, v in pairs(SoilHUD) do
+        if type(v) == "function" then
+            inst[k] = v
+        end
+    end
+    -- Fields new in the width wave that a pre-wave live instance lacks.
+    if inst.widthMult == nil then inst.widthMult = 1.0 end
+    -- A reload can land between mouse-down and mouse-up. Cancel that transient
+    -- capture before installing the expanded sub-panel drag state so an old
+    -- in-flight drag cannot reach the new arithmetic with constructor-only nils.
+    inst.draggingSubKey = nil
+    inst.subDragMoved = false
+    inst.subDragStartX = inst.subDragStartX or 0
+    inst.subDragStartY = inst.subDragStartY or 0
+    inst.subDragHadPos = false
+    inst.freePos = inst.freePos or {}
+    inst.freePos.appRate = inst.freePos.appRate or {}
+    -- Delivery proof in log.txt (Wizard 2026-08-21).
+    print("[SoilFertilizer] SoilHUD hot-patched onto live instance")
+end

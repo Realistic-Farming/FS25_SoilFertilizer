@@ -7,14 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+## [2.6.0.0] - 2026-10-12
+
+> **This is not a final release.** It gives everyone, testers and players, new or returning, everything we have built so far, so nobody has to wait on an old version any longer. The Realistic Farming suite is far from done: we are still building and expanding every mod, and completing it could take months, possibly a year. Expect changes and rough edges along the way, and please report anything that looks wrong.
+
+> **Remove FillType Extender.** Soil & Fertilizer now raises the game's fill type limit itself (to 1,023 types), so large maps that needed FillType Extender no longer do. Running both is what made the wrong products arrive in multiplayer.
+
+### Fixed: sprayers and spreaders
+- **Overlap:** on a field you have already fully sprayed this session, the overlap block holds on every pass: the tank stays put, the field is not fertilized twice, and you are not charged. Overlap prevention no longer switches sections off over ground the last row only grazed, or on their own pass.
+- **Coverage (Pass %):** a switched-off boom section (width control, the machine, or a mod such as Courseplay) no longer marks ground as sprayed; Pass % reaches 100% on rigs without section control at any rate; multi-tank rigs build coverage as you spray; a fertilizer pass no longer counts twice; the base game's insecticide builds coverage across passes; and protection switches on at 80% coverage even after the day's pressure reduction is used up.
+- **Smart Sensor, See & Spray and Variable Rate** read the ground under each boom section, so outer sections no longer decide from inner ground. See & Spray's centre honours its no-target decision.
+- **Herbicide:** recognised by spray type, weed reduction scales with the sections actually spraying, reaching protection no longer repaints the whole field's weeds, herbicide-withered weeds no longer count as pressure, and the daily weed read measures the whole field.
+- Switching Multi-tank application off works. Lime spread by the Streumaster FW 212 TD Profi and the Bredal K105 is tracked at its real width. Headland slivers are guarded by the boom's real width.
+- With AUTO rate on, liming a field whose pH is not known yet keeps your rate instead of throwing an error every few seconds.
+
+### Fixed: fields, soil and harvest
+- With Experimental Systems off (the default), a nutrient-depleted field yields less again at harvest, as before.
+- A field bought mid-session joins the soil simulation straight away, and a sold field leaves it. A fresh save whose fields load late is scanned once they arrive.
+- Fertilizing well-stocked ground or tilling low organic matter no longer overshoots the scale, and tillage nutrient changes no longer flip with travel direction.
+- Amendment burn accrues again, is measured on covered ground, and ignores cut, withered and wheel-flattened crops. Crop establishment kills are written reliably and dead crops are cleared.
+- With Mud System Physics or Use Your Tyres, airing down, sinking or tyre wear no longer raises the compaction estimate. With Seasonal Crop Stress installed, wet ground follows its soil moisture, so an irrigated field compacts under heavy machinery.
+- The harvest yield correction applies only to delivered grain, by Soil's own share.
+
+### Fixed: multiplayer and servers
+- **The dedicated-server stutter is fixed:** soil map sync is incremental and sent in small patches.
+- Multiplayer security: the sync, organic, sprayer and fungicide-treatment requests are checked on the server, a client can only treat its own or contracted fields, and only the acting farm pays. Oversized messages are dropped.
+- The full field sync always sends bounded batches, so maps with more than 32 fields no longer get refused.
+- The farm dog's sick-barn warning goes only to that barn's own farm and works again with Realistic Livestock 1.4.
+
+### Fixed: interface and translations
+- 420 French Canadian texts read French instead of Chinese; missing translations are filled in for every language; French and Czech HUD status words, the German ppm label and the Korean Field Detail label are fixed; the title and description read correctly in the mod manager.
+- The DAP and AN big bags show their own labels. Multi-buy pricing on three liquid tanks is fixed. Drain Vehicle refunds at the shop price.
+- The field info box shows the amendment burn risk and the drilling-window advisory, and a growing field's yield once. The settings panel's Admin button has no blank space before its label.
+- Keyboard defaults no longer collide with other mods or the look keys, and help names the right keys.
+
+### Added
+- **Farm dog early warning** for sick animals in your barns.
+- **Soil Esc page:** a continuous pH map with a gradient legend, field fungicide resistance, why a soil patch is blocked or ahead, owned field lists grouped by GPS outline, and a note when a field's simulation is asleep.
+- **Soil test kit (handful):** shows the band word and the figure for N, P, K and pH.
+- A reworked version dialog, a Soil HUD that follows the base game's theme and can be resized, a HUD show/hide toggle and actions in the Control Center, and Farm Tablet reading Soil's ppm scale.
+- **Sprayed-area lime and chemical pH:** lime and pH products work on the area actually sprayed.
+
+### Experimental Systems (off by default)
+- **Target N/P/K (AUTO):** the sprayer meters N/P/K products against the crop's remaining need under the boom, pauses with a reason when it should not spend (for example no growing crop), and the PDA, HUD and rate panel show the crop window and each target pass.
+- **Ground material:** hay, grass and straw on the ground keep their age and wetness through tedding, raking, mowing and baling; bales are born with the condition of what their chamber took in and keep it through saves and storage; the condition is saved together with the terrain.
+- **Stock Guard integration:** with Stock Guard installed, the condition of ground material travels with what loaders, balers and forage wagons pick up.
+- Groundwork for local crop disease (no visible change yet).
+
+### Added
+- **StockGuard capacity participation (SG-6, Soil half).** A new `SoilCapacityIntegration` module (protocol 2: `beginCapacityLoad`, `prepareGroundTypes`, `endCapacityLoad`) lets StockGuard have Soil's twelve solid ground definitions prepared before the engine initializes the ground manager, so the engine registers them itself. While a mission is joined, the old late fallback (Lua insertion, texture rebuild, tip hook) is skipped in every phase and the ground-tip wrapper stays in pure delegation. Soil alone is unchanged.
+
+### Fixed
+- **Ground-condition leases: an early-ended delivery keeps its reason, and leaked leases no longer accumulate.** A StockGuard lease whose delivery ended on a native error, an unobservable envelope or an invalid height map had its cells re-marked at the close under a second reason; the first reason now stands. A lease a caller never closed used to stay in the table for the mission once it expired; it now leaves on expiry, and every admit sweeps earlier frames, so a late deliver or close on that token answers NO_LEASE. (MAINTENANCE rows 100 and 101.)
+- **Multiplayer security: a forged sync stream can no longer hang the host.** Every count a network event reads (fields, nutrient buffers, zone cells, value-map rows and runs, scouting-mask entries) is now held to what its sender could have written, and a stream above that is refused without being read further; the server-to-client events read nothing at all when the stream did not come from the server. Dedicated and listen servers alike; nothing to configure.
+- **Multiplayer security: a client can no longer forge the host's soil data, opt another farm's field out of organic certification, or change another farm's sprayer.** Four server-to-client sync events (settings, the join handshake, field batches and field updates) checked only that this side had a client, which a listen host also has, so a modified client could push forged settings or field data into the host's game, its save and its next broadcast. They now refuse anything that does not arrive from the server. The organic opt-in and opt-out request acts only for the sending player's own farm and only on a field that farm owns, on a dedicated server too; the host's and singleplayer's own console and PDA doors follow the same rule, so a field your farm does not own can no longer be opted into organic transition. The sprayer rate and auto-mode changes apply on the server only when the sending player's farm owns the vehicle; the host's own controls and the server's rebroadcast to clients are unchanged. Nothing to configure.
+- **RSF-F213: material weather now follows the ground that actually holds material, and a roof protects only what is under it.** Behind Experimental Systems, like the rest of the ground-material family. The daily drying and rain passes used to walk field polygons, so hay moved into a yard fell out of the weather and a whole field was called sheltered or not from a few corner samples. Soil now keeps a small membership index of the cells that hold tracked material, in fields and yards alike, marked by the machines that put material down or take it away (and rebuilt from the saved condition and what is lying on the ground when a save has no index yet), and settles exactly those cells once a day: the same drying phases, the same equilibrium floor, the same rain dose, a field's own soil class and moisture where the cell lies in a field and the neutral defaults outside one. Rain on a cell is scaled by how much of it lies under a roof, read from the map's indoor mask at its own grain, so half a windrow under a shed eave gets half the rain; a map with no usable mask counts as open ground. Placing or removing a building updates the shelter read over the ground it covers the moment its roof is painted. Nothing to configure. With the gate off nothing changes.
+- **RSF-F212: freshly cut grass and combine-laid straw now start with their own wetness.** Behind Experimental Systems, like the rest of the ground-material family. Fresh material used to enter the drying system with an empty wetness record that neither drying nor rain could move. A genuine fresh cut (a mower leaving a windrow, a combine laying a swath) now starts at the Soil-owned profile the design ratified: fresh grass at 80% and fresh straw at 25%, wet basis, from the moment it lands, and the existing drying and rain passes take it from there. Only the real thing gets a profile: old windrow picked up under the cut keeps its own age and wetness, hay keeps the condition of the grass it was made from, a converter that makes something other than grass windrow or straw gets no starting value, and material of unknown origin stays unknown. Nothing to configure. The log says once per session when the first fresh grass and the first fresh straw are born.
+- **RSF-F226: overlap prevention now actually stops drawing from the tank.** Unlike the tedder and combine fixes below, this is not behind Experimental Systems: it changes an ordinary game the moment it ships. The tank block never took effect in any shipped version. Overlap prevention was meant to stop the centre work area drawing from the tank once a pass was fully suppressed, but the block was set on the wrong copy of the sprayer's processing function, so the boom effects correctly stopped while the tank kept draining underneath. It now actually blocks. This affects consumption and therefore cost: if your spray usage on fields with overlapped or retraced passes drops, that is this fix working, not a change to spray rates. On by default (overlapPrevention setting), nothing to configure.
+- **RSF-F226: tedder drying and combine straw birth now actually run.** Tedding has never done anything in a shipped game: the hook logged a healthy-looking "patched" count while the wrapper behind it never executed once. The same was true for straw laid down by a combine. Both wrappers now run for real. On default settings nothing changes yet, tedded grass drying and straw birth-tracking are part of the ground-material family, which stays behind Experimental Systems. Turn Experimental Systems on in the settings panel to see tedded grass dry faster than untedded grass, and combine-laid straw remember when it was cut. Nothing to configure otherwise, and no other machine (mowers, windrowers, balers, the combine's chopper mode) is affected.
+- RSF-F219: honest pH grain on the handful, map tooltip and sprayer cab. A positional read that resolves neither a local pixel nor a zone cell now returns no current pH (UNAVAILABLE) instead of the field seed; a current field report only refreshes the separately labelled last-known value. The handful pH tile carries its own status word (spot with the carrier grain, approximate, recorded field value, or unavailable) instead of inheriting the shared N/P/K/OM refinement word, keeping the test-kit formatting for the current and the recorded value alike. The map click tooltip skips the numeric pH row on a positional miss (also after a settings-panel layer switch), and the sprayer cab pH row goes fully unavailable (dash, dim, empty bar) rather than easing to 0.0 or a poor verdict. Three new handful keys in all 27 locales.
+- RSF-F201: cab and on-foot controls stay valid across vehicle entry and exit. Each input context now registers through its own private target, so the PLAYER and VEHICLE registrations no longer share one engine identifier that a cab rebuild wiped. Membership is checked in the wrap's own context, a complete set costs no registration work, and the input wrappers install once per session instead of being restored on every mission teardown. The vehicle hook's PLAYER purge and PLAYER rebuild are gone.
+
 ## [2.4.7.0]
 
 ### Added
+- **Control Center actions** (suite Control Center, requires SettingsHub): `SF_TREATMENT`, `SF_SCOUT`, `SF_HANDFUL`, `SF_OPEN_SETTINGS`.
+- **Playtest fixes:** SF_TOGGLE_HUD (RShift+O) and SF_HUD_DRAG (RShift+P) chord defaults, HUD bridge/panel polish, in-vehicle panels and vehicle input hook.
 - **New per-pixel soil engine, adopted from WizardlyPayload's Refined fork (#736).** Soil is now stored at roughly 2 m resolution across the whole map instead of one average per field, with persistence, migration from existing saves, multiplayer delivery, and rendering through the engine's density-map-visualization pipeline (the same one Precision Farming uses). All eleven map layers and the HUD minimap render from it. Our simulation, settings, disease system and economy are unchanged: the engine replaces how soil is *stored and drawn*, not how it behaves.
 - **The Soil Layer Installer is no longer required.** The value maps are built in memory at startup on any map, with no authored terrain layers and no map preparation. Already-patched maps keep working; their layers simply become a fallback.
 - **Six named fungicides as buyable, sprayable IBC tanks** (Propiconazole, Azoxystrobin, Boscalid, Mancozeb, Metalaxyl, Tebuconazole), plus the organic-approved sulfur and copper pair. Scouting names the chemical that best controls the field's actual disease, and spraying routes through the catalog's per-disease control maths.
 
 ### Fixed
+- **AI field-job crash guard.** AI fieldwork could crash when the weed or stone density map resolution mismatched the ground-type map resolution; the fruit-requirement check now guards against the mismatch.
 - **Pest and disease pressure could never reach their own effect thresholds (#737).** Pest gains about 8.52 points a year at the low tier and a harvest reset it to 30% of current, so under an annual harvest it converged on 12.2 against a first costing tier of 20: unreachable at any save length. Disease was suppressed separately by a plough pass worth roughly six years of accumulation, and by a dry-weather branch that *replaced* growth rather than damping it. Harvest reset is now 0.60 (steady peak 21.3), plough disease relief is 15, and a dry day inside the fungal window still grows disease at 40% of the wet rate, with outright decay moved to a second, higher drought threshold. Reported by nitro.
 - **Migration painted negative-coordinate cells at the wrong positions** when converting an existing save to the new engine.
 - **Skipped days were not simulated and the daily batch stranded its tail**, so time away from a save did not move the soil correctly.
@@ -346,8 +412,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`modSettings/` folder structure reorganized** - Files now grouped under `modSettings/FS25_SoilFertilizer/{Settings,HUD,Debug}/` for a cleaner per-mod layout.
 
 ### Added
-- **Debug output files** - When debug mode is active, three files are written to `modSettings/FS25_SoilFertilizer/Debug/`:
-  - `debug.xml` - buffered `SoilLogger.debug()` messages (flushed when debug mode is toggled off or the game session ends)
+- **Debug output files** - Three files use `modSettings/FS25_SoilFertilizer/Debug/`,
+  each through its own export route:
+  - `debug.xml` - buffered `SoilLogger.debug()` messages. With Soil debug mode on,
+    `SoilDebug` switches it off and exports the retained history. If it is already off,
+    the first `SoilDebug` turns it on without exporting; run it again to switch off and export.
+    Normal session teardown also exports retained history. Other ways of switching Soil debug
+    off save the setting without exporting: game settings, the mod panel toggle, Soil's row in
+    tablet System Settings, SettingsHub Control Center, and `SoilResetSettings` or the panel's
+    admin Reset action. An empty history writes no file. A successful export reports its path
+    in the game log. Use the new message from this export attempt; an older success line does
+    not prove a file is current after another attempt. Without a new message, a leftover file
+    may be earlier, failed or incomplete. A save failure reported without an exception still
+    clears the buffered history; toggling again cannot recover those cleared records. An abrupt
+    exit that skips teardown writes no shutdown export; an ordinary quit that runs teardown
+    uses that route.
   - `field_dump.xml` - full nutrient snapshot for a single field (written each time `SoilFieldInfo <id>` is run)
   - `soil_export.xml` - snapshot of all tracked field data (written each time `SoilSaveData` is run)
 - **Current-pass coverage tracker** - The HUD now shows spray-pass progress as `"Pass: 45% (Digestate)"` regardless of the native FS25 fertilizer density-map state. Farmers working a field already at 100% vanilla fertilizer state could no longer see which strips they had covered (soil doesn't darken further); the new tracker accumulates coverage area independently and displays the localized product name alongside the percentage. Turns green at the ≥70% full-coverage threshold. Resets on harvest; survives game-day rollovers mid-pass.

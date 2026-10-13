@@ -4,7 +4,7 @@
 -- Author: TisonK
 -- =========================================================
 
-SoilUtils = {}
+SoilUtils = SoilUtils or {}
 
 --- Returns true if the local player has admin rights.
 --- Single-player: always true. Dedicated server console: always true.

@@ -12,7 +12,7 @@
 -- =========================================================
 
 ---@class SoilCropTuningPanel
-SoilCropTuningPanel = {}
+SoilCropTuningPanel = SoilCropTuningPanel or {}
 local SoilCropTuningPanel_mt = Class(SoilCropTuningPanel)
 
 -- Geometry / colors mirror SoilTuningPanel for a consistent look.

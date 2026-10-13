@@ -1,0 +1,185 @@
+﻿<?xml version="1.0" encoding="iso-8859-1"?>
+
+<i3D name="bigBag" version="1.6" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://i3d.giants.ch/schema/i3d-1.6.xsd">
+
+  <Files>
+    <File fileId="13" filename="$data/objects/bigBag/bigBagOutput_normal.png" />
+    <File fileId="14" filename="$data/objects/bigBag/bigBagOutput_vmask.png" />
+    <File fileId="3" filename="$data/objects/bigBag/bigBag_normal.png" />
+    <File fileId="4" filename="$data/objects/bigBag/bigBag_specular.png" />
+    <File fileId="2" filename="$data/objects/bigBag/chickenFood/bigBagChickenFood_diffuse.png" />
+    <File fileId="11" filename="$data/objects/bigBag/fertilizer/bigBagFertilizerHelm_diffuse.png" />
+    <File fileId="6" filename="$data/objects/bigBag/horseFood/bigBagHorseFood_diffuse.png" />
+    <File fileId="7" filename="$data/objects/bigBag/lime/bigBagLime_diffuse.png" />
+    <File fileId="8" filename="$data/objects/bigBag/pigFood/bigBagPigFood_diffuse.png" />
+    <File fileId="9" filename="$data/objects/bigBag/roadSalt/bigBagRoadSalt_diffuse.png" />
+    <File fileId="5" filename="$data/objects/bigBag/seeds/bigBagSeeds_diffuse.png" />
+    <File fileId="10" filename="$data/objects/bigBag/stones/bigBagStones_diffuse.png" />
+    <File fileId="15" filename="$data/shaders/vehicleShader.xml" />
+    <File fileId="1" filename="$data/shared/default_normal.png" />
+    <File fileId="17" filename="$data/shared/detailLibrary/flat_normal.png" />
+    <File fileId="16" filename="$data/shared/detailLibrary/metallic/silverScratched_diffuse.png" />
+    <File fileId="18" filename="$data/shared/detailLibrary/metallic/silverScratched_specular.png" />
+    <File fileId="12" filename="$data/shared/white_diffuse.png" />
+    <File fileId="20" filename="bigBag_polifoska_diffuse.dds" />
+  </Files>
+
+  <Materials>
+    <Material name="lambert1" materialId="1" diffuseColor="0.5 0.5 0.5 1">
+    </Material>
+    <Material name="default_mat" materialId="4" diffuseColor="0.5 0.5 0.5 1">
+      <Normalmap fileId="1"/>
+    </Material>
+    <Material name="bigBagChickenFood_mat" materialId="5">
+      <Texture fileId="2"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagSeeds_mat" materialId="10">
+      <Texture fileId="5"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagHorseFood_mat" materialId="6">
+      <Texture fileId="6"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagLime_mat" materialId="7">
+      <Texture fileId="7"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagPigFood_mat" materialId="8">
+      <Texture fileId="8"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagRoadSalt_mat" materialId="9">
+      <Texture fileId="9"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagStones_mat" materialId="11">
+      <Texture fileId="10"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagFertilizerHelm_mat" materialId="12">
+      <Texture fileId="11"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="bigBagFertilizer_mat" materialId="2" diffuseColor="0.5 0.5 0.5 1">
+      <Texture fileId="20"/>
+      <Normalmap fileId="3"/>
+      <Glossmap fileId="4"/>
+    </Material>
+    <Material name="white_silverScratched_mat" materialId="3" customShaderId="15">
+      <Custommap name="detailDiffuse" fileId="16"/>
+      <Custommap name="detailNormal" fileId="17"/>
+      <Custommap name="detailSpecular" fileId="18"/>
+      <Texture fileId="12"/>
+      <Normalmap fileId="13"/>
+      <Glossmap fileId="14"/>
+    </Material>
+  </Materials>
+
+
+  <Shapes externalShapesFile="bigBag_polifoska.i3d.shapes">
+  </Shapes>
+
+  <Scene>
+    <Shape name="bigBag_main_component1" shapeId="1" dynamic="true" compound="true" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="300" nodeId="1">
+      <TransformGroup name="functionalNodes" nodeId="2">
+        <TransformGroup name="raycastNode" nodeId="3"/>
+        <Shape name="fillTrigger" shapeId="2" kinematic="true" compound="true" trigger="true" collisionFilterGroup="0x20000000" collisionFilterMask="0x40000000" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="300" nodeId="4"/>
+        <Shape name="dischargeActivationTrigger" translation="0 -1.796046 0" shapeId="3" kinematic="true" compound="true" trigger="true" collisionFilterGroup="0x20000000" collisionFilterMask="0x40000000" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="5"/>
+        <Shape name="tensionBeltMesh02" translation="0 0.522743 0" shapeId="4" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="6"/>
+      </TransformGroup>
+      <TransformGroup name="visuals" nodeId="7">
+        <Shape name="bigBag_vis" shapeId="5" castsShadows="true" receiveShadows="true" materialIds="2" skinBindNodeIds="44 35 34 32 33 37 38 36 31 9" clipDistance="200" nodeId="8">
+          <TransformGroup name="bottomJoint" nodeId="9"/>
+        </Shape>
+        <TransformGroup name="outputParts" nodeId="10">
+          <Shape name="outputOpen" translation="0 -0.013077 0.000014" shapeId="6" castsShadows="true" receiveShadows="true" materialIds="3" clipDistance="300" nodeId="11">
+            <TransformGroup name="effects" translation="0 0.013077 -0.000014" nodeId="12">
+              <Shape name="pipeEffect" translation="0 -0.131026 0" rotation="90 0 0" shapeId="7" castsShadows="true" receiveShadows="true" materialIds="4" clipDistance="100" nodeId="13"/>
+              <Shape name="smokeEffect" translation="0 -2.18029 0" visibility="false" shapeId="8" castsShadows="true" receiveShadows="true" materialIds="4" clipDistance="100" nodeId="14"/>
+            </TransformGroup>
+          </Shape>
+          <Shape name="outputClose" translation="0 -0.013077 0.000014" shapeId="9" castsShadows="true" receiveShadows="true" materialIds="3" clipDistance="300" nodeId="15"/>
+        </TransformGroup>
+        <TransformGroup name="materialHolders" visibility="false" nodeId="16">
+          <Shape name="chickenFood_mat" shapeId="10" castsShadows="true" receiveShadows="true" materialIds="5" clipDistance="300" nodeId="17"/>
+          <Shape name="horseFood_mat" shapeId="11" castsShadows="true" receiveShadows="true" materialIds="6" clipDistance="300" nodeId="18"/>
+          <Shape name="lime_mat" shapeId="12" castsShadows="true" receiveShadows="true" materialIds="7" clipDistance="300" nodeId="19"/>
+          <Shape name="pigFood_mat" shapeId="13" castsShadows="true" receiveShadows="true" materialIds="8" clipDistance="300" nodeId="20"/>
+          <Shape name="roadSalt_mat" shapeId="14" castsShadows="true" receiveShadows="true" materialIds="9" clipDistance="300" nodeId="21"/>
+          <Shape name="seeds_mat" shapeId="15" castsShadows="true" receiveShadows="true" materialIds="10" clipDistance="300" nodeId="22"/>
+          <Shape name="stones_mat" shapeId="16" castsShadows="true" receiveShadows="true" materialIds="11" clipDistance="300" nodeId="23"/>
+          <Shape name="fertilizer_mat" shapeId="17" castsShadows="true" receiveShadows="true" materialIds="2" clipDistance="300" nodeId="24"/>
+          <Shape name="fertilizerHelm_mat" shapeId="18" castsShadows="true" receiveShadows="true" materialIds="12" clipDistance="300" nodeId="25"/>
+        </TransformGroup>
+      </TransformGroup>
+      <TransformGroup name="collisions" nodeId="26">
+        <Shape name="sizeCollision01" translation="-0.25 0 -0.25" shapeId="19" compoundChild="true" density="0.001" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="27"/>
+        <Shape name="sizeCollision02" translation="0.25 0 -0.25" shapeId="20" compoundChild="true" density="0.001" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="28"/>
+        <Shape name="sizeCollision03" translation="0.25 0 0.25" shapeId="21" compoundChild="true" density="0.001" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="29"/>
+        <Shape name="sizeCollision04" translation="-0.25 0 0.25" shapeId="22" compoundChild="true" density="0.001" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="30"/>
+        <TransformGroup name="sizeJoint01" translation="-0.405302 0 -0.304" visibility="false" nodeId="31"/>
+        <TransformGroup name="sizeJoint02" translation="0.405 0 -0.304" visibility="false" nodeId="32"/>
+        <TransformGroup name="sizeJoint03" translation="0.405 0 0.304" visibility="false" nodeId="33"/>
+        <TransformGroup name="sizeJoint04" translation="-0.405 0 0.304" visibility="false" nodeId="34"/>
+        <TransformGroup name="sizeJoint05" translation="-0.449857 0 0" visibility="false" nodeId="35"/>
+        <TransformGroup name="sizeJoint06" translation="0.45 0 0" visibility="false" nodeId="36"/>
+        <TransformGroup name="sizeJoint07" translation="0 0 0.38" visibility="false" nodeId="37"/>
+        <TransformGroup name="sizeJoint08" translation="0 0 -0.38" visibility="false" nodeId="38"/>
+      </TransformGroup>
+    </Shape>
+    <Shape name="bigBag_hook_component2" translation="0 1.371706 0" shapeId="23" dynamic="true" compound="true" staticFriction="0.1" dynamicFriction="0.4" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" clipDistance="300" nodeId="39">
+      <TransformGroup name="componentJointHook" rotation="0 0 -90" nodeId="40"/>
+      <TransformGroup name="attacherJoint01" translation="0 0.319841 0" rotation="90 0 -90" nodeId="41"/>
+      <TransformGroup name="attacherJoint02" translation="0 0.319841 0" rotation="-90 0 -90" nodeId="42"/>
+      <Shape name="tensionBeltMesh01" translation="0 0.188114 0" shapeId="24" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="43"/>
+      <TransformGroup name="rootJoint" nodeId="44"/>
+      <Shape name="colPart01" translation="0.15505 0.211707 0" shapeId="25" compoundChild="true" staticFriction="0.1" dynamicFriction="0.4" angularDamping="0.2" density="0.3" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="45"/>
+      <Shape name="colPart02" translation="-0.15505 0.211707 0" shapeId="26" compoundChild="true" staticFriction="0.1" dynamicFriction="0.4" angularDamping="0.2" density="0.3" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="46"/>
+      <Shape name="colPart03" translation="0 0.3841 0.034738" shapeId="27" compoundChild="true" staticFriction="0.1" dynamicFriction="0.4" angularDamping="0.2" density="0.3" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="47"/>
+      <Shape name="colPart04" translation="0 0.3841 -0.034738" shapeId="28" compoundChild="true" staticFriction="0.1" dynamicFriction="0.4" angularDamping="0.2" density="0.3" collisionFilterGroup="0x10004" collisionFilterMask="0xfe3ffb83" castsShadows="true" receiveShadows="true" nonRenderable="true" materialIds="1" nodeId="48"/>
+    </Shape>
+  </Scene>
+
+  <UserAttributes>
+    <UserAttribute nodeId="9">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="31">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="32">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="33">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="34">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="35">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="36">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="37">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="38">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+    <UserAttribute nodeId="44">
+      <Attribute name="liw" type="boolean" value="false"/>
+    </UserAttribute>
+  </UserAttributes>
+</i3D>

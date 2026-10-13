@@ -1,0 +1,865 @@
+--
+-- GroundConditionAdmission
+--
+-- RSF-F208, section 7 of GROUND-CONDITION-CONTRACT v1.5: the interface StockGuard
+-- SG-2 calls, and the capability that tells it the interface is really here.
+--
+-- THE SHAPE, fixed by the contract and by Iris' D2 answer of 2026-09-16, in these
+-- exact words and on this exact handle:
+--
+--   g_currentMission.soilFertilityManager:getCapabilities()
+--       -> { groundCondition = { admissionRevision = 2 } }
+--   g_currentMission.soilFertilityManager.groundCondition.admitPrimitive(
+--       footprint, primitiveKind, vehicleOrObject, workAreaIdentity)
+--       -> { status = "ADMITTED"|"REFUSED", reason, leaseToken }
+--   g_currentMission.soilFertilityManager.groundCondition.deliverMovement(
+--       leaseToken, observation)
+--   g_currentMission.soilFertilityManager.groundCondition.readCollectedCondition(
+--       snapshotRef, receiptRef)                             (SG2-5d, below)
+--
+-- ADMISSION REVISION 2 (SG2-4 S3, Iris's answer 2 of 2026-09-23, Bob's intake of
+-- 2026-09-23): the public input of deliverMovement is StockGuard's admitted NATIVE
+-- observation, not caller-chosen Soil cells with a precomputed mixture. Soil derives
+-- the Soil cells itself, from the FOOTPRINT the caller gives admitPrimitive, reads
+-- each cell's whole-cell occupancy BEFORE the primitive (the one call Soil receives
+-- before it) and again at delivery, captures each cell's pre-removal condition at
+-- admit, and projects through the one projector it shares with its standalone
+-- carriers (GroundMovementProjector). A revision 1 caller sending a cells array is
+-- refused; StockGuard gates on 2 and treats an older Soil as absent (D2 rule).
+--
+--   footprint v1 (the caller's resolved primitive geometry, world coordinates):
+--     { schemaVersion = 1, kind = "LINE", sx, sz, ex, ez, fillTypeIndex,
+--       innerRadius, radius }                  for TIP_TO_GROUND_AROUND_LINE and
+--                                              SMOOTH_AROUND_LINE; radius nil means
+--                                              the native default for that type
+--     { schemaVersion = 1, kind = "AREA", x0, z0, x1, z1, x2, z2 }
+--                                              for CLEAR_AREA and
+--                                              CHANGE_FILL_TYPE_AT_AREA
+--   observation v1 (native facts StockGuard observed on that call, nothing
+--   Soil-grid-shaped):
+--     { schemaVersion = 1, primitiveKind, ok, fillTypeIndex, deltaRequested,
+--       litresReturned, lineOffset, sourceTypeIndex, destinationTypeIndex,
+--       conversionBasis, contributions }
+--   `ok = false` means the primitive threw: every lease cell goes unavailable.
+--
+--   contributions (optional, a TIP_TO_GROUND_AROUND_LINE drop only; SG-2 v2.3 :345,
+--   Bob's SG2-5 G1 ruling of 2026-10-02): the condition of the material the caller
+--   drops, as the `soil.groundCondition` records StockGuard carried on it.
+--     { { litres = n, record = <soil.groundCondition PropertyRecord> }, ... }
+--   Soil reads each record through its own property (GroundConditionProperty.validate
+--   and componentsOf, the one reader its combine uses): a record that does not
+--   validate, or one StockGuard has qualified, is unknown; a KNOWN record's coverage
+--   splits its litres into known and unknown; each known age is aged once, from its
+--   stamp to today (P-GROUND-1, on re-entry). The mixture lands through the shared
+--   projector (P.drop): its floor and its unexplained-gain rule decide each cell, and
+--   Soil still chooses the cells. Without the field a drop arrives of unknown
+--   condition, as before; a pickup ignores it. The field is additive under revision 2:
+--   an older Soil copies only the fields it knows, so the drop lands unknown there.
+--
+--   A BIRTH CONTRIBUTION (SG2-5c-soil; SG-2 v2.3 :351, GCC section 4; Bob's 5c ruling
+--   of 2026-10-02): fresh output a positive native production observation proved, which
+--   the caller held in a machine buffer without a condition of its own.
+--     { litres = n, birth = { kind = "MOWER", fillTypeIndex = <the output's type> } }
+--   Soil makes it here, born AT THIS DEPOSIT exactly as its own mower carrier does
+--   (GroundMovementCarrier.freshBirth and accountResolve): age raw 1 whatever day the
+--   output entered the buffer (section 4's last sentence), wetness from Soil's starting
+--   profile when (kind, type) is an accepted branch (profileFor), with the profile's id,
+--   revision and estimated-at-birth provenance on the contribution, and unknown wetness
+--   otherwise (a converter that makes hay). A kind Soil makes no birth for is unknown.
+--   An entry names a record or a birth, never both. The caller names a birth only for
+--   output it counted from a cut whose MOWER_CUT admission (below) was ADMITTED: under a
+--   refused barrier Soil's own carrier makes that output explicit unknown, never a birth.
+--
+-- MOWER_CUT (SG2-5c-soil; GCC :106 read through :129; Bob's 5c ruling, Q2). A mower's
+-- cut writes no Soil cell: its output waits in the drop area's buffer, and the old dry
+-- windrow it picks up is its own line primitive with its own lease. So Soil's mower carrier
+-- cannot see a StockGuard frame from any line lease, and StockGuard admits the cut itself,
+-- once per processMowerArea call, BEFORE the native call, and closes it in the call's
+-- finally:
+--     admitPrimitive({ schemaVersion = 1, kind = "AREA", x0, z0, x1, z1, x2, z2 },
+--         "MOWER_CUT", mower, workArea)
+-- with the work area's start, width and height corners and the work area table native
+-- passes to processMowerArea as the identity. The barrier runs as for every admission.
+-- The lease derives no cells, so neither a delivery (`{ schemaVersion = 1, primitiveKind
+-- = "MOWER_CUT", ok }`, optional) nor its close projects or marks anything. While it is
+-- live, Soil's cut frame stands aside before the call (hasLiveLeaseFor); when StockGuard's
+-- bracket is the inner one, Soil's frame is already open and stands aside after the call
+-- instead (mowerCutAdmittedSince), recording no fresh birth. The kind is additive under
+-- revision 2, as readCollectedCondition was.
+--
+-- THE COLLECTED READ (SG2-5d; SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; Bob's
+-- G2 ruling as amended 2026-10-02). With StockGuard present, StockGuard is the collection's
+-- producer: it seals the allocation at the add's applied delta (F211 :76), hands this reader the
+-- reference and stores the account it returns as the carried property. Soil computes the meaning:
+--   * a pickup (TIP_TO_GROUND_AROUND_LINE, negative delta) by a collection machine (a Baler or a
+--     ForageWagon, Baler.lua:1874, ForageWagon.lua:147-160) captures, on delivery and before Soil
+--     projects it, a COLLECTED snapshot of its source cells (MaterialWetness:collectedSnapshot):
+--     each cell's litres of the type as read at admit, before the native pickup, and its
+--     condition, stamped with the owner revision. Nothing writes Soil's condition between the
+--     admit and that projection, so the condition is the admit's; a collector's drop (a
+--     ForageWagon tipping to the ground) captures nothing;
+--   * that pickup's delivery result names it: result.collection = { snapshotRef, basis,
+--     revision, parts = { { id, raw } } }, raw being the litres each cell actually lost;
+--   * readCollectedCondition(snapshotRef, receiptRef) runs Soil's collected reader on that snapshot,
+--     which resolves the producer's sealed allocation through StockGuard's readCollectionReceipt
+--     (MaterialWetness:resolveAllocation). It always answers a coverage; an unknown snapshot is
+--     UNAVAILABLE. The lease token is correlation only (GCC :129); the snapshot names the capture.
+--   Snapshots are transient causal bindings (F211 :50), the oldest leaving first, never saved.
+--   Under a lease Soil's own collection (BalerCollection, ForageWagonCollection) stands aside and
+--   seals nothing, so there is one producer, never a parallel record.
+--
+-- WHY THE CAPABILITY MATTERS MORE THAN THE TABLE. A consumer must decide whether
+-- Soil can actually receive a delivery. The contract is explicit that a registered
+-- `soil.groundCondition` property is NOT proof of that, and neither is StockGuard's
+-- own capability list. Only this getter, returning the admission revision, means the
+-- interface is present. So we publish the capability ONLY when the coordinator is
+-- genuinely armed: if the condition cells stood down, getCapabilities reports no
+-- groundCondition at all and every consumer correctly treats Soil as absent.
+--
+-- ABSENT IS THE NORMAL PATH. On the consumer side, absent means: suppress nothing,
+-- deliver nothing, keep observing quantities, report live ground condition
+-- unavailable. Nothing here is a hard dependency in either direction.
+--
+-- DOT CALLS, NOT COLON CALLS. The contract names these as plain functions on the
+-- groundCondition table, so they are closures, not methods. A caller who writes
+-- `groundCondition:admitPrimitive(...)` would silently shift every argument by one
+-- and hand us the table as the footprint. We detect that and refuse loudly rather
+-- than quietly treating a table as ground.
+--
+-- THE ADMISSION COUNT. StockGuard admits at the engine global inside the Lua util
+-- Soil's own observer wraps (DensityMapHeightUtil.lua:290), so the observer cannot
+-- see that lease before or after its native call. The count of admitted leases is
+-- what the observer compares across its native call: the util's call is synchronous,
+-- so a lease admitted during it can only be the inner slot's lease for that very
+-- primitive, whatever identity the inner caller names; the observer stands aside when
+-- the count moved (Bob's intake item 3b). A refused inner admission mints no lease,
+-- so Soil's own observation then stands, projecting or marking as it would alone.
+--
+
+GroundConditionAdmission = {}
+local GroundConditionAdmission_mt = Class(GroundConditionAdmission)
+
+GroundConditionAdmission.ADMISSION_REVISION  = 2
+GroundConditionAdmission.FOOTPRINT_SCHEMA    = 1
+GroundConditionAdmission.OBSERVATION_SCHEMA  = 1
+
+GroundConditionAdmission.STATUS_ADMITTED = "ADMITTED"
+GroundConditionAdmission.STATUS_REFUSED  = "REFUSED"
+
+GroundConditionAdmission.REFUSE_NOT_ARMED   = "SOIL_NOT_ARMED"
+GroundConditionAdmission.REFUSE_BARRIER     = "SETTLEMENT_BARRIER_REFUSED"
+GroundConditionAdmission.REFUSE_ARGS        = "BAD_ARGUMENTS"
+GroundConditionAdmission.REFUSE_COLON_CALL  = "CALLED_WITH_COLON"
+GroundConditionAdmission.REFUSE_NO_GEOMETRY = "NO_GEOMETRY"
+
+GroundConditionAdmission.DELIVER_OK            = "OK"
+GroundConditionAdmission.DELIVER_NO_LEASE      = "NO_SUCH_LEASE"
+GroundConditionAdmission.DELIVER_LEASE_CLOSED  = "LEASE_CLOSED"
+GroundConditionAdmission.DELIVER_STALE_FRAME   = "LEASE_CROSSED_A_FRAME"
+GroundConditionAdmission.DELIVER_BAD_OBS       = "BAD_OBSERVATION"
+-- [SG2-5d] The collected snapshots kept for the published read: a transient causal binding.
+GroundConditionAdmission.MAX_COLLECTED         = 256
+GroundConditionAdmission.READ_SNAPSHOT_UNKNOWN = "SNAPSHOT_UNKNOWN"
+
+-- The primitive kinds a lease can name (Bob's SG2 chain intake: the four
+-- DensityMapHeightUtil primitives SG2-4 brackets) and the footprint shape each takes.
+GroundConditionAdmission.KIND_TIP_LINE    = "TIP_TO_GROUND_AROUND_LINE"
+GroundConditionAdmission.KIND_SMOOTH_LINE = "SMOOTH_AROUND_LINE"
+GroundConditionAdmission.KIND_CLEAR_AREA  = "CLEAR_AREA"
+GroundConditionAdmission.KIND_CHANGE_TYPE = "CHANGE_FILL_TYPE_AT_AREA"
+-- [SG2-5c-soil] A mower's cut, admitted so Soil's cut frame stands aside (header).
+GroundConditionAdmission.KIND_MOWER_CUT   = "MOWER_CUT"
+GroundConditionAdmission.KIND_SHAPE = {
+    [GroundConditionAdmission.KIND_TIP_LINE]    = "LINE",
+    [GroundConditionAdmission.KIND_SMOOTH_LINE] = "LINE",
+    [GroundConditionAdmission.KIND_CLEAR_AREA]  = "AREA",
+    [GroundConditionAdmission.KIND_CHANGE_TYPE] = "AREA",
+    [GroundConditionAdmission.KIND_MOWER_CUT]   = "AREA",
+}
+-- [SG2-5c-soil] The birth kinds a drop's contribution may name: the carriers whose fresh
+-- births Soil makes itself (GroundMovementCarrier.KIND_MOWER is "MOWER").
+GroundConditionAdmission.BIRTH_KINDS = { MOWER = true }
+GroundConditionAdmission.AGE_BORN = 1
+GroundConditionAdmission.firstBirthLogged = {}   -- profile id -> true, once per session
+
+local function finite(n)
+    return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
+end
+
+-- =========================================================
+-- Construction and bind
+-- =========================================================
+
+function GroundConditionAdmission.new()
+    local self = setmetatable({}, GroundConditionAdmission_mt)
+    self.armed       = false
+    self.coordinator = nil
+    self.cells       = nil
+    self.leases      = {}    -- token -> lease
+    self.leaseSeq    = 0
+    self.openLeases  = 0
+    -- Published table. Built once at arm() so the consumer's captured reference
+    -- stays valid; torn down on stand-down so a stale reference cannot be used to
+    -- deliver into a Soil that is no longer listening.
+    self.groundCondition = nil
+    self.collected, self.collectedOrder = {}, {}
+    -- [SG2-5c-soil] Per work area, the last MOWER_CUT admitted and the lease count it took.
+    -- The count is never reset, so a record from before a re-arm never reads as later.
+    self.mowerCuts = setmetatable({}, { __mode = "k" })
+    return self
+end
+
+---@return boolean armed
+function GroundConditionAdmission:arm(coordinator, cells)
+    self.armed = false
+    self.groundCondition = nil
+    self.leases = {}
+    self.openLeases = 0
+    self.collected, self.collectedOrder = {}, {}
+
+    if g_server == nil then
+        -- Server-local by contract. A client never admits a primitive.
+        return false
+    end
+    if coordinator == nil or not coordinator:isArmed() or cells == nil or not cells:isArmed() then
+        SoilLogger.info("[GroundAdmit] ground condition is unavailable - the admission interface is NOT published " ..
+            "(consumers will correctly treat Soil as absent for this join)")
+        return false
+    end
+
+    self.coordinator = coordinator
+    self.cells       = cells
+
+    local admit = function(footprint, primitiveKind, vehicleOrObject, workAreaIdentity)
+        return self:_admitPrimitive(footprint, primitiveKind, vehicleOrObject, workAreaIdentity)
+    end
+    local deliver = function(leaseToken, observation)
+        return self:_deliverMovement(leaseToken, observation)
+    end
+    local close = function(leaseToken)
+        return self:_closePrimitive(leaseToken)
+    end
+    local readCollected = function(snapshotRef, receiptRef)
+        return self:_readCollectedCondition(snapshotRef, receiptRef)
+    end
+
+    self.groundCondition = {
+        admissionRevision = GroundConditionAdmission.ADMISSION_REVISION,
+        admitPrimitive    = admit,
+        deliverMovement   = deliver,
+        closePrimitive    = close,
+        readCollectedCondition = readCollected,
+    }
+    self.armed = true
+    SoilLogger.info("[OK] GroundConditionAdmission published (admissionRevision %d)",
+        GroundConditionAdmission.ADMISSION_REVISION)
+    return true
+end
+
+function GroundConditionAdmission:isArmed()
+    return self.armed
+end
+
+function GroundConditionAdmission:standDown(why)
+    if self.armed then
+        SoilLogger.warning("[GroundAdmit] withdrawing the admission interface: %s", tostring(why))
+    end
+    self.armed = false
+    self.groundCondition = nil
+    self.leases = {}
+    self.openLeases = 0
+    self.collected, self.collectedOrder = {}, {}
+end
+
+--- The capability table. Publishing `groundCondition` here is the ONLY promise a
+--- consumer may act on. When we are not armed the key is absent entirely, which is
+--- what makes "Soil is absent for this join" the honest default.
+function GroundConditionAdmission:getCapabilities()
+    if not self.armed then
+        return {}
+    end
+    return {
+        groundCondition = {
+            admissionRevision = GroundConditionAdmission.ADMISSION_REVISION,
+        },
+    }
+end
+
+-- =========================================================
+-- The footprint and the observation
+-- =========================================================
+
+--- Validate a v1 footprint against the kind's shape. Returns a detached copy of the
+--- fields Soil uses, or nil.
+local function validFootprint(footprint, shape)
+    if footprint.schemaVersion ~= GroundConditionAdmission.FOOTPRINT_SCHEMA then return nil end
+    if footprint.kind ~= shape then return nil end
+    if shape == "LINE" then
+        if not (finite(footprint.sx) and finite(footprint.sz) and finite(footprint.ex) and finite(footprint.ez)) then return nil end
+        if type(footprint.fillTypeIndex) ~= "number" then return nil end
+        local inner, outer = footprint.innerRadius, footprint.radius
+        if inner ~= nil and not (finite(inner) and inner >= 0) then return nil end
+        if outer ~= nil and not (finite(outer) and outer >= 0) then return nil end
+        return { kind = "LINE", sx = footprint.sx, sz = footprint.sz, ex = footprint.ex, ez = footprint.ez,
+                 fillTypeIndex = footprint.fillTypeIndex, innerRadius = inner or 0, radius = outer }
+    end
+    if not (finite(footprint.x0) and finite(footprint.z0) and finite(footprint.x1) and finite(footprint.z1)
+            and finite(footprint.x2) and finite(footprint.z2)) then return nil end
+    return { kind = "AREA", x0 = footprint.x0, z0 = footprint.z0, x1 = footprint.x1, z1 = footprint.z1,
+             x2 = footprint.x2, z2 = footprint.z2 }
+end
+
+--- Validate a v1 observation against its lease: the same primitive, native facts
+--- only, the types consistent with the kind, finite quantities. Returns nil when it
+--- cannot be joined.
+local function validObservation(observation, lease)
+    if type(observation) ~= "table" then return nil end
+    -- A caller-supplied cells array is the revision 1 shape and never an input now:
+    -- Soil derives its own cells (Iris's answer 2).
+    if observation.cells ~= nil then return nil end
+    if observation.schemaVersion ~= GroundConditionAdmission.OBSERVATION_SCHEMA then return nil end
+    if observation.primitiveKind ~= lease.primitiveKind then return nil end
+    if type(observation.ok) ~= "boolean" then return nil end
+    local obs = { ok = observation.ok, conversionBasis = observation.conversionBasis }
+    if not observation.ok then return obs end
+    local kind = lease.primitiveKind
+    if kind == GroundConditionAdmission.KIND_TIP_LINE then
+        if observation.fillTypeIndex ~= lease.footprint.fillTypeIndex then return nil end
+        if not (finite(observation.deltaRequested) or observation.deltaRequested == -math.huge) then return nil end
+        if not finite(observation.litresReturned) then return nil end
+        obs.fillTypeIndex, obs.deltaRequested, obs.litresReturned = observation.fillTypeIndex, observation.deltaRequested, observation.litresReturned
+        obs.lineOffset = observation.lineOffset
+        -- The dropped material's carried records (header). A malformed list is a bad
+        -- observation like any other malformed field; a record Soil cannot read is not:
+        -- its litres are unknown.
+        if observation.contributions ~= nil then
+            if type(observation.contributions) ~= "table" then return nil end
+            local list = {}
+            for _, c in ipairs(observation.contributions) do
+                if type(c) ~= "table" or not finite(c.litres) or c.litres < 0 then return nil end
+                local entry = { litres = c.litres, record = c.record }
+                -- [SG2-5c-soil] A birth (header): its shape is checked here, its kind is
+                -- read by mixtureOf. It names a record or a birth, never both.
+                if c.birth ~= nil then
+                    local b = c.birth
+                    if c.record ~= nil or type(b) ~= "table" or type(b.kind) ~= "string" or type(b.fillTypeIndex) ~= "number" then return nil end
+                    entry.birth = { kind = b.kind, fillTypeIndex = b.fillTypeIndex }
+                end
+                list[#list + 1] = entry
+            end
+            obs.contributions = list
+        end
+    elseif kind == GroundConditionAdmission.KIND_CHANGE_TYPE then
+        if type(observation.sourceTypeIndex) ~= "number" or type(observation.destinationTypeIndex) ~= "number" then return nil end
+        if observation.litresReturned ~= nil and not finite(observation.litresReturned) then return nil end
+        obs.sourceTypeIndex, obs.destinationTypeIndex, obs.litresReturned = observation.sourceTypeIndex, observation.destinationTypeIndex, observation.litresReturned
+    else
+        -- SMOOTH_AROUND_LINE, CLEAR_AREA and MOWER_CUT return nothing the join needs.
+        if observation.litresReturned ~= nil and not finite(observation.litresReturned) then return nil end
+        obs.litresReturned = observation.litresReturned
+    end
+    return obs
+end
+
+--- [SG2-5c-soil] A birth contribution as the projector's mixture part, made at this deposit
+--- as GroundMovementCarrier.freshBirth makes a birth and accountResolve hands it to the
+--- projector: age raw 1; the profile's wetness, id, revision and estimated-at-birth
+--- provenance when (kind, type) is an accepted branch and the profile encodes, unknown
+--- wetness otherwise. A kind Soil makes no birth for is unknown. The deposit's own lease
+--- was admitted, so its barrier passed.
+function GroundConditionAdmission.birthPart(litres, birth)
+    if not GroundConditionAdmission.BIRTH_KINDS[birth.kind] then return { litres = litres } end
+    local C = GroundMovementCarrier
+    local part = { litres = litres, ageRaw = GroundConditionAdmission.AGE_BORN }
+    local profile = C.profileFor(birth.kind, birth.fillTypeIndex)
+    local wetnessRaw = profile ~= nil and C.profileWetnessRaw(profile) or nil
+    if wetnessRaw ~= nil then
+        part.wetnessRaw = wetnessRaw
+        part.profile, part.revision, part.provenance = profile.id, profile.revision, C.PROVENANCE_ESTIMATED_AT_BIRTH
+        if not GroundConditionAdmission.firstBirthLogged[profile.id] then
+            GroundConditionAdmission.firstBirthLogged[profile.id] = true
+            SoilLogger.info(
+                "[GroundAdmit] FIRST FRESH %s BIRTH ON AN ADMITTED DROP: %.1f L born at the deposit with profile %s " ..
+                "revision %d (%d%% wet basis, raw %d), provenance estimated-at-birth. The machine's frame is StockGuard's.",
+                tostring(profile.fillType), litres, profile.id, profile.revision, profile.pct, wetnessRaw)
+        end
+    end
+    return part
+end
+
+--- A drop's carried contributions as the projector's mixture ({ litres, ageRaw,
+--- wetnessRaw }, aged) and its total. Each record is read through Soil's own property:
+--- one that does not validate is unknown; a KNOWN record's coverage splits its litres
+--- into known and unknown; each known age is aged once, from its stamp to `today`
+--- (P-GROUND-1). A birth is made at this deposit (birthPart). Zero litres import nothing.
+---@return table mixture, number total
+function GroundConditionAdmission.mixtureOf(contributions, today)
+    local mixture, total = {}, 0
+    if type(contributions) ~= "table" then return mixture, total end
+    local GP = GroundConditionProperty
+    for _, c in ipairs(contributions) do
+        local litres = c.litres
+        if finite(litres) and litres > 0 then
+            total = total + litres
+            local rec = c.record
+            local ageRaw, wetnessRaw, ageDay
+            if GP ~= nil and GP.validate(rec) == true then
+                ageRaw, wetnessRaw, ageDay = GP.componentsOf(rec)
+            end
+            if c.birth ~= nil then
+                mixture[#mixture + 1] = GroundConditionAdmission.birthPart(litres, c.birth)
+            elseif ageRaw == nil and wetnessRaw == nil then
+                mixture[#mixture + 1] = { litres = litres }
+            else
+                local known = litres
+                if rec.knowledge == "KNOWN" and finite(rec.knownAmount) and finite(rec.basisAmount) and rec.basisAmount > 0 then
+                    known = litres * math.max(0, math.min(1, rec.knownAmount / rec.basisAmount))
+                end
+                if known > 0 then
+                    mixture[#mixture + 1] = { litres = known,
+                        ageRaw = GroundMovementCarrier.agedRaw(ageRaw, ageDay, today), wetnessRaw = wetnessRaw }
+                end
+                if litres - known > 0 then mixture[#mixture + 1] = { litres = litres - known } end
+            end
+        end
+    end
+    return mixture, total
+end
+
+-- =========================================================
+-- Leases
+-- =========================================================
+
+local function currentFrameIndex()
+    -- Real engine global, incremented once per update loop and wrapped at 2^30
+    -- (engine main.lua:777-779). Equality is therefore a sound same-frame test for
+    -- a lease that by contract cannot outlive one primitive.
+    --
+    -- READ THROUGH THE ENVIRONMENT, never rawget on _G. A mod runs in its own
+    -- environment (mods.lua:436-442): modEnv's __index is the real global table
+    -- and modEnv._G is modEnv itself, so rawget(_G, name) looks in the mod's own
+    -- table and never sees an engine global. Shipped in #1002 as a rawget, which
+    -- read nil in a game and left the frame rule inert; Bob's finding on #1003.
+    local n = g_updateLoopIndex
+    return type(n) == "number" and n or nil
+end
+
+--- How many leases have been admitted since arming. The standalone observer compares
+--- it across its native call (header, the admission count).
+function GroundConditionAdmission:admissionCount()
+    return self.leaseSeq
+end
+
+--- Derive the lease's cells from the footprint, read their whole-cell occupancy
+--- before the primitive and capture their pre-removal condition.
+function GroundConditionAdmission:_prepareLease(lease)
+    local O = GroundNativeObserver
+    local fp = lease.footprint
+    local cells, why
+    lease.heightMapValid = O.heightMapValid()
+    if fp.kind == "LINE" then
+        local outer = fp.radius
+        if outer == nil then outer = O.defaultRadius(fp.fillTypeIndex) end
+        lease.reach = fp.innerRadius + outer
+        cells, why = O.envelopeCells(lease.geometry, fp.sx, fp.sz, fp.ex, fp.ez, lease.reach)
+    else
+        cells, why = O.parallelogramCells(lease.geometry, fp.x0, fp.z0, fp.x1, fp.z1, fp.x2, fp.z2)
+    end
+    if cells == nil then
+        lease.derived, lease.envelopeRefused = nil, why
+        O.stats.refusedEnvelopes = O.stats.refusedEnvelopes + 1
+        return
+    end
+    if #cells > O.MAX_CELLS then
+        -- Too many cells to read. Keep the indices, read nothing: the delivery marks
+        -- them all unavailable rather than let old records stand.
+        lease.derived, lease.unobservable, lease.envelopeRefused = cells, true, "ENVELOPE_TOO_LARGE"
+        O.stats.refusedEnvelopes = O.stats.refusedEnvelopes + 1
+        return
+    end
+    if not lease.heightMapValid then
+        -- No height map to read: the native returns zero for every area, which is not
+        -- an observation. Keep the indices; the delivery marks them all unavailable.
+        lease.derived, lease.unobservable, lease.envelopeRefused = cells, true, "HEIGHT_MAP_INVALID"
+        return
+    end
+    lease.typeIndices, lease.windrowSet = O.occupancySets(fp.fillTypeIndex)
+    for _, cell in ipairs(cells) do
+        cell.before, cell.beforeWhole = O.readCell(cell, lease.typeIndices, lease.windrowSet)
+    end
+    O.stats.cellsRead = O.stats.cellsRead + #cells
+    GroundMovementProjector.captureCells(lease, cells)
+    lease.derived = cells
+end
+
+--- [SG2-5d] A collection machine: its pickups feed a collection StockGuard seals (header).
+function GroundConditionAdmission.isCollector(owner)
+    return type(owner) == "table" and (owner.spec_baler ~= nil or owner.spec_forageWagon ~= nil)
+end
+
+--- [SG2-5d] The COLLECTED snapshot of a collection pickup's source cells, before Soil projects
+--- it: each cell's litres of the footprint's type as Soil read them at admit, and its condition.
+function GroundConditionAdmission:_captureCollected(lease, cells)
+    local mw = self.coordinator ~= nil and self.coordinator.materialWetness or nil
+    if mw == nil or type(mw.collectedSnapshot) ~= "function" then return end
+    local ft = lease.footprint.fillTypeIndex
+    local src = {}
+    for _, cell in ipairs(cells) do
+        local before = cell.before ~= nil and cell.before[ft] or nil
+        if finite(before) and before > GroundMovementProjector.EPSILON then
+            src[#src + 1] = { gx = cell.gx, gz = cell.gz, litres = before }
+        end
+    end
+    -- Over bare ground the pickup can take nothing: no snapshot, so a machine working an
+    -- empty strip does not turn the store over every frame.
+    if #src == 0 then return end
+    local snap = mw:collectedSnapshot(ft, src)
+    if snap == nil then return end
+    lease.collected = snap
+    self.collected[snap.id] = snap
+    self.collectedOrder[#self.collectedOrder + 1] = snap.id
+    while #self.collectedOrder > GroundConditionAdmission.MAX_COLLECTED do
+        self.collected[table.remove(self.collectedOrder, 1)] = nil
+    end
+end
+
+--- [SG2-5d] A collection pickup's result: the snapshot it was captured in and, per cell the
+--- pickup actually lowered, the litres it lost, in id order.
+function GroundConditionAdmission.collectionOf(lease, cells, ft)
+    local snap = lease.collected
+    local parts = {}
+    for _, cell in ipairs(cells) do
+        local b, a = cell.before, cell.after
+        local id = tostring(cell.gx) .. ":" .. tostring(cell.gz)
+        if b ~= nil and a ~= nil and snap.parts[id] ~= nil then
+            local removed = (b[ft] or 0) - (a[ft] or 0)
+            if removed > GroundMovementProjector.EPSILON then parts[#parts + 1] = { id = id, raw = removed } end
+        end
+    end
+    table.sort(parts, function(p, q) return p.id < q.id end)
+    local r = snap.revision
+    return { snapshotRef = snap.id, basis = snap.basis, parts = parts,
+             revision = { epoch = r.epoch, changeCounter = r.changeCounter, ageThroughDay = r.ageThroughDay, wetThroughDay = r.wetThroughDay } }
+end
+
+--- [SG2-5d] THE PUBLISHED COLLECTED READ (header). Always a coverage.
+function GroundConditionAdmission:_readCollectedCondition(snapshotRef, receiptRef)
+    local MW = MaterialWetness
+    local function unavailable(reason) return MW.coverageResult(MW.BASIS.COLLECTED, MW.RESULT.UNAVAILABLE, reason) end
+    if snapshotRef ~= nil and snapshotRef == self.groundCondition then
+        SoilLogger.warning("[GroundAdmit] readCollectedCondition was called with a colon; it is a plain function on " ..
+            "the groundCondition table. Refusing rather than reading the table as a snapshot.")
+        return unavailable(GroundConditionAdmission.REFUSE_COLON_CALL)
+    end
+    if not self.armed then return unavailable(GroundConditionAdmission.REFUSE_NOT_ARMED) end
+    local mw = self.coordinator ~= nil and self.coordinator.materialWetness or nil
+    if mw == nil or type(mw.readCollectedCondition) ~= "function" then return unavailable("NO_GROUND_FAMILY") end
+    local snap = type(snapshotRef) == "string" and self.collected[snapshotRef] or nil
+    if snap == nil then return unavailable(GroundConditionAdmission.READ_SNAPSHOT_UNKNOWN) end
+    return mw:readCollectedCondition(snap, receiptRef)
+end
+
+--- A lease is bound to the primitive, the vehicle or object, and the work area.
+--- Anything else delivering against it is a different operation and is refused.
+function GroundConditionAdmission:_admitPrimitive(footprint, primitiveKind, vehicleOrObject, workAreaIdentity)
+    if not self.armed then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_NOT_ARMED }
+    end
+    self:_sweepStaleLeases()
+
+    -- A colon call would land the published table itself in `footprint`.
+    if footprint == self.groundCondition then
+        SoilLogger.warning("[GroundAdmit] admitPrimitive was called with a colon; it is a plain function on " ..
+            "the groundCondition table. Refusing rather than reading the table as a footprint.")
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_COLON_CALL }
+    end
+    if type(footprint) ~= "table" or type(primitiveKind) ~= "string" then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_ARGS }
+    end
+    local shape = GroundConditionAdmission.KIND_SHAPE[primitiveKind]
+    local fp = shape ~= nil and validFootprint(footprint, shape) or nil
+    if fp == nil then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_ARGS }
+    end
+    -- [SG2-5c-soil] A cut is a mower's, named by the work area table Soil's carrier is
+    -- handed: any other owner or identity could only stand some other frame aside.
+    local mowerCut = primitiveKind == GroundConditionAdmission.KIND_MOWER_CUT
+    if mowerCut and (type(vehicleOrObject) ~= "table" or vehicleOrObject.spec_mower == nil or type(workAreaIdentity) ~= "table") then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_ARGS }
+    end
+
+    local geometry = self.cells:getConditionGeometry()
+    if geometry == nil then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_NO_GEOMETRY }
+    end
+
+    -- THE BARRIER RUNS HERE, against PRE-OPERATION ground, and this call returns
+    -- before the caller performs any native pickup, deposit, brush or conversion.
+    -- The caller never runs or advances a Soil cursor; that is the whole point of
+    -- making them ask us first.
+    local ok, reason = self.coordinator:runSettlementBarrier()
+    if not ok then
+        -- Refused: no lease. Native work runs, the caller observes quantities, and
+        -- incoming condition is unknown. This is not an error.
+        return { status = GroundConditionAdmission.STATUS_REFUSED, reason = reason }
+    end
+
+    self.leaseSeq = self.leaseSeq + 1
+    local token = string.format("SFGC-%d-%d", self.coordinator.epoch, self.leaseSeq)
+    local lease = {
+        token         = token,
+        primitiveKind = primitiveKind,
+        owner         = vehicleOrObject,
+        workArea      = workAreaIdentity,
+        geometry      = geometry,
+        footprint     = fp,
+        frameIndex    = currentFrameIndex(),
+        open          = true,
+        deliveries    = 0,
+        -- The projector's context: this lease's coordinator, the condition cells
+        -- surface and the geometry; the derived Soil cells go to lease.derived.
+        coordinator   = self.coordinator,
+        cells         = self.cells,
+        stats         = { projected = 0, cleared = 0, unavailable = 0 },
+    }
+    if mowerCut then
+        -- No cells: the cut writes none, so nothing may be marked at its close (header).
+        self.mowerCuts[workAreaIdentity] = { owner = vehicleOrObject, seq = self.leaseSeq }
+    else
+        self:_prepareLease(lease)
+    end
+    self.leases[token] = lease
+    self.openLeases = self.openLeases + 1
+
+    return { status = GroundConditionAdmission.STATUS_ADMITTED, leaseToken = token }
+end
+
+--- Resolve a lease for use, applying the lifetime rules.
+---@return table|nil lease, string|nil refusal
+function GroundConditionAdmission:_resolveLease(leaseToken)
+    if type(leaseToken) ~= "string" then
+        return nil, GroundConditionAdmission.DELIVER_NO_LEASE
+    end
+    local lease = self.leases[leaseToken]
+    if lease == nil then
+        return nil, GroundConditionAdmission.DELIVER_NO_LEASE
+    end
+    if not lease.open then
+        return nil, GroundConditionAdmission.DELIVER_LEASE_CLOSED
+    end
+    -- A lease closes with its primitive and is never held across frames. A delivery
+    -- arriving in a later frame is a different operation against ground that may
+    -- have moved on, so it is refused rather than projected onto stale cells.
+    if self:_expireIfStale(lease) then
+        return nil, GroundConditionAdmission.DELIVER_STALE_FRAME
+    end
+    return lease, nil
+end
+
+--- The frame rule: a lease from an earlier update frame is closed and its cells, if
+--- nothing was accepted for them, marked; it is then neither deliverable nor live.
+--- MAINTENANCE row 101: the token is dead either way, so the record leaves the table
+--- here rather than waiting for a close that a leaking caller never sends; a later
+--- deliver or close on it is refused as NO_LEASE (declared on the PR).
+---@return boolean expired
+function GroundConditionAdmission:_expireIfStale(lease)
+    if not lease.open then return false end
+    local now = currentFrameIndex()
+    if lease.frameIndex ~= nil and now ~= nil and now ~= lease.frameIndex then
+        self:_markUndelivered(lease, "LEASE_CROSSED_A_FRAME")
+        lease.open = false
+        self.openLeases = self.openLeases - 1
+        self.leases[lease.token] = nil
+        return true
+    end
+    return false
+end
+
+--- Row 101: every lease left over from an earlier frame is expired (closed, marked,
+--- removed) before a new one is minted, so the table holds only this frame's leases
+--- and a caller that leaks is bounded by its own frame, not by the mission.
+function GroundConditionAdmission:_sweepStaleLeases()
+    for _, lease in pairs(self.leases) do
+        self:_expireIfStale(lease)
+    end
+end
+
+--- Deliver one completed elementary movement.
+---
+--- Soil projects movement ONLY in this call, immediately after the primitive and
+--- before the caller returns to the running native processing delegate. The
+--- existing HayBet post-delegate drying effect is NOT run here: it runs once at the
+--- enclosing processing end, after every elementary delivery, which is what keeps a
+--- legitimate tedding effect from being overwritten by a late projection.
+---
+--- `observation` is the v1 native observation (header). Soil reads the lease cells'
+--- occupancy again, works out per cell what was lost or gained, and projects through
+--- GroundMovementProjector: a pickup's source cells cleared only on a known whole-cell
+--- zero, a drop's arrivals of unknown condition (Soil captured nothing of the carried
+--- stock), a smoothing's or clearing's losses fed onto its gains litre-weighted, a
+--- conversion unknown for want of a registered basis.
+---@return table { status, reason, projected, refusedCells, cleared, unavailable }
+function GroundConditionAdmission:_deliverMovement(leaseToken, observation)
+    if not self.armed then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.REFUSE_NOT_ARMED }
+    end
+
+    local lease, refusal = self:_resolveLease(leaseToken)
+    if lease == nil then
+        return { status = GroundConditionAdmission.STATUS_REFUSED, reason = refusal }
+    end
+    local obs = validObservation(observation, lease)
+    if obs == nil then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.DELIVER_BAD_OBS }
+    end
+    lease.deliveries = lease.deliveries + 1
+
+    local P = GroundMovementProjector
+    local cells = lease.derived
+    local result = { status = GroundConditionAdmission.STATUS_ADMITTED, reason = GroundConditionAdmission.DELIVER_OK,
+                     projected = 0, refusedCells = 0, cleared = 0, unavailable = 0 }
+
+    if cells == nil then
+        -- The envelope could not be placed on cells (off the map, nonfinite, unbounded),
+        -- or the primitive writes none (MOWER_CUT, header): nothing to project, and
+        -- nothing to mark.
+        result.envelopeRefused = lease.envelopeRefused
+        return result
+    end
+    if not obs.ok then
+        -- The primitive threw: its cells may hold a partial native write, so they
+        -- cannot be vouched for; nothing is projected.
+        result.unavailable = P.markAll(lease, cells, "NATIVE_ERROR")
+        lease.marked = true   -- row 100: the close and the frame rule mark nothing more; this reason stands
+        return result
+    end
+    if lease.unobservable then
+        -- Enumerated but not read (too large, or no height map): every cell it covers
+        -- may have changed and none can be vouched for. Mark them all, keep their
+        -- bytes, project nothing.
+        result.unavailable = P.markAll(lease, cells, "ENVELOPE:" .. tostring(lease.envelopeRefused))
+        result.envelopeRefused = lease.envelopeRefused
+        lease.marked = true   -- row 100, as above
+        return result
+    end
+    if not GroundNativeObserver.heightMapValid() then
+        -- The height map went away between admit and delivery: an after read would be
+        -- zero, not an observation.
+        result.unavailable = P.markAll(lease, cells, "HEIGHT_MAP_INVALID")
+        lease.marked = true   -- row 100, as above
+        return result
+    end
+
+    -- The whole-cell occupancy after the primitive, read by Soil itself.
+    for _, cell in ipairs(cells) do
+        cell.after, cell.afterWhole = GroundNativeObserver.readCell(cell, lease.typeIndices, lease.windrowSet)
+    end
+
+    local kind, counts = lease.primitiveKind, nil
+    if kind == GroundConditionAdmission.KIND_TIP_LINE then
+        if obs.deltaRequested < 0 then
+            -- A pickup: the source condition leaves with the material. StockGuard holds
+            -- the material and Soil registers no condition on it, so the removals go
+            -- back to the caller in this result (result.collected: litres with the
+            -- captured age and wetness per source cell), the evidence F211's reader
+            -- will take; the lease itself closes with the primitive and keeps nothing.
+            if GroundConditionAdmission.isCollector(lease.owner) then
+                self:_captureCollected(lease, cells)   -- [SG2-5d] before the projection clears them
+            end
+            local collected = {}
+            local _, c = P.pickup(lease, cells, obs.fillTypeIndex, function(litres, ageRaw, wetnessRaw)
+                collected[#collected + 1] = { litres = litres, ageRaw = ageRaw, wetnessRaw = wetnessRaw }
+            end)
+            result.collected = collected
+            if lease.collected ~= nil then
+                result.collection = GroundConditionAdmission.collectionOf(lease, cells, obs.fillTypeIndex)
+            end
+            counts = c
+        else
+            -- A drop from carried stock: the caller's contributions carry the material's
+            -- condition (header); without them it arrives of unknown condition, and the
+            -- conservative combine propagates that either way.
+            local today = self.coordinator ~= nil and self.coordinator:currentMonotonicDay() or nil
+            local mixture, total = GroundConditionAdmission.mixtureOf(obs.contributions, today)
+            counts = P.drop(lease, cells, obs.fillTypeIndex, mixture, total)
+        end
+    elseif kind == GroundConditionAdmission.KIND_CHANGE_TYPE then
+        counts = P.convert(lease, cells, obs.sourceTypeIndex, obs.destinationTypeIndex, false)
+    else
+        counts = P.redistribute(lease, cells)
+    end
+    result.projected   = counts.projected or 0
+    result.cleared     = counts.cleared or 0
+    result.unavailable = counts.unavailable or 0
+    result.refusedCells = (counts.unavailable or 0) + (counts.refused or 0)
+    lease.accepted = (lease.accepted or 0) + 1
+    return result
+end
+
+--- A lease that ends with no accepted delivery leaves cells the native primitive may
+--- have changed with records nobody vouched for: the standalone observer stood aside
+--- for the admission (the count moved), so the only witness delivered nothing, or a
+--- refused observation, or one in a later frame. Every cell the lease named goes
+--- unavailable (Bob's verdict on #1002): bytes kept, never cleared or invented.
+function GroundConditionAdmission:_markUndelivered(lease, reason)
+    if (lease.accepted or 0) > 0 or lease.marked then return 0 end
+    lease.marked = true
+    if lease.derived == nil then return 0 end
+    return GroundMovementProjector.markAll(lease, lease.derived, reason)
+end
+
+--- Close the lease. The contract says the lease closes with the primitive; this is
+--- how the caller says the primitive is done.
+function GroundConditionAdmission:_closePrimitive(leaseToken)
+    local lease = type(leaseToken) == "string" and self.leases[leaseToken] or nil
+    if lease == nil then
+        return { status = GroundConditionAdmission.STATUS_REFUSED,
+                 reason = GroundConditionAdmission.DELIVER_NO_LEASE }
+    end
+    local marked = self:_markUndelivered(lease, "LEASE_CLOSED_UNDELIVERED")
+    if lease.open then
+        lease.open = false
+        self.openLeases = self.openLeases - 1
+    end
+    self.leases[leaseToken] = nil
+    return { status = GroundConditionAdmission.STATUS_ADMITTED, deliveries = lease.deliveries, unavailable = marked }
+end
+
+--- True while any lease is live for this primitive identity. Section 7 says Soil
+--- must not install, fire or post-delegate its STANDALONE observer for a primitive
+--- while a lease is live for it. Section 3's carriers are the caller; this is the
+--- question they will ask before the call. During the call they watch the count.
+--- Live means open AND of this frame: a lease a caller never closed expires by the
+--- frame rule here, so it cannot keep the standalone carrier standing aside for the
+--- rest of the mission (Bob's verdict on #1002).
+function GroundConditionAdmission:hasLiveLeaseFor(vehicleOrObject, workAreaIdentity)
+    for _, lease in pairs(self.leases) do
+        if lease.open and lease.owner == vehicleOrObject and lease.workArea == workAreaIdentity then
+            if not self:_expireIfStale(lease) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+--- [SG2-5c-soil] Whether a MOWER_CUT for this mower's work area was admitted after the
+--- admission count read `count` (header: StockGuard's bracket inside Soil's cut frame).
+--- The lease has closed by the time the frame asks, so this reads the record the
+--- admission keeps per work area, not the lease.
+function GroundConditionAdmission:mowerCutAdmittedSince(vehicleOrObject, workAreaIdentity, count)
+    local cut = self.mowerCuts[workAreaIdentity]
+    return cut ~= nil and cut.owner == vehicleOrObject and cut.seq > count
+end
+
+function GroundConditionAdmission:getOpenLeaseCount()
+    return self.openLeases
+end

@@ -16,7 +16,7 @@
 -- =========================================================
 
 ---@class SoilSprayerInfoPanel
-SoilSprayerInfoPanel = {}
+SoilSprayerInfoPanel = SoilSprayerInfoPanel or {}
 local SoilSprayerInfoPanel_mt = Class(SoilSprayerInfoPanel)
 
 -- ── Layout constants ──────────────────────────────────────
@@ -24,14 +24,16 @@ SoilSprayerInfoPanel.GAP      = 0.003
 SoilSprayerInfoPanel.PAD      = 0.006
 SoilSprayerInfoPanel.TITLE_H  = 0.022
 SoilSprayerInfoPanel.ROW_H    = 0.022
-SoilSprayerInfoPanel.BAR_H    = 0.009
+-- Six pixels at 1080p, matching the base fill/work-width bars.
+SoilSprayerInfoPanel.BAR_H    = 0.005556
 SoilSprayerInfoPanel.FLAG_W   = 0.0018
 SoilSprayerInfoPanel.FLAG_CAP = 0.0030
 SoilSprayerInfoPanel.STAT_H   = 0.036
 
--- Default position (bottom-left corner, used when no saved position exists)
-SoilSprayerInfoPanel.DEFAULT_X = 0.015625
-SoilSprayerInfoPanel.DEFAULT_Y = 0.520
+-- Default position / scale: the suite layout Wizard arranged in-game (2026-08-22).
+SoilSprayerInfoPanel.DEFAULT_X     = 0.328646
+SoilSprayerInfoPanel.DEFAULT_Y     = 0.122482
+SoilSprayerInfoPanel.DEFAULT_SCALE = 1.290716
 
 -- ── Colors ───────────────────────────────────────────────
 SoilSprayerInfoPanel.C_BG       = {0.05, 0.05, 0.05, 0.82}
@@ -79,7 +81,7 @@ function SoilSprayerInfoPanel.new(soilSystem, settings)
     self.resizeStartX     = 0
     self.resizeStartY     = 0
     self.resizeStartScale = 1.0
-    self.userScale        = 1.0
+    self.userScale        = SoilSprayerInfoPanel.DEFAULT_SCALE
     self.movedInEditMode  = false
     self._animTimer       = 0
 
@@ -121,6 +123,7 @@ function SoilSprayerInfoPanel:initialize()
 end
 
 function SoilSprayerInfoPanel:delete()
+    if self.editMode then self:exitEditMode() end
     if self.fillOverlay and self.fillOverlay ~= 0 then
         delete(self.fillOverlay)
         self.fillOverlay = nil
@@ -182,7 +185,7 @@ function SoilSprayerInfoPanel:loadLayout()
             self.panelY = y
             SoilLogger.info("[SoilSprayerInfoPanel] Layout loaded: (%.3f, %.3f)", x, y)
         end
-        self.userScale = xml:getFloat("sprayerPanelLayout.scale", 1.0)
+        self.userScale = xml:getFloat("sprayerPanelLayout.scale", SoilSprayerInfoPanel.DEFAULT_SCALE)
         xml:delete()
     end
 end
@@ -191,6 +194,13 @@ end
 
 function SoilSprayerInfoPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
     if not self.editMode then return false end
+
+    -- Only claim a fresh click when it is still available. Move/up events for
+    -- an already captured drag continue below even if another listener marks
+    -- the shared event used.
+    if isDown and button == Input.MOUSE_BUTTON_LEFT and eventUsed then
+        return false
+    end
 
     local px = self._lastPanelX
     local py = self._lastPanelY
@@ -210,8 +220,8 @@ function SoilSprayerInfoPanel:onMouseEvent(posX, posY, isDown, isUp, button, eve
 
     -- Mouse move: update position while dragging
     if self.dragging then
-        self.panelX = math.max(0, math.min(0.85, posX - self.dragOffsetX))
-        self.panelY = math.max(0.02, math.min(0.95, posY - self.dragOffsetY))
+        self.panelX = math.max(0, math.min(1 - pw, posX - self.dragOffsetX))
+        self.panelY = math.max(0, math.min(1 - ph, posY - self.dragOffsetY))
         return true
     end
 
@@ -222,14 +232,39 @@ function SoilSprayerInfoPanel:onMouseEvent(posX, posY, isDown, isUp, button, eve
         local startDist = math.sqrt((self.resizeStartX - cx)^2 + (self.resizeStartY - cy)^2)
         local currDist  = math.sqrt((posX - cx)^2 + (posY - cy)^2)
         local delta = (currDist - startDist) * 2.5
-        self.userScale = math.max(0.5, math.min(2.5, self.resizeStartScale + delta))
+        local oldScale = self.userScale or 1.0
+        local newScale = math.max(0.5, math.min(2.5, self.resizeStartScale + delta))
+        local ratio = oldScale > 0 and newScale / oldScale or 1
+        self.userScale = newScale
+        self.panelX = math.max(0, math.min(1 - pw * ratio, self.panelX or px))
+        self.panelY = math.max(0, math.min(1 - ph * ratio, self.panelY or py))
         return true
     end
 
     -- LMB down: resize corner (bottom-right) takes priority over drag
     if isDown and button == Input.MOUSE_BUTTON_LEFT then
+        -- Harvester renders after this panel and is visually above it. Yield an
+        -- overlapping click so the later handler gets the topmost panel.
+        local sfm = g_SoilFertilityManager
+        local harvester = sfm and sfm.harvesterPanel
+        local hx = harvester and harvester._lastPanelX
+        local hy = harvester and harvester._lastPanelY
+        local hw = harvester and harvester._lastPanelW
+        local hh = harvester and harvester._lastPanelH
+        if harvester and harvester.editMode
+            and type(hx) == "number" and type(hy) == "number"
+            and type(hw) == "number" and type(hh) == "number"
+            and posX >= hx and posX <= hx + hw
+            and posY >= hy and posY <= hy + hh then
+            return false
+        end
+
         if posX >= (px + pw - hs) and posX <= (px + pw) and
            posY >= py and posY <= (py + hs) then
+            -- Freeze an auto-anchored panel at the exact preview position before
+            -- resizing so the saved layout cannot jump back to DEFAULT_X/Y.
+            self.panelX            = px
+            self.panelY            = py
             self.resizing         = true
             self.dragging         = false
             self.resizeStartX     = posX
@@ -239,6 +274,8 @@ function SoilSprayerInfoPanel:onMouseEvent(posX, posY, isDown, isUp, button, eve
             return true
         end
         if posX >= px and posX <= px + pw and posY >= py and posY <= py + ph then
+            self.panelX         = px
+            self.panelY         = py
             self.dragging        = true
             self.dragOffsetX     = posX - px
             self.dragOffsetY     = posY - py
@@ -269,6 +306,18 @@ end
 -- ── Sprayer helpers ───────────────────────────────────────
 
 function SoilSprayerInfoPanel:getActiveSprayer()
+    -- Reuse SoilHUD's recursive applicator resolver so this panel follows the
+    -- same equipment set as the application-rate HUD: self-propelled sprayers,
+    -- dry spreaders, slurry/manure applicators, lime tools, fertilising seeders
+    -- and cultivators, including implements nested behind another attachment.
+    local sfm = g_SoilFertilityManager
+    local hud = sfm and sfm.soilHUD
+    if hud and type(hud.getCurrentSprayer) == "function" then
+        local applicator = hud:getCurrentSprayer()
+        if applicator then return applicator end
+    end
+
+    -- Startup/fallback path retained for the short window before SoilHUD exists.
     local player = g_localPlayer
     if not player or type(player.getIsInVehicle) ~= "function" then return nil end
     if not player:getIsInVehicle() then return nil end
@@ -286,6 +335,18 @@ end
 
 function SoilSprayerInfoPanel:getSprayerFillType(sprayer)
     if not sprayer then return nil end
+
+    -- Keep fill-type resolution identical to the application-rate HUD. That
+    -- broader path understands custom slurry/manure/lime specifications as well
+    -- as ordinary spec_sprayer tools and nested implement tanks.
+    local sfm = g_SoilFertilityManager
+        or (g_currentMission and g_currentMission.soilFertilityManager or nil)
+    local hud = sfm and sfm.soilHUD
+    if hud and type(hud.getSprayerFillType) == "function" then
+        local fillType = hud:getSprayerFillType(sprayer)
+        if fillType then return fillType end
+    end
+
     local fillTypeIndex
     local spec = sprayer.spec_sprayer
     if spec and spec.workAreaParameters then
@@ -325,9 +386,17 @@ function SoilSprayerInfoPanel:update(dt)
     for _, nd in ipairs(NUTRIENT_ROWS) do
         if info then
             local raw = info[nd.fieldKey]
-            local tgt = (type(raw) == "table") and (raw.value or 0) or (raw or 0)
-            local cur = sv[nd.fieldKey]
-            sv[nd.fieldKey] = (cur == nil) and tgt or (cur + (tgt - cur) * alpha)
+            if nd.profileKey == "pH" and type(raw) ~= "number" then
+                -- [RSF-F219] No current pH at this sample: the smoothed slot is
+                -- cleared, never written to 0 or eased toward 0, so a previous
+                -- local value cannot survive as a current measurement. A later
+                -- real sample snaps in from the actual pH.
+                sv[nd.fieldKey] = nil
+            else
+                local tgt = (type(raw) == "table") and (raw.value or 0) or (raw or 0)
+                local cur = sv[nd.fieldKey]
+                sv[nd.fieldKey] = (cur == nil) and tgt or (cur + (tgt - cur) * alpha)
+            end
         else
             sv[nd.fieldKey] = nil
         end
@@ -431,8 +500,16 @@ function SoilSprayerInfoPanel:draw()
     if not self.initialized then return end
     if not self.settings or not self.settings.enabled then return end
     if not g_currentMission or not g_currentMission.isRunning then return end
-    local sfm = g_SoilFertilityManager; if sfm and sfm.soilHUD and not sfm.soilHUD.visible then return end
-    if sfm and sfm.settings and sfm.settings.showSprayerInfoPanel == false then return end
+    local sfm = g_SoilFertilityManager
+    -- Cab tool readouts follow the base-game HUD only. Suite hide-all and the
+    -- Soil monitor toggle must not hide a working tool panel. Vanilla HUD-hide does.
+    if not self.editMode and g_currentMission.hud
+        and type(g_currentMission.hud.getIsVisible) == "function"
+        and not g_currentMission.hud:getIsVisible() then return end
+    -- Edit mode always exposes a placement placeholder, even when the runtime
+    -- display preference is off or no sprayer/spreader/slurry tool is active.
+    if not self.editMode and sfm and sfm.settings
+        and sfm.settings.showSprayerInfoPanel == false then return end
     if g_gui and (g_gui:getIsGuiVisible() or g_gui:getIsDialogVisible()) then
         if not self.editMode then return end
     end
@@ -523,14 +600,20 @@ function SoilSprayerInfoPanel:draw()
 
     -- ── Render ──────────────────────────────────────────────
 
-    -- Shadow
-    self:drawRect(panelX + 0.002*sc, panelBot - 0.002*sc, panelW, panelH, {0, 0, 0, 1}, 0.22)
-    -- Background
-    self:drawRect(panelX, panelBot, panelW, panelH, SoilSprayerInfoPanel.C_BG)
-    -- Border
-    self:drawRect(panelX, panelBot, panelW, panelH, SoilSprayerInfoPanel.C_BORDER, 0.55)
-    -- Title bar
-    self:drawRect(panelX, panelTop - titleH, panelW, titleH, SoilSprayerInfoPanel.C_TITLE_BG)
+    local renderer = SoilHUD and SoilHUD.getBaseGameRenderer and SoilHUD.getBaseGameRenderer() or nil
+    local usedNativePanel = renderer ~= nil and renderer.renderPanel ~= nil
+        and renderer:renderPanel(panelX, panelBot, panelW, panelH,
+            SoilSprayerInfoPanel.C_BG[4] or 0.82)
+    if not usedNativePanel then
+        -- Shadow
+        self:drawRect(panelX + 0.002*sc, panelBot - 0.002*sc, panelW, panelH, {0, 0, 0, 1}, 0.22)
+        -- Background
+        self:drawRect(panelX, panelBot, panelW, panelH, SoilSprayerInfoPanel.C_BG)
+        -- Border
+        self:drawRect(panelX, panelBot, panelW, panelH, SoilSprayerInfoPanel.C_BORDER, 0.55)
+        -- Title bar
+        self:drawRect(panelX, panelTop - titleH, panelW, titleH, SoilSprayerInfoPanel.C_TITLE_BG)
+    end
 
     -- Edit mode chrome: pulsing border + resize handle
     if self.editMode then
@@ -552,9 +635,8 @@ function SoilSprayerInfoPanel:draw()
     local fertTitle = (fillType and (fillType.title or fillType.name)) or "Sprayer Panel"
     local fieldStr  = ""
     if self._fieldId then
-        local ok2, fmtStr = pcall(function() return g_i18n:getText("sf_hud_field") end)
-        fieldStr = " · " .. ((ok2 and fmtStr and not fmtStr:find("^%$l10n_"))
-                   and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
+        local fmtStr = SoilL10n.tr("sf_hud_field")
+        fieldStr = " · " .. (fmtStr and string.format(fmtStr, self._fieldId) or tostring(self._fieldId))
     end
 
     setTextBold(true)
@@ -596,8 +678,7 @@ function SoilSprayerInfoPanel:draw()
 
     elseif not hasField then
         -- On field with sprayer but not yet detecting a field
-        local ok, msg = pcall(function() return g_i18n:getText("sf_sprayer_no_field") end)
-        local txt = (ok and msg and not msg:find("^%$l10n_")) and msg or "Drive onto a field"
+        local txt = SoilL10n.tr("sf_sprayer_no_field", "Drive onto a field")
         setTextAlignment(RenderText.ALIGN_LEFT)
         setTextColor(unpack(SoilSprayerInfoPanel.C_DIM))
         renderText(panelX + pad, cy - rowH + (rowH - lblSz) * 0.45, lblSz, txt)
@@ -607,7 +688,14 @@ function SoilSprayerInfoPanel:draw()
         local info = self._fieldInfo
         for _, nd in ipairs(activeRows) do
             local pKey    = nd.profileKey
-            local rawVal  = self._smoothValues[nd.fieldKey] or 0
+            local smooth  = self._smoothValues[nd.fieldKey]
+            -- [RSF-F219] The pH row is unavailable as a whole when the current
+            -- sample carries no numeric pH: no or-0 coercion, no fill ratio or
+            -- status colour from a fake number, the host dash in the dim colour
+            -- over an empty bar. N/P/K/OM keep their smoothing and drawing.
+            local phUnknown = (pKey == "pH")
+                and (smooth == nil or info == nil or type(info.pH) ~= "number")
+            local rawVal  = phUnknown and nil or (smooth or 0)
             local maxVal  = nd.maxVal
             local rowBot  = cy - rowH
             local barMidY = rowBot + (rowH - barH) * 0.5
@@ -616,13 +704,23 @@ function SoilSprayerInfoPanel:draw()
             setTextColor(unpack(SoilSprayerInfoPanel.C_LABEL))
             renderText(panelX + pad, rowBot + (rowH - lblSz) * 0.42, lblSz, nd.label)
 
-            -- Bar track
-            self:drawRect(barX, barMidY, barW, barH, SoilSprayerInfoPanel.C_BAR_BG)
-            -- Bar fill
-            local fillRatio = math.max(0, math.min(rawVal / maxVal, 1))
-            local barColor  = statusColor(pKey, rawVal)
-            if barW * fillRatio > 0 then
-                self:drawRect(barX, barMidY, barW * fillRatio, barH, barColor)
+            local fillRatio, barColor
+            if phUnknown then
+                fillRatio = 0
+                barColor  = SoilSprayerInfoPanel.C_DIM
+            else
+                fillRatio = math.max(0, math.min(rawVal / maxVal, 1))
+                barColor  = statusColor(pKey, rawVal)
+            end
+            local usedNativeBar = renderer ~= nil and renderer.renderProgressBar ~= nil
+                and renderer:renderProgressBar(barX, barMidY, barW, barH, fillRatio, barColor)
+            if not usedNativeBar then
+                -- Bar track
+                self:drawRect(barX, barMidY, barW, barH, SoilSprayerInfoPanel.C_BAR_BG)
+                -- Bar fill
+                if barW * fillRatio > 0 then
+                    self:drawRect(barX, barMidY, barW * fillRatio, barH, barColor)
+                end
             end
             -- Finish flag at target threshold
             local tFrac = targetFraction(pKey, maxVal)
@@ -632,7 +730,9 @@ function SoilSprayerInfoPanel:draw()
 
             -- Value
             local valStr
-            if pKey == "pH" then
+            if phUnknown then
+                valStr = "--"
+            elseif pKey == "pH" then
                 valStr = string.format("%.1f", rawVal)
             elseif pKey == "OM" then
                 valStr = string.format("%.1f%%", rawVal)
@@ -661,13 +761,16 @@ function SoilSprayerInfoPanel:draw()
         local statSz = sbH * 0.38
         local statFs = 0.0075 * sc
 
+        local dividerH = SoilHUD and SoilHUD.getSeparatorHeight
+            and SoilHUD.getSeparatorHeight() or (g_pixelSizeY or (1 / 1080))
+        local dividerW = g_pixelSizeX or (1 / 1920)
         -- Separator line
-        self:drawRect(panelX, sbY + sbH - 0.0015*sc, panelW, 0.0015*sc,
+        self:drawRect(panelX, sbY + sbH - dividerH, panelW, dividerH,
                       SoilSprayerInfoPanel.C_BORDER, 0.80)
         -- Cell dividers
         for i = 1, 3 do
-            self:drawRect(panelX + cellW * i - 0.0008*sc, sbY + pad,
-                          0.0008*sc, sbH - pad * 2,
+            self:drawRect(panelX + cellW * i - dividerW * 0.5, sbY + pad,
+                          dividerW, sbH - pad * 2,
                           SoilSprayerInfoPanel.C_BORDER, 0.60)
         end
 
@@ -686,7 +789,7 @@ function SoilSprayerInfoPanel:draw()
                     or (sessCov >= 0.40) and SoilSprayerInfoPanel.C_FAIR
                     or SoilSprayerInfoPanel.C_LABEL
         local mbW  = cellW * 0.72
-        local mbH  = 0.0045 * sc
+        local mbH  = (6 / 1080) * sc
         local mbX  = panelX + (cellW - mbW) * 0.5
         local mbY  = sbY + sbH * 0.62
         local mSeg = 4
@@ -695,10 +798,14 @@ function SoilSprayerInfoPanel:draw()
         local mFill = sessCov * mSeg
         for mi = 0, mSeg - 1 do
             local msx = mbX + mi * (mSW + mGap)
-            self:drawRect(msx, mbY, mSW, mbH, SoilSprayerInfoPanel.C_BAR_BG)
             local mfrac = math.max(0, math.min(1, mFill - mi))
-            if mfrac > 0 then
-                self:drawRect(msx, mbY, mSW * mfrac, mbH, covCol)
+            local usedNativeSegment = renderer ~= nil and renderer.renderProgressBar ~= nil
+                and renderer:renderProgressBar(msx, mbY, mSW, mbH, mfrac, covCol)
+            if not usedNativeSegment then
+                self:drawRect(msx, mbY, mSW, mbH, SoilSprayerInfoPanel.C_BAR_BG)
+                if mfrac > 0 then
+                    self:drawRect(msx, mbY, mSW * mfrac, mbH, covCol)
+                end
             end
         end
         -- Tiny caption above the mini bar so the % isn't mistaken for overall
@@ -758,4 +865,13 @@ function SoilSprayerInfoPanel:draw()
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(1, 1, 1, 1)
     setTextBold(false)
+end
+
+-- Hot-reload: preserve the class table and patch the already-constructed panel.
+local sfm = g_SoilFertilityManager
+if sfm == nil and g_currentMission ~= nil then sfm = g_currentMission.soilFertilityManager end
+if sfm ~= nil and sfm.sprayerInfoPanel ~= nil then
+    for k, v in pairs(SoilSprayerInfoPanel) do
+        if type(v) == "function" then sfm.sprayerInfoPanel[k] = v end
+    end
 end

@@ -28,7 +28,7 @@
 -- =========================================================
 
 ---@class SoilLayerSystem
-SoilLayerSystem = {}
+SoilLayerSystem = SoilLayerSystem or {}
 local SoilLayerSystem_mt = Class(SoilLayerSystem)
 
 -- ─────────────────────────────────────────────────────────

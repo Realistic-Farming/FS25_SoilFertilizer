@@ -11,12 +11,11 @@
 -- =========================================================
 
 ---@class SoilFieldDetailDialog
-SoilFieldDetailDialog = {}
+SoilFieldDetailDialog = SoilFieldDetailDialog or {}
 local SoilFieldDetailDialog_mt = Class(SoilFieldDetailDialog, ScreenElement)
 
 -- Capture mod name at source-time
-local SF_DETAIL_MOD_NAME = g_currentModName
-local SF_DETAIL_MOD_DIR  = g_currentModDirectory
+local SF_DETAIL_MOD_DIR  = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 -- Singleton
 SoilFieldDetailDialog.INSTANCE = nil
@@ -72,15 +71,20 @@ end
 -- ── i18n helper ───────────────────────────────────────────
 
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_DETAIL_MOD_NAME]
-    local i18n = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 -- ── Constructor ───────────────────────────────────────────
@@ -95,7 +99,7 @@ function SoilFieldDetailDialog.new(target, customMt)
 end
 
 -- Capture mod directory at source-time (valid during loading only)
-local SF_DETAIL_MOD_DIR = g_currentModDirectory
+local SF_DETAIL_MOD_DIR = (SoilFertilizerModDirectory or g_currentModDirectory)
 
 ---@param modDirectory string  Path to mod directory (with trailing slash)
 function SoilFieldDetailDialog.register(modDirectory)
@@ -311,12 +315,15 @@ function SoilFieldDetailDialog:_populateData()
 
     -- pH (0-14 scale, not %)
     if self.detailPH then
-        self.detailPH:setText(string.format("%.2f", info.pH or 7.0))
+        self.detailPH:setText(info.pH and string.format("%.2f", info.pH) or "-")
     end
     if self.detailPHStatus then
-        local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
+        local ph = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
         local phStatus, phColor
-        if ph >= 6.5 and ph <= 7.0 then
+        if ph == nil then
+            phStatus = tr("sf_pda_status_unknown", "Unknown")
+            phColor  = COLOR_DIM
+        elseif ph >= 6.5 and ph <= 7.0 then
             phStatus = tr("sf_pda_status_good",  "Good")
             phColor  = COLOR_GOOD
         elseif ph >= 6.0 and ph < 7.5 then

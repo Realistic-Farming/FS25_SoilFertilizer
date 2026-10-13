@@ -20,7 +20,7 @@
 -- we register before or after it parses the master file.
 -- =========================================================
 
-SoilStateLedgerBridge = {}
+SoilStateLedgerBridge = SoilStateLedgerBridge or {}
 
 -- Provisional module id. This is the persistence KEY inside the master file, so it
 -- must be locked with Claude(A) before any release (a later rename orphans saved
@@ -42,23 +42,67 @@ function SoilStateLedgerBridge.buildState(mgr)
     if FieldSentry_API ~= nil and FieldSentry_API.getStateTable ~= nil then
         out.fieldSentry = FieldSentry_API.getStateTable()
     end
+    -- [SF-53 One Ground] Growth-credit small metadata mirrors through the ledger
+    -- like the rest of the soil block (brief 3.8: "the same normalized table
+    -- nested in SoilStateLedgerBridge.buildState when the optional ledger
+    -- exists"). No per-cell list; the dense truth is the two GRLE files.
+    if mgr ~= nil and mgr.growthCredit ~= nil and type(mgr.growthCredit.getStateTable) == 'function' then
+        out.growthCredit = mgr.growthCredit:getStateTable()
+    end
+    -- [SF-78 One Ground] Growth-block hold metadata mirrors the same way; no
+    -- per-cell list, the dense capture truth is the two GRLE files.
+    if mgr ~= nil and mgr.growthBlock ~= nil and type(mgr.growthBlock.getStateTable) == 'function' then
+        out.growthBlock = mgr.growthBlock:getStateTable()
+    end
+    -- [SF-14 One Ground] Zone-yield receipt/fallback metadata mirrors the same
+    -- way; no per-cell list, the dense capture truth is the yieldEfficiency GRLE.
+    if mgr ~= nil and mgr.zoneYield ~= nil and type(mgr.zoneYield.getStateTable) == 'function' then
+        out.zoneYield = mgr.zoneYield:getStateTable()
+    end
     out.lastSeenVersion = (mgr ~= nil and mgr.lastSeenVersion) or ""
+    -- [CD-15 1b] The local disease header, the same one saveSoilData writes into soilData.xml
+    -- (brief :85: one extensions.cd15Disease header in the selected backend, never the cells).
+    if CD15Save ~= nil and CD15Save.current ~= nil then
+        local okCd, header = pcall(CD15Save.current.headerForSave, CD15Save.current)
+        if okCd and header ~= nil then out.extensions = { cd15Disease = CD15Save.copyHeader(header) } end
+    end
     return out
 end
 
 -- Apply the cached ledger state into the manager. Returns true if a real block was
 -- applied, false when there is nothing to apply (new save / no block yet).
-function SoilStateLedgerBridge.applyState(mgr)
+-- [SF-79] xmlRootMarked is the root #sf79PHSchema of the soilData.xml safety copy,
+-- read by loadSoilData. Every ledger snapshot written before #982 lacks the key,
+-- so on this path "absent" cannot mean "unmarked"; the safety copy those same
+-- builds did write carries the answer, and it travels alongside the block here.
+function SoilStateLedgerBridge.applyState(mgr, xmlRootMarked)
     local data = SoilStateLedgerBridge.pendingState
     if type(data) ~= "table" or mgr == nil then return false end
 
     if mgr.soilSystem ~= nil and mgr.soilSystem.applySoilStateTable ~= nil then
-        mgr.soilSystem:applySoilStateTable(data.soil)
+        mgr.soilSystem:applySoilStateTable(data.soil, xmlRootMarked)
     end
     if FieldSentry_API ~= nil and FieldSentry_API.applyStateTable ~= nil then
         FieldSentry_API.applyStateTable(data.fieldSentry)
     end
+    -- [SF-53 One Ground] Restore the growth-credit metadata block (nil-safe).
+    if mgr.growthCredit ~= nil and type(mgr.growthCredit.applyStateTable) == 'function' then
+        mgr.growthCredit:applyStateTable(data.growthCredit)
+    end
+    -- [SF-78 One Ground] Restore the growth-block hold metadata block (nil-safe).
+    if mgr.growthBlock ~= nil and type(mgr.growthBlock.applyStateTable) == 'function' then
+        mgr.growthBlock:applyStateTable(data.growthBlock)
+    end
+    -- [SF-14 One Ground] Restore the zone-yield receipt/fallback block (nil-safe).
+    if mgr.zoneYield ~= nil and type(mgr.zoneYield.applyStateTable) == 'function' then
+        mgr.zoneYield:applyStateTable(data.zoneYield)
+    end
     mgr.lastSeenVersion = data.lastSeenVersion or ""
+    -- [CD-15 1b] The local disease header of this backend (nil when the block has none).
+    if CD15Save ~= nil then
+        local ext = type(data.extensions) == "table" and data.extensions or nil
+        CD15Save.noteLoadedHeader(CD15Save.headerFromTable(ext ~= nil and ext.cd15Disease or nil), "LEDGER")
+    end
     return true
 end
 

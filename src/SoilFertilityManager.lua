@@ -1,3 +1,12 @@
+-- 2026-08-22 (Wizard): with MasterHUD installed this mod's own HUD hide/move keys must not
+-- merely be inert, they must not REGISTER at all - that is what removes their rows from the
+-- F1 legend and the Controls list. Probed on TaxMod first: skipping registration does remove
+-- the row, so the pattern is used suite-wide. Only HUD hide/move actions are gated; every
+-- other action this mod registers is untouched.
+local function __rfMhOwnsHudKeys()
+    return ((g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD) ~= nil
+end
+
 -- =========================================================
 -- FS25 Realistic Soil & Fertilizer (FarmlandManager version)
 -- =========================================================
@@ -6,8 +15,99 @@
 -- COPYRIGHT NOTICE: All rights reserved.
 -- =========================================================
 ---@class SoilFertilityManager
-SoilFertilityManager = {}
+SoilFertilityManager = SoilFertilityManager or {}
 local SoilFertilityManager_mt = Class(SoilFertilityManager)
+
+-- =========================================================
+-- RSF-F201: context-qualified input registration
+-- =========================================================
+-- WHY. The engine keys an action event by action name, target object and
+-- trigger shape only (InputEvent:makeId), so registering the same action with
+-- the same `self` target in PLAYER and VEHICLE produced ONE identifier and one
+-- global slot. Vehicle entry recreates the VEHICLE context and that wipe took the
+-- PLAYER handle with it: the key still fired but the mod's handle went dark
+-- (no F1 row, no setter). The old workaround purged both PLAYER and VEHICLE ids
+-- on every cab close and rebuilt PLAYER inside the vehicle hook; it is removed.
+--
+-- HOW. Each context registers through its own private forwarding target.
+-- Membership is asked of the wrap's own context by walking the native lists and
+-- matching action, owned target, callback and trigger shape; a complete set means
+-- no begin/end at all. Missing InputActions (older modDesc) are deliberately
+-- absent, not failures. The wrapper record lives on this class table and the
+-- captured predecessors are never restored per mission.
+
+-- BUILD 21:38: put an event on the in-cab F1 strip. The engine lists an action
+-- only when it is active, has a binding, and has its text visible. modDesc supplies
+-- the bindings; this supplies the last two. GS_PRIO_HIGH is not decoration: the
+-- strip's normal tier is a handful of slots and the cab set is cut without it.
+local function sfShowOnCabStrip(binding, id)
+    if binding == nil or id == nil then
+        return
+    end
+    if type(binding.setActionEventTextVisibility) == "function" then
+        binding:setActionEventTextVisibility(id, true)
+    end
+    if GS_PRIO_HIGH ~= nil and type(binding.setActionEventTextPriority) == "function" then
+        binding:setActionEventTextPriority(id, GS_PRIO_HIGH)
+    end
+end
+local function sfHideRow(binding, id) binding:setActionEventTextVisibility(id, false) end
+local function sfOwnsHudKeys() return not __rfMhOwnsHudKeys() end
+local function sfHasOverlay(owner) return owner.soilMapOverlay ~= nil end
+local function sfHasSettingsPanel(owner) return owner.settingsPanel ~= nil end
+local function sfHasHudAndOwnsKeys(owner) return owner.soilHUD ~= nil and not __rfMhOwnsHudKeys() end
+
+local function sfSpec(action, handler, idField, present, after)
+    return { action = action, handler = handler, idField = idField, present = present, after = after,
+             up = false, down = true, always = false, startActive = true }
+end
+
+-- On-foot set. The gated HUD hide/move rows do not register while MasterHUD owns them.
+local SF_PLAYER_SPECS = {
+    sfSpec("SF_TOGGLE_HUD",      "onToggleHUDInput",     "toggleHUDEventId",     sfOwnsHudKeys,       nil),
+    sfSpec("SF_CYCLE_MAP_LAYER", "onCycleMapLayerInput", "cycleMapLayerEventId", sfHasOverlay,        sfHideRow),
+    sfSpec("SF_OPEN_SETTINGS",   "onOpenSettingsInput",  "settingsPanelEventId", sfHasSettingsPanel,  sfHideRow),
+    sfSpec("SF_HUD_DRAG",        "onHUDDragInput",       "hudDragEventId",       sfHasHudAndOwnsKeys, sfHideRow),
+    sfSpec("SF_MINIMAP_ZOOM",    "onMinimapZoomInput",   "minimapZoomEventId",   sfHasOverlay,        sfHideRow),
+    sfSpec("SF_SCOUT",           "onScoutInput",         "scoutEventId",         nil,                 sfHideRow),
+    sfSpec("SF_TREATMENT",       "onTreatmentInput",     "treatmentEventId",     nil,                 sfHideRow),
+    sfSpec("SF_HANDFUL",         "onHandfulInput",       "handfulEventId",       nil,                 sfHideRow),
+}
+
+-- Cab set. Same actions as before F201; the F1-strip presentation is unchanged.
+local SF_VEHICLE_SPECS = {
+    sfSpec("SF_TOGGLE_HUD",      "onToggleHUDInput",       "vehicleHUDEventId",           sfOwnsHudKeys,       sfShowOnCabStrip),
+    sfSpec("SF_RATE_UP",         "onSprayerRateUpInput",   "rateUpEventId",               nil,                 sfShowOnCabStrip),
+    sfSpec("SF_RATE_DOWN",       "onSprayerRateDownInput", "rateDownEventId",             nil,                 sfShowOnCabStrip),
+    sfSpec("SF_TOGGLE_AUTO",     "onToggleAutoInput",      "toggleAutoEventId",           nil,                 sfShowOnCabStrip),
+    sfSpec("SF_VARIABLE_RATE",   "onVariableRateInput",    "variableRateEventId",         nil,                 sfShowOnCabStrip),
+    sfSpec("SF_OPEN_SETTINGS",   "onOpenSettingsInput",    "vehicleSettingsPanelEventId", sfHasSettingsPanel,  sfShowOnCabStrip),
+    sfSpec("SF_HUD_DRAG",        "onHUDDragInput",         "vehicleHudDragEventId",       sfHasHudAndOwnsKeys, sfShowOnCabStrip),
+    sfSpec("SF_MINIMAP_ZOOM",    "onMinimapZoomInput",     "vehicleMinimapZoomEventId",   sfHasOverlay,        sfHideRow),
+    sfSpec("SF_CYCLE_MAP_LAYER", "onCycleMapLayerInput",   "vehicleCycleMapLayerEventId", sfHasOverlay,        sfShowOnCabStrip),
+}
+
+--- Installs the PLAYER and VEHICLE wrappers once per loaded script environment
+--- and binds this manager as the input owner of `mission` with fresh per-context
+--- forwarding targets. A second manager in the same session (mission reload)
+--- only rebinds; the wrappers and their captured predecessors stay put.
+function SoilFertilityManager:installContextInput(mission)
+    -- Install once per loaded script environment; the helper latches on its
+    -- captured predecessors, so a second manager only rebinds below.
+    local record = SoilContextInput.record(SoilFertilityManager, "_f201Input")
+    if record.playerOriginal == nil and SoilContextInput.installPlayerWrapper(record, SF_PLAYER_SPECS) then
+        SoilLogger.info("PlayerInputComponent hook installed (PLAYER context, F201)")
+    end
+    if record.vehicleOriginal == nil and SoilContextInput.installVehicleWrapper(record, SF_VEHICLE_SPECS) then
+        SoilLogger.info("InputBinding.endActionEventsModification hooked for VEHICLE context keys (F201)")
+    end
+    if PlayerInputComponent == nil or Vehicle == nil then return end
+    SoilContextInput.activate(record, self, mission or self.mission or g_currentMission, {
+        [PlayerInputComponent.INPUT_CONTEXT_NAME] = SF_PLAYER_SPECS,
+        [Vehicle.INPUT_CONTEXT_NAME]              = SF_VEHICLE_SPECS,
+    })
+end
+
 
 
 --- Create new SoilFertilityManager instance
@@ -68,6 +168,11 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- on the engine's own fruit plane. Inert unless the growth_modulation
     -- release gate is open and the mask is enabled.
     self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
+    -- [SF-53 One Ground] The single family growth dispatch. The manager owns the
+    -- one START/FINISHED message pair and routes to each conformed member, so a
+    -- member never subscribes independently (brief 3.6 / 9). All three members
+    -- (GrowthCredit, GrowthBlock, ZoneYield) route here.
+    self._growthDispatchSubscribed = false
 
     -- SF-78 GROWTH BLOCK: the hold half of the SF-2M pair. Capture at
     -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through
@@ -246,422 +351,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
             SoilLogger.info("Harvester panel created")
         end
 
-        -- Hook PlayerInputComponent.registerActionEvents to register J/K in the PLAYER context.
-        -- PLAYER context is reused (not recreated) when the player returns on foot, so these
-        -- events persist across vehicle entry/exit cycles.
-        if self.soilHUD and PlayerInputComponent and PlayerInputComponent.registerActionEvents then
-            local originalRegisterActionEvents = PlayerInputComponent.registerActionEvents
-            self._inputHookOriginal = originalRegisterActionEvents  -- saved for cleanup in delete()
-            PlayerInputComponent.registerActionEvents = function(inputComponent, ...)
-                originalRegisterActionEvents(inputComponent, ...)
-
-                -- Only register for the local (owning) player, not for every networked player
-                if not (inputComponent.player and inputComponent.player.isOwner) then return end
-                -- Guard against double-registration across level reloads
-                if g_SoilFertilityManager and g_SoilFertilityManager.toggleHUDEventId then return end
-                if not g_SoilFertilityManager or not g_SoilFertilityManager.soilHUD then return end
-
-                -- Register J and K in PLAYER context (on-foot use).
-                -- PlayerStateDriving calls setContext("PLAYER") WITHOUT createNew=true,
-                -- so the PLAYER context is reused and our events survive vehicle transitions.
-                g_inputBinding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
-
-                local hudOk, hudId = g_inputBinding:registerActionEvent(
-                    InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleHUDInput,
-                    false, true, false, true
-                )
-                if hudOk and hudId then
-                    g_SoilFertilityManager.toggleHUDEventId = hudId
-                    SoilLogger.info("HUD toggle (J) registered in PLAYER context")
-                else
-                    SoilLogger.warning("HUD toggle (J) PLAYER registration failed")
-                end
-
-                -- Map layer cycle (Shift+M) - registered in PLAYER context only
-                -- (pause-menu map is accessible regardless of context, but the key
-                --  is intended for on-foot use; Shift+M avoids VEHICLE conflicts)
-                if g_SoilFertilityManager.soilMapOverlay then
-                    local mapOk, mapId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_CYCLE_MAP_LAYER, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onCycleMapLayerInput,
-                        false, true, false, true
-                    )
-                    if mapOk and mapId then
-                        g_SoilFertilityManager.cycleMapLayerEventId = mapId
-                        g_inputBinding:setActionEventTextVisibility(mapId, false)
-                        SoilLogger.info("Map layer cycle (Shift+M) registered in PLAYER context")
-                    end
-                end
-
-                -- Settings panel (Shift+O) - registered in PLAYER context
-                if g_SoilFertilityManager.settingsPanel then
-                    local spOk, spId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_OPEN_SETTINGS, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onOpenSettingsInput,
-                        false, true, false, true
-                    )
-                    if spOk and spId then
-                        g_SoilFertilityManager.settingsPanelEventId = spId
-                        g_inputBinding:setActionEventTextVisibility(spId, false)
-                        SoilLogger.info("Settings panel (Shift+O) registered in PLAYER context")
-                    end
-                end
-
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - PLAYER context
-                if g_SoilFertilityManager.soilHUD then
-                    local dragOk, dragId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHUDDragInput,
-                        false, true, false, true
-                    )
-                    if dragOk and dragId then
-                        g_SoilFertilityManager.hudDragEventId = dragId
-                        g_inputBinding:setActionEventTextVisibility(dragId, false)
-                        SoilLogger.info("HUD drag (Shift+H) registered in PLAYER context")
-                    end
-                end
-
-                -- Minimap zoom cycle - PLAYER context
-                if g_SoilFertilityManager.soilMapOverlay then
-                    local zoomOk, zoomId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_MINIMAP_ZOOM, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onMinimapZoomInput,
-                        false, true, false, true
-                    )
-                    if zoomOk and zoomId then
-                        g_SoilFertilityManager.minimapZoomEventId = zoomId
-                        g_inputBinding:setActionEventTextVisibility(zoomId, false)
-                        SoilLogger.info("Minimap zoom registered in PLAYER context")
-                    end
-                end
-
-                -- Field scout (SF_SCOUT, default Shift+K) - PLAYER context.
-                -- Opens the Scout panel for the field you're standing on.
-                if InputAction.SF_SCOUT then
-                    local scoutOk, scoutId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_SCOUT, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onScoutInput,
-                        false, true, false, true
-                    )
-                    if scoutOk and scoutId then
-                        g_SoilFertilityManager.scoutEventId = scoutId
-                        g_inputBinding:setActionEventTextVisibility(scoutId, false)
-                        SoilLogger.info("Field scout (Shift+K) registered in PLAYER context")
-                    end
-                end
-
-                -- Treatment panel (SF_TREATMENT, default Shift+T) - PLAYER context.
-                if InputAction.SF_TREATMENT then
-                    local trOk, trId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_TREATMENT, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onTreatmentInput,
-                        false, true, false, true
-                    )
-                    if trOk and trId then
-                        g_SoilFertilityManager.treatmentEventId = trId
-                        g_inputBinding:setActionEventTextVisibility(trId, false)
-                        SoilLogger.info("Treatment panel (Shift+T) registered in PLAYER context")
-                    end
-                end
-
-                -- [SF-39] The Handful panel (SF_HANDFUL, default Shift+G) - PLAYER
-                -- context. Opens only while crouched; the ladder lives in the callback.
-                if InputAction.SF_HANDFUL then
-                    local hfOk, hfId = g_inputBinding:registerActionEvent(
-                        InputAction.SF_HANDFUL, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHandfulInput,
-                        false, true, false, true
-                    )
-                    if hfOk and hfId then
-                        g_SoilFertilityManager.handfulEventId = hfId
-                        g_inputBinding:setActionEventTextVisibility(hfId, false)
-                        SoilLogger.info("Handful panel (Shift+G) registered in PLAYER context")
-                    end
-                end
-
-                g_inputBinding:endActionEventsModification()
-                SoilLogger.info("PLAYER context input registration complete")
-            end
-            SoilLogger.info("PlayerInputComponent hook installed for J/K (PLAYER context)")
-        end
-
-        -- Hook InputBinding.endActionEventsModification to register our keys in VEHICLE context.
-        --
-        -- WHY this approach instead of hooking Vehicle.registerActionEvents directly:
-        -- SpecializationUtil.copyTypeFunctionsInto() copies functions to each vehicle INSTANCE
-        -- table at spawn time. After that, vehicle:registerActionEvents() resolves from the
-        -- instance table, never looking up Vehicle.registerActionEvents on the class. Any
-        -- override of Vehicle.registerActionEvents after vehicles exist is silently ignored.
-        --
-        -- Instead, we hook InputBinding.endActionEventsModification (a class method on the
-        -- InputBinding class). Every call to endActionEventsModification routes through it,
-        -- including every VEHICLE context close. We detect VEHICLE context and inject our events.
-        -- registerActionEvent's built-in dedup handles multiple calls per session gracefully.
-        if self.soilHUD and InputBinding and InputBinding.endActionEventsModification then
-            local _soilVehicleHookActive = false
-            -- BUILD 21:38: put an event on the in-cab F1 strip. The engine lists an action
-            -- only when it is active, has a binding, and has its text visible. modDesc supplies
-            -- the bindings; this supplies the last two. GS_PRIO_HIGH is not decoration: the
-            -- strip's normal tier is a handful of slots and the cab set is cut without it.
-            local function sfShowOnCabStrip(binding, id)
-                if binding == nil or id == nil then
-                    return
-                end
-                if type(binding.setActionEventTextVisibility) == "function" then
-                    binding:setActionEventTextVisibility(id, true)
-                end
-                if GS_PRIO_HIGH ~= nil and type(binding.setActionEventTextPriority) == "function" then
-                    binding:setActionEventTextPriority(id, GS_PRIO_HIGH)
-                end
-            end
-            local originalEndMod = InputBinding.endActionEventsModification
-            self._vehicleInputHookOriginal = originalEndMod
-            InputBinding.endActionEventsModification = function(binding, ignoreCheck)
-                -- Capture context name BEFORE the original resets it to NO_REGISTRATION_CONTEXT
-                local contextName = ""
-                if binding.registrationContext and
-                   binding.registrationContext ~= InputBinding.NO_REGISTRATION_CONTEXT then
-                    contextName = binding.registrationContext.name or ""
-                end
-
-                originalEndMod(binding, ignoreCheck)
-
-                -- Only act on VEHICLE context closures, and avoid re-entrancy
-                if contextName ~= Vehicle.INPUT_CONTEXT_NAME then return end
-                if _soilVehicleHookActive then return end
-                if not g_SoilFertilityManager or not g_SoilFertilityManager.soilHUD then return end
-
-                _soilVehicleHookActive = true
-
-                -- Purge any stale event IDs from a previous registration pass.
-                -- endActionEventsModification fires on every vehicle mount/seat change
-                -- (including Courseplay seat cycling). Without cleanup, duplicate
-                -- registrations accumulate - callbacks fire 2-3× per keypress and
-                -- SF_HUD_DRAG (Shift+H) toggles edit mode.
-                --
-                -- IMPORTANT: Also purge PLAYER context event IDs here. FS25's
-                -- removeActionEvent works by action slot, not strictly by context.
-                -- Removing vehicleSettingsPanelEventId / vehicleHUDEventId can
-                -- silently invalidate the PLAYER-registered slots for the same
-                -- InputActions. We nil them so the PLAYER re-registration below
-                -- can issue fresh registerActionEvent calls.
-                local mgr = g_SoilFertilityManager
-                local staleIds = {
-                    -- VEHICLE context IDs
-                    "vehicleHUDEventId",
-                    "rateUpEventId",     "rateDownEventId",
-                    "toggleAutoEventId", "vehicleSettingsPanelEventId",
-                    "vehicleHudDragEventId", "vehicleMinimapZoomEventId",
-                    "vehicleCycleMapLayerEventId",
-                    "sensorPestEventId", "sensorDiseaseEventId", "sensorNutrientEventId",
-                    "seeSprayPestEventId", "seeSprayDiseaseEventId", "seeSprayWeedEventId",
-                    "variableRateEventId",
-                    -- PLAYER context IDs (invalidated as a side-effect of the above removes)
-                    "toggleHUDEventId",
-                    "cycleMapLayerEventId", "settingsPanelEventId", "hudDragEventId",
-                    "minimapZoomEventId",
-                }
-                for _, field in ipairs(staleIds) do
-                    local oldId = mgr[field]
-                    if oldId then
-                        pcall(function() binding:removeActionEvent(oldId) end)
-                        mgr[field] = nil
-                    end
-                end
-
-                binding:beginActionEventsModification(Vehicle.INPUT_CONTEXT_NAME)
-
-                -- HUD toggle (J) in vehicle
-                local vHudOk, vHudId = binding:registerActionEvent(
-                    InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleHUDInput,
-                    false, true, false, true
-                )
-                if vHudOk and vHudId then
-                    g_SoilFertilityManager.vehicleHUDEventId = vHudId
-                    sfShowOnCabStrip(binding, vHudId)
-                    SoilLogger.debug("HUD toggle (J) registered in VEHICLE context")
-                end
-
-                -- Rate UP (])
-                local upOk, upId = binding:registerActionEvent(
-                    InputAction.SF_RATE_UP, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onSprayerRateUpInput,
-                    false, true, false, true
-                )
-                if upOk and upId then
-                    g_SoilFertilityManager.rateUpEventId = upId
-                    sfShowOnCabStrip(binding, upId)
-                    SoilLogger.debug("Rate UP (]) registered in VEHICLE context")
-                end
-
-                -- Rate DOWN ([)
-                local downOk, downId = binding:registerActionEvent(
-                    InputAction.SF_RATE_DOWN, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onSprayerRateDownInput,
-                    false, true, false, true
-                )
-                if downOk and downId then
-                    g_SoilFertilityManager.rateDownEventId = downId
-                    sfShowOnCabStrip(binding, downId)
-                    SoilLogger.debug("Rate DOWN ([) registered in VEHICLE context")
-                end
-
-                -- Auto toggle (Shift+L)
-                local autoOk, autoId = binding:registerActionEvent(
-                    InputAction.SF_TOGGLE_AUTO, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleAutoInput,
-                    false, true, false, true
-                )
-                if autoOk and autoId then
-                    g_SoilFertilityManager.toggleAutoEventId = autoId
-                    sfShowOnCabStrip(binding, autoId)
-                    SoilLogger.debug("Auto toggle (Shift+L) registered in VEHICLE context")
-                end
-
-                -- Variable Rate toggle (System 3)
-                local vrOk, vrId = binding:registerActionEvent(
-                    InputAction.SF_VARIABLE_RATE, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onVariableRateInput, false, true, false, true)
-                if vrOk and vrId then
-                    g_SoilFertilityManager.variableRateEventId = vrId
-                    sfShowOnCabStrip(binding, vrId)
-                end
-
-                -- Settings panel (Shift+O) in VEHICLE context
-                if g_SoilFertilityManager.settingsPanel then
-                    local vSpOk, vSpId = binding:registerActionEvent(
-                        InputAction.SF_OPEN_SETTINGS, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onOpenSettingsInput,
-                        false, true, false, true
-                    )
-                    if vSpOk and vSpId then
-                        g_SoilFertilityManager.vehicleSettingsPanelEventId = vSpId
-                        sfShowOnCabStrip(binding, vSpId)
-                        SoilLogger.debug("Settings panel (Shift+O) registered in VEHICLE context")
-                    end
-                end
-
-                -- HUD drag toggle (SF_HUD_DRAG, default Shift+H) - VEHICLE context
-                if g_SoilFertilityManager.soilHUD then
-                    local vDragOk, vDragId = binding:registerActionEvent(
-                        InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHUDDragInput,
-                        false, true, false, true
-                    )
-                    if vDragOk and vDragId then
-                        g_SoilFertilityManager.vehicleHudDragEventId = vDragId
-                        sfShowOnCabStrip(binding, vDragId)
-                        SoilLogger.debug("HUD drag (Shift+H) registered in VEHICLE context")
-                    end
-                end
-
-                -- Minimap zoom cycle - VEHICLE context (minimap is visible while driving)
-                if g_SoilFertilityManager.soilMapOverlay then
-                    local vZoomOk, vZoomId = binding:registerActionEvent(
-                        InputAction.SF_MINIMAP_ZOOM, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onMinimapZoomInput,
-                        false, true, false, true
-                    )
-                    if vZoomOk and vZoomId then
-                        g_SoilFertilityManager.vehicleMinimapZoomEventId = vZoomId
-                        binding:setActionEventTextVisibility(vZoomId, false)
-                        SoilLogger.debug("Minimap zoom registered in VEHICLE context")
-                    end
-                end
-
-                -- Map layer cycle - VEHICLE context (#609: minimap layers visible while driving)
-                if g_SoilFertilityManager.soilMapOverlay then
-                    local vMapOk, vMapId = binding:registerActionEvent(
-                        InputAction.SF_CYCLE_MAP_LAYER, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onCycleMapLayerInput,
-                        false, true, false, true
-                    )
-                    if vMapOk and vMapId then
-                        g_SoilFertilityManager.vehicleCycleMapLayerEventId = vMapId
-                        sfShowOnCabStrip(binding, vMapId)
-                        SoilLogger.debug("Map layer cycle registered in VEHICLE context")
-                    end
-                end
-
-                binding:endActionEventsModification()
-
-                -- Re-register PLAYER context events. These were invalidated above when we
-                -- called removeActionEvent on the vehicle IDs for the same InputActions.
-                -- PlayerInputComponent.registerActionEvents will NOT fire again on vehicle
-                -- exit (the PLAYER context is reused, not recreated), so we must do this here.
-                binding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
-
-                local pHudOk, pHudId = binding:registerActionEvent(
-                    InputAction.SF_TOGGLE_HUD, g_SoilFertilityManager,
-                    g_SoilFertilityManager.onToggleHUDInput,
-                    false, true, false, true
-                )
-                if pHudOk and pHudId then
-                    g_SoilFertilityManager.toggleHUDEventId = pHudId
-                    SoilLogger.debug("HUD toggle (J) re-registered in PLAYER context after vehicle exit")
-                end
-
-                if g_SoilFertilityManager.soilMapOverlay then
-                    local pMapOk, pMapId = binding:registerActionEvent(
-                        InputAction.SF_CYCLE_MAP_LAYER, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onCycleMapLayerInput,
-                        false, true, false, true
-                    )
-                    if pMapOk and pMapId then
-                        g_SoilFertilityManager.cycleMapLayerEventId = pMapId
-                        binding:setActionEventTextVisibility(pMapId, false)
-                        SoilLogger.debug("Map layer cycle (Shift+M) re-registered in PLAYER context after vehicle exit")
-                    end
-                end
-
-                if g_SoilFertilityManager.settingsPanel then
-                    local pSpOk, pSpId = binding:registerActionEvent(
-                        InputAction.SF_OPEN_SETTINGS, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onOpenSettingsInput,
-                        false, true, false, true
-                    )
-                    if pSpOk and pSpId then
-                        g_SoilFertilityManager.settingsPanelEventId = pSpId
-                        binding:setActionEventTextVisibility(pSpId, false)
-                        SoilLogger.debug("Settings panel (Shift+O) re-registered in PLAYER context after vehicle exit")
-                    end
-                end
-
-                if g_SoilFertilityManager.soilHUD then
-                    local pDragOk, pDragId = binding:registerActionEvent(
-                        InputAction.SF_HUD_DRAG, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onHUDDragInput,
-                        false, true, false, true
-                    )
-                    if pDragOk and pDragId then
-                        g_SoilFertilityManager.hudDragEventId = pDragId
-                        binding:setActionEventTextVisibility(pDragId, false)
-                        SoilLogger.debug("HUD drag (Shift+H) re-registered in PLAYER context after vehicle exit")
-                    end
-                end
-
-                if g_SoilFertilityManager.soilMapOverlay then
-                    local pZoomOk, pZoomId = binding:registerActionEvent(
-                        InputAction.SF_MINIMAP_ZOOM, g_SoilFertilityManager,
-                        g_SoilFertilityManager.onMinimapZoomInput,
-                        false, true, false, true
-                    )
-                    if pZoomOk and pZoomId then
-                        g_SoilFertilityManager.minimapZoomEventId = pZoomId
-                        binding:setActionEventTextVisibility(pZoomId, false)
-                        SoilLogger.debug("Minimap zoom re-registered in PLAYER context after vehicle exit")
-                    end
-                end
-
-
-                binding:endActionEventsModification()
-                SoilLogger.debug("PLAYER context inputs restored after vehicle exit")
-
-                _soilVehicleHookActive = false
-            end
-            SoilLogger.info("InputBinding.endActionEventsModification hooked for VEHICLE context keys")
+        -- RSF-F201: PLAYER wrap of PlayerInputComponent.registerActionEvents and
+        -- VEHICLE hook on InputBinding.endActionEventsModification, both installed
+        -- once per loaded script environment with the record on the class table.
+        -- Each context registers through its own private forwarding target, so the
+        -- old shared-target aliasing (and the PLAYER purge + PLAYER rebuild that
+        -- used to live inside the vehicle hook) is gone. See installContextInput.
+        if self.soilHUD then
+            self:installContextInput(mission)
         end
     else
         self.soilHUD = nil
@@ -749,6 +446,16 @@ function SoilFertilityManager:activateSoilSystem()
     local ok, err = pcall(function()
         self.soilSystem:initialize()
 
+        -- [RSF-F208] Publish the ground-condition admission surface on the manager
+        -- handle, which is the handle the contract and Iris' D2 answer name:
+        -- g_currentMission.soilFertilityManager.groundCondition. The table exists
+        -- ONLY when the admission interface armed, so a consumer that finds no
+        -- groundCondition here is seeing the truth. The capability getter below is
+        -- the thing they must actually test; this property alone is explicitly NOT
+        -- proof that the interface is present.
+        local admission = self.soilSystem.groundConditionAdmission
+        self.groundCondition = admission ~= nil and admission.groundCondition or nil
+
         -- SF-18 establishment failure: initialize + register the daily kill with
         -- Time Guard (simulation flow) when present; SF's own day pass is the
         -- fallback cadence. Server-only by the density write's nature.
@@ -777,11 +484,21 @@ function SoilFertilityManager:activateSoilSystem()
         if self.growthCredit then
             self.growthCredit:initialize()
             if g_server ~= nil then
-                self.growthCredit:register()
+                self.growthCredit:registerDailyAccrual()
             end
         end
 
-        -- SF-78 GROWTH BLOCK: initialize + register both message subscriptions.
+        -- [SF-53 / SF-78 / SF-14 One Ground] The single family growth dispatch:
+        -- the manager owns the one START/FINISHED message pair and routes to its
+        -- conformed members (GrowthCredit, then GrowthBlock, then ZoneYield).
+        -- No member subscribes independently any more, so none is double-delivered.
+        if g_server ~= nil then
+            self:registerGrowthFamilyDispatch()
+        end
+
+        -- SF-78 GROWTH BLOCK: initialize only. It owns no independent growth
+        -- subscription (brief 3.3/3.11); START/FINISHED arrive through the family
+        -- dispatch above. register() is a no-op kept for the uniform member API.
         -- Server-only by the fruit-plane write's nature; the module's own live
         -- gate keeps it inert until the growth_modulation release gate opens.
         if self.growthBlock then
@@ -791,15 +508,16 @@ function SoilFertilityManager:activateSoilSystem()
             end
         end
 
-        -- SF-14 ZONE YIELD: initialize + register the daily capture accrual.
-        -- Server-only by the value-map write's nature; the module's own live
-        -- gate keeps it inert until the growth_modulation release gate opens.
-        -- Time Guard absent: the capture runs on SF's own day tracking via
-        -- checkDayFallback, pumped from the soil system's daily pump.
+        -- SF-14 ZONE YIELD: initialize only. It owns no independent growth
+        -- subscription (brief 3.3/3.10); START/FINISHED arrive through the family
+        -- dispatch above. register() is a no-op kept for the uniform member API.
+        -- Server-only by the value-map write's nature; the module's own live gate
+        -- keeps it inert until the growth_modulation release gate opens. The
+        -- capture job pump advances from the manager update path.
         if self.zoneYield then
             self.zoneYield:initialize()
             if g_server ~= nil then
-                self.zoneYield:registerDailyAccrual()
+                self.zoneYield:register()
             end
         end
 
@@ -842,6 +560,16 @@ function SoilFertilityManager:activateSoilSystem()
     if not ok then
         SoilLogger.error("activateSoilSystem failed: %s", tostring(err))
     end
+
+    -- [MAINTENANCE row 195] The ground family's mission start runs HERE, after the arm
+    -- chain in initialize() and after loadSoilData: both owners' starts are inert while
+    -- unarmed (YardLadder:onMissionStarted, GroundConditionCoordinator:onMissionStarted),
+    -- so run from onMissionStarted before this call they decided nothing, and every
+    -- ground cell read RESTORING until the first bale event or in-game day boundary. Both
+    -- callers have started the mission by now: onMissionStarted, and the settings panel
+    -- enabling the mod mid-session. Outside the pcall so a later subsystem's error cannot
+    -- leave the hold standing; both starts are idempotent, so a repeat call is harmless.
+    self:_groundMissionStarted()
     return ok
 end
 
@@ -867,6 +595,15 @@ function SoilFertilityManager:onMissionStarted()
             self.settings.colorblindMode = true
             SoilLogger.info("Colorblind mode auto-enabled from game settings")
         end
+    end
+
+    -- [SF-73] Register the target boundary AI message on EVERY peer, here, after the
+    -- mission's AIMessageManager:loadMapData and before any job can stop: the engine
+    -- sends the message's class index (AIJobStopEvent), so the registration must
+    -- happen in the same place on each peer whether or not the soil sim initializes.
+    if self.soilSystem.targetApplication ~= nil then
+        local okAI, errAI = pcall(function() self.soilSystem.targetApplication:registerAIMessage() end)
+        if not okAI then SoilLogger.warning("[SF-73] AI message registration failed: %s", tostring(errAI)) end
     end
 
     SoilLogger.info("Mission started - checking for Precision Farming compatibility...")
@@ -947,78 +684,36 @@ function SoilFertilityManager:onMissionStarted()
     -- won't fire until I remap" report. Re-asserting after the mission has fully loaded
     -- (saved bindings applied) registers any event the first pass missed. Idempotent.
     if self.soilHUD then
+        -- RSF-F201 detail 6: one immediate PLAYER reconciliation from this existing
+        -- post-load door (no-op when the set is complete or the context is absent),
+        -- then the unchanged two-second net for the load-order race.
+        self:registerPlayerContextInputEvents(g_inputBinding)
         self._pendingInputReassert      = true
         self._pendingInputReassertDelay = 2000
     end
 end
 
---- #677: (re)register all PLAYER-context input events. Idempotent - each event is
---- only registered when its id field is nil, so this is safe to call repeatedly.
---- Driven by the deferred post-load safety net (see onMissionStarted + update).
---- Registers only in the PLAYER context and never removes anything, so it cannot
---- invalidate VEHICLE-context slots for the same actions (see the cross-context
---- note in the endActionEventsModification hook).
+--- #677 / RSF-F201: complete PLAYER-context reconciliation. Membership is asked of
+--- the native PLAYER context (never inferred from a stored id); only missing owned
+--- events are registered and only obsolete owned events are removed, in one batch.
+--- Safe to call repeatedly: a complete set costs no transaction. Driven by the
+--- deferred post-load safety net (see onMissionStarted + update) and by the
+--- installed PLAYER wrapper. Never touches the VEHICLE context.
 function SoilFertilityManager:registerPlayerContextInputEvents(binding)
     binding = binding or g_inputBinding
     if not binding then return end
     if not self.soilHUD then return end
     if not (InputAction and PlayerInputComponent) then return end
+    if not SoilContextInput.hasLocalOwner(nil) then return end
+    local contexts = binding.contexts
+    if type(contexts) ~= "table" or contexts[PlayerInputComponent.INPUT_CONTEXT_NAME] == nil then return end
 
-    local registered = 0
-    binding:beginActionEventsModification(PlayerInputComponent.INPUT_CONTEXT_NAME)
-
-    if not self.toggleHUDEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_TOGGLE_HUD, self, self.onToggleHUDInput, false, true, false, true)
-        if ok and id then self.toggleHUDEventId = id; registered = registered + 1 end
-    end
-
-    if self.soilMapOverlay and not self.cycleMapLayerEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_CYCLE_MAP_LAYER, self, self.onCycleMapLayerInput, false, true, false, true)
-        if ok and id then
-            self.cycleMapLayerEventId = id
-            binding:setActionEventTextVisibility(id, false)
-            registered = registered + 1
-        end
-    end
-
-    if self.settingsPanel and not self.settingsPanelEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_OPEN_SETTINGS, self, self.onOpenSettingsInput, false, true, false, true)
-        if ok and id then
-            self.settingsPanelEventId = id
-            binding:setActionEventTextVisibility(id, false)
-            registered = registered + 1
-        end
-    end
-
-    if self.soilHUD and not self.hudDragEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_HUD_DRAG, self, self.onHUDDragInput, false, true, false, true)
-        if ok and id then
-            self.hudDragEventId = id
-            binding:setActionEventTextVisibility(id, false)
-            registered = registered + 1
-        end
-    end
-
-    if self.soilMapOverlay and not self.minimapZoomEventId then
-        local ok, id = binding:registerActionEvent(
-            InputAction.SF_MINIMAP_ZOOM, self, self.onMinimapZoomInput, false, true, false, true)
-        if ok and id then
-            self.minimapZoomEventId = id
-            binding:setActionEventTextVisibility(id, false)
-            registered = registered + 1
-        end
-    end
-
-    binding:endActionEventsModification()
-
-    if registered > 0 then
-        SoilLogger.info("#677 input re-assert: registered %d previously-missing PLAYER event(s)", registered)
+    local record = SoilContextInput.record(SoilFertilityManager, "_f201Input")
+    local added = SoilContextInput.reconcile(record, binding, PlayerInputComponent.INPUT_CONTEXT_NAME, SF_PLAYER_SPECS)
+    if added > 0 then
+        SoilLogger.info("#677 input re-assert: registered %d previously-missing PLAYER event(s)", added)
     else
-        SoilLogger.debug("#677 input re-assert: all PLAYER events already registered")
+        SoilLogger.debug("#677 input re-assert: no PLAYER events added")
     end
 end
 
@@ -1029,6 +724,13 @@ end
 
 -- Input callback for HUD toggle (J)
 function SoilFertilityManager:onToggleHUDInput()
+    -- 2026-08-22 (Wizard): MasterHUD takeover. When MasterHUD is installed it owns the
+    -- suite-wide hide/move binds, so this mod's own per-mod key is deliberately inert:
+    -- one surface, one way to reach it. Standalone (no MasterHUD) this runs normally.
+    -- Canonical presence check, the same expression the suite's MasterHUD bridges use.
+    if ((g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD) ~= nil then
+        return
+    end
     if not (self.settings and self.settings.enabled) then return end
     if self.soilHUD then
         self.soilHUD:toggleVisibility()
@@ -1045,6 +747,13 @@ end
 
 -- Input callback for HUD drag toggle (SF_HUD_DRAG, default Shift+H)
 function SoilFertilityManager:onHUDDragInput()
+    -- 2026-08-22 (Wizard): MasterHUD takeover. When MasterHUD is installed it owns the
+    -- suite-wide hide/move binds, so this mod's own per-mod key is deliberately inert:
+    -- one surface, one way to reach it. Standalone (no MasterHUD) this runs normally.
+    -- Canonical presence check, the same expression the suite's MasterHUD bridges use.
+    if ((g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD) ~= nil then
+        return
+    end
     if not self.soilHUD then return end
     if not self.soilHUD.visible then return end
     if not (self.settings and self.settings.showHUD and self.settings.enabled) then return end
@@ -1312,7 +1021,15 @@ function SoilFertilityManager:onScoutInput()
 
     -- The Scout hotkey is a deliberate scout: reveal the field's disease so the flash
     -- message and the Scout dialog it opens both show the identified infection.
-    local rep = self.soilSystem:scoutField(fieldId)
+    -- [RSF-F231] For the local player's own farm; a farm with no standing on this
+    -- land is told so and nothing is revealed, flashed or opened.
+    local rep, refused = self.soilSystem:scoutField(fieldId, SoilFertilitySystem.localScoutFarmId())
+    if refused ~= nil then
+        if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
+            g_currentMission.hud:showBlinkingWarning(g_i18n:getText("sf_scout_no_standing"), 3000)
+        end
+        return
+    end
     if not rep or rep.enabled == false then return end
 
     local function disName(id)
@@ -1394,7 +1111,7 @@ end
 
 local function showSensorMsg(name, on)
     local stateKey = on and "sf_sensor_state_on" or "sf_sensor_state_off"
-    local txt = name .. ": " .. (g_i18n and g_i18n:getText(stateKey) or (on and "ON" or "OFF"))
+    local txt = name .. ": " .. SoilL10n.tr(stateKey, on and "ON" or "OFF")
     if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
         g_currentMission.hud:showBlinkingWarning(txt, 2000)
     end
@@ -1406,7 +1123,7 @@ function SoilFertilityManager:onVariableRateInput()
     local vehicle = getSensorVehicle()
     if not vehicle or not self.sensorManager then return end
     local newState = self.sensorManager:toggleVariableRate(vehicle.id)
-    showSensorMsg(g_i18n and g_i18n:getText("sf_var_rate_label") or "Variable Rate", newState)
+    showSensorMsg(SoilL10n.tr("sf_var_rate_label", "Variable Rate"), newState)
     SoilLogger.debug("[VariableRate] %s for vehicle %d", newState and "ON" or "OFF", vehicle.id)
 end
 
@@ -1497,7 +1214,9 @@ end
 --- Save soil data to XML file
 --- Only runs on server in multiplayer, always in singleplayer
 --- Saves to {savegame}/soilData.xml
-function SoilFertilityManager:saveSoilData()
+---@param missionInfo table|nil  the career mission info being saved (its xmlFile takes
+---       the MaterialDown marker, RSF-F215); defaults to the current mission's
+function SoilFertilityManager:saveSoilData(missionInfo)
     if not self.soilSystem then
         SoilLogger.error("saveSoilData: soilSystem is nil")
         return
@@ -1519,6 +1238,26 @@ function SoilFertilityManager:saveSoilData()
         for _ in pairs(self.soilSystem.fieldData) do fieldCount = fieldCount + 1 end
     end
 
+    -- [MAINTENANCE row 137] The value maps first: the ground index's stamp goes into
+    -- soilData.xml only after the membership, age and wetness layers all saved.
+    local savedByKey = nil
+    if self.soilSystem.valueMaps then
+        -- [MAINTENANCE row 107] A membership index that took a refused write is
+        -- reconciled from the truth before the layer files are written, so a save never
+        -- persists a partial index. A ready index returns at once.
+        local gcc = self.soilSystem.groundConditionCoordinator
+        if gcc ~= nil and type(gcc.reconcileMembership) == "function" then
+            pcall(gcc.reconcileMembership, gcc)
+        end
+        local _, byKey = self.soilSystem.valueMaps:saveToSavegame(savegamePath)
+        savedByKey = byKey
+    end
+    local indexStamp = nil
+    if SoilMaterialDownBridge ~= nil and type(savedByKey) == "table" and MaterialDown ~= nil and MaterialWetness ~= nil
+       and savedByKey.groundMembership and savedByKey[MaterialDown.LAYER_KEY] and savedByKey[MaterialWetness.LAYER_KEY] then
+        indexStamp = SoilMaterialDownBridge.saveGenerationFor(self.soilSystem.materialDown)
+    end
+
     local xmlPath = savegamePath .. "/soilData.xml"
     local xmlFile = createXMLFile("soilData", xmlPath, "soilData")
 
@@ -1526,7 +1265,38 @@ function SoilFertilityManager:saveSoilData()
         self.soilSystem:saveToXMLFile(xmlFile, "soilData")
         -- FieldSentry (#651): persist the player's manual blacklist alongside soil data.
         if FieldSentry_API then FieldSentry_API.saveToXMLFile(xmlFile, "soilData.fieldSentry") end
+        -- [SF-53 One Ground] Growth-credit small metadata rides the same soilData
+        -- block; the dense cell truth is the two GRLE files SoilValueMaps writes.
+        if self.growthCredit and type(self.growthCredit.saveToXMLFile) == 'function' then
+            self.growthCredit:saveToXMLFile(xmlFile, "soilData.growthCredit")
+        end
+        -- [SF-78 One Ground] Growth-block hold metadata rides the same soilData
+        -- block; the dense capture truth is the two GRLE files SoilValueMaps writes.
+        if self.growthBlock and type(self.growthBlock.saveToXMLFile) == 'function' then
+            self.growthBlock:saveToXMLFile(xmlFile, "soilData.growthBlock")
+        end
+        -- [SF-14 One Ground] Zone-yield receipt/fallback metadata rides the same
+        -- soilData block; the dense capture truth is the yieldEfficiency GRLE file.
+        if self.zoneYield and type(self.zoneYield.saveToXMLFile) == 'function' then
+            self.zoneYield:saveToXMLFile(xmlFile, "soilData.zoneYield")
+        end
         setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
+        if indexStamp ~= nil then
+            setXMLString(xmlFile, SoilMaterialDownBridge.INDEX_STAMP_KEY, string.format("%.17g", indexStamp))
+        end
+        -- [GCC 6] The native save stamp, and this save's attempt when a boundary began one:
+        -- the condition layers pair with the height image only through it.
+        if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil then
+            local layersSaved = type(savedByKey) == "table" and MaterialDown ~= nil and MaterialWetness ~= nil
+                and savedByKey.groundMembership == true and savedByKey[MaterialDown.LAYER_KEY] == true and savedByKey[MaterialWetness.LAYER_KEY] == true
+            GroundConditionSave.current:stampSoilData(xmlFile, layersSaved)
+        end
+        -- [CD-15 1b] The local disease header (extensions.cd15Disease), the same one the
+        -- StateLedger bridge carries; the cell tree itself is only in soilDisease.xml.
+        if CD15Save ~= nil and CD15Save.current ~= nil then
+            local okCd, errCd = pcall(CD15Save.current.writeHeaderXML, CD15Save.current, xmlFile)
+            if not okCd then SoilLogger.warning("[CD15] header write failed: %s", tostring(errCd)) end
+        end
         saveXMLFile(xmlFile)
         delete(xmlFile)
         SoilLogger.info("Soil data saved to %s (%d fields)", xmlPath, fieldCount)
@@ -1534,18 +1304,35 @@ function SoilFertilityManager:saveSoilData()
         SoilLogger.error("Failed to create XML file for save: %s", xmlPath)
     end
 
-    -- REFINED: persist the per-pixel soil value maps next to soilData.xml
-    if self.soilSystem.valueMaps then
-        self.soilSystem.valueMaps:saveToSavegame(savegamePath)
-    end
-
     -- [SF-43] MATERIAL DOWN's watermark + object sidecar. The age LAYER itself
     -- persists natively as one of the .grle files just written; only the small
     -- sidecar needs a home. No-ops when StateLedger is present (the ledger owns the
     -- state then, so nothing writes it twice).
     if SoilMaterialDownBridge and self.soilSystem.materialDown then
-        SoilMaterialDownBridge.saveFallback(self.soilSystem.materialDown)
+        SoilMaterialDownBridge.saveFallback(self.soilSystem.materialDown, missionInfo)
     end
+end
+
+--- [GCC 6] "Don't show again" (SoilVersionDialog): persist lastSeenVersion alone, edited in
+--- place in the save's existing soilData.xml, so the condition layers and the native save
+--- stamp (soilData.nativeSave) stay exactly as the last native save paired them. Never
+--- creates the file: a career not saved yet has none, and an empty one would end SF-76's
+--- genesis (_hasSavedSoilData); the value lands with the first save. Skipped while a native
+--- save attempt is open; the value is in memory and lands with the next save.
+---@return boolean written
+function SoilFertilityManager:persistLastSeenVersion()
+    local mi = g_currentMission and g_currentMission.missionInfo
+    local dir = mi and mi.savegameDirectory
+    if dir == nil or loadXMLFile == nil or fileExists == nil then return false end
+    if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil and GroundConditionSave.current.pending ~= nil then return false end
+    local path = dir .. "/soilData.xml"
+    if not fileExists(path) then return false end
+    local xmlFile = loadXMLFile("soilDataVersion", path)
+    if xmlFile == nil or xmlFile == 0 then return false end
+    setXMLString(xmlFile, "soilData#lastSeenVersion", self.lastSeenVersion or "")
+    local saved = saveXMLFile(xmlFile)
+    delete(xmlFile)
+    return saved ~= false
 end
 
 -- SF-76: does this save already carry soil data? A new save has neither a
@@ -1576,6 +1363,27 @@ function SoilFertilityManager:_genesisSeed()
     return seed
 end
 
+--- [SF-79] Read ONLY the root #sf79PHSchema marker from the soilData.xml safety
+--- copy, for the StateLedger load path. Every ledger snapshot written before #982
+--- lacks the key, so on that path the marker those same builds wrote into the
+--- safety copy is the only proof that a save already had the positional contract.
+--- A missing safety copy counts as UNMARKED (false): the only saves with a ledger
+--- block and no soilData.xml are hand-edited or pre-marker ones, and for a
+--- released player's pre-marker save the freeze is exactly what 3.B wants.
+---@return boolean marked
+function SoilFertilityManager:_readSoilXMLSchemaMarker()
+    local savegamePath = g_currentMission and g_currentMission.missionInfo
+        and g_currentMission.missionInfo.savegameDirectory
+    if savegamePath == nil then return false end
+    local xmlPath = savegamePath .. "/soilData.xml"
+    if not fileExists(xmlPath) then return false end
+    local xmlFile = loadXMLFile("soilDataSchemaMarker", xmlPath)
+    if not xmlFile then return false end
+    local marked = (getXMLInt(xmlFile, "soilData#sf79PHSchema") or 0) == 1
+    delete(xmlFile)
+    return marked
+end
+
 --- Load soil data from XML file
 --- Reads from {savegame}/soilData.xml if exists
 --- Falls back to defaults if file not found
@@ -1594,7 +1402,10 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
     -- through and import the existing soilData.xml (which the ledger then carries
     -- forward). soilData.xml is still written every save as a safety copy.
     if SoilStateLedgerBridge and SoilStateLedgerBridge.hasLedgerState() then
-        SoilStateLedgerBridge.applyState(self)
+        -- [SF-79] The ledger block is the only loader on this path, so the schema
+        -- marker from the soilData.xml safety copy travels with it (see
+        -- _readSoilXMLSchemaMarker and applySoilStateTable).
+        SoilStateLedgerBridge.applyState(self, self:_readSoilXMLSchemaMarker())
         local fieldCount = 0
         if self.soilSystem.fieldData then
             for _ in pairs(self.soilSystem.fieldData) do fieldCount = fieldCount + 1 end
@@ -1606,6 +1417,7 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
     local savegamePath = g_currentMission.missionInfo.savegameDirectory
     if not savegamePath then
         SoilLogger.warning("loadSoilData: savegameDirectory not set yet (new career or early load) - starting with defaults")
+        if CD15Save ~= nil then CD15Save.noteLoadedHeader(nil, "NONE") end
         return
     end
 
@@ -1616,7 +1428,28 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
             self.soilSystem:loadFromXMLFile(xmlFile, "soilData")
             -- FieldSentry (#651): restore the manual blacklist (no-op if none saved).
             if FieldSentry_API then FieldSentry_API.loadFromXMLFile(xmlFile, "soilData.fieldSentry") end
+            -- [SF-53 One Ground] Restore the growth-credit small metadata (the GRLE
+            -- pair already restored inside valueMaps:initialize). The bank stays
+            -- PENDING_VALIDATION until current-session membership/fruit validation.
+            if self.growthCredit and type(self.growthCredit.loadFromXMLFile) == 'function' then
+                self.growthCredit:loadFromXMLFile(xmlFile, "soilData.growthCredit")
+            end
+            -- [SF-78 One Ground] Restore the growth-block hold metadata (the GRLE
+            -- pair already restored inside valueMaps:initialize). The capture stays
+            -- PENDING_VALIDATION until current-session membership/fruit validation.
+            if self.growthBlock and type(self.growthBlock.loadFromXMLFile) == 'function' then
+                self.growthBlock:loadFromXMLFile(xmlFile, "soilData.growthBlock")
+            end
+            -- [SF-14 One Ground] Restore the zone-yield receipt/fallback metadata
+            -- (the yieldEfficiency GRLE already restored inside valueMaps:initialize).
+            -- Receipts stay PENDING_VALIDATION until a current plan arrives.
+            if self.zoneYield and type(self.zoneYield.loadFromXMLFile) == 'function' then
+                self.zoneYield:loadFromXMLFile(xmlFile, "soilData.zoneYield")
+            end
             self.lastSeenVersion = getXMLString(xmlFile, "soilData#lastSeenVersion") or ""
+            -- [CD-15 1b] The local disease header of this backend (the restore decides once
+            -- the native barrier has also passed).
+            if CD15Save ~= nil then CD15Save.noteLoadedXML(xmlFile) end
             delete(xmlFile)
             local fieldCount = 0
             if self.soilSystem.fieldData then
@@ -1625,9 +1458,13 @@ function SoilFertilityManager:loadSoilData()    if not self.soilSystem then
             SoilLogger.info("Soil data loaded from %s (%d fields)", xmlPath, fieldCount)
         else
             SoilLogger.error("loadSoilData: loadXMLFile returned nil for: %s", xmlPath)
+            -- [CD-15 1b] A file that exists and cannot be read is evidence, not a first activation.
+            if CD15Save ~= nil then CD15Save.noteLoadedHeader({ schema = -1, status = "UNREADABLE" }, "XML") end
         end
     else
         SoilLogger.info("No saved soil data found at %s, using defaults", xmlPath)
+        -- [CD-15 1b] No header in this backend.
+        if CD15Save ~= nil then CD15Save.noteLoadedHeader(nil, "NONE") end
         -- Fresh start: scanFields already seeded fieldData from GRLE layers (if available).
         -- Push that data to the density map layers now so the PDA DMV overlay and minimap
         -- heatmap show real values immediately rather than after the first fertilizer event.
@@ -1679,9 +1516,91 @@ end
 
 --- Update loop called every frame
 ---@param dt number Delta time in milliseconds
+-- Deferred fill type registration retry (dedicated server timing fix: #431)
+-- Also re-patches ALL vehicles every frame until all custom types are resolvable,
+-- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)
+-- are handled without depending on _sprayTypesComplete.
+--
+-- Lifted out of update() so it can be driven directly by a test. update() runs a
+-- dozen unrelated systems after this point, and a bar that had to survive all of
+-- them to reach its assertions would be testing those instead of this.
+--
+-- WHAT WAS WRONG, from the 2026-09-21 session log this rewrite is built on:
+--   19:49:55.179  reapplyFillUnitPatch reports unavailable, and spray types report
+--                 64 registered with 0 skipped, so _sprayTypesComplete became true
+--   19:49:55.293  "still unavailable after 120 retries"
+--   19:51:24.700  Entered Gameplay, ie. isMissionStarted only becomes true HERE
+--   19:51:28.150  the dependency actually arrives: 13 solid + 49 liquid detected
+--   19:51:28.151  Hook installation complete: 33/33 successful, 0 failed
+-- Both warnings landed about 89 seconds before the mission started and 93 before
+-- the thing they were waiting for existed, and the feature then worked perfectly.
+--
+-- The old loop did NOT burn a 120 budget. Each of those two warnings appears
+-- exactly once in a log whose logger does not deduplicate, so the body ran a
+-- SINGLE tick: 121 was assigned as a "stop" sentinel, and the unconditional
+-- increment at the top of the next tick walked it straight to 122, which was the
+-- give-up branch. Success and failure therefore reached the same warning, on every
+-- load, having retried zero times. Raising 120 would not have changed one line of
+-- that; the budget was never the mechanism.
+--
+-- The retry now ends on the real completion signal (spray types complete AND the
+-- fill unit re-patch reporting true) and the timeout is only a ceiling for a
+-- genuinely broken setup. The ceiling is MISSION time: isMissionStarted is the
+-- engine's own signal, set in BaseMission:onStartMission (BaseMission.lua:247)
+-- beside the "Entered Gameplay" line, its only other writer being the false
+-- initialiser at :56. isRunning is NOT that signal: BaseMission.lua:53 is one of
+-- many writers and AIJob/AITask own the others.
+function SoilFertilityManager:_updateDeferredInit(dt)
+    if self._deferredInitDone then return end
+    if not self.soilSystem or not self.soilSystem.hookManager then return end
+
+    local hm = self.soilSystem.hookManager
+    hm:registerCustomSprayTypes()
+    local fillUnitsPatched = hm:reapplyFillUnitPatch()
+    hm:reapplyEffectTypeRemap()
+    hm:patchExistingSilos()
+
+    if hm._sprayTypesComplete and fillUnitsPatched then
+        self._deferredInitDone = true
+        if (self._deferredInitMs or 0) > 0 then
+            SoilLogger.info("[DeferredInit] Fill-type re-patch complete %.1fs after gameplay started",
+                self._deferredInitMs / 1000)
+        end
+        return
+    end
+
+    -- Not complete. Only spend the budget once the mission is actually running:
+    -- update() ticks throughout loading, and load ticks measure nothing this is
+    -- waiting for. Elapsed time rather than frames, because a frame budget means a
+    -- different amount of waiting on every machine while the dependency arrives on
+    -- a wall clock: 3.45 seconds after Entered Gameplay in the reference log.
+    if g_currentMission == nil or g_currentMission.isMissionStarted ~= true then return end
+
+    self._deferredInitMs = (self._deferredInitMs or 0) + (dt or 0)
+    if self._deferredInitMs >= SoilConstants.TIMING.DEFERRED_INIT_TIMEOUT then
+        self._deferredInitDone = true
+        -- State what is known and nothing else. The previous text volunteered
+        -- "dedicated server or modded map may have incomplete fill type loading",
+        -- naming a suspect it had no evidence for, and that guess sent a night of
+        -- investigation after a fill-type cap that was never involved.
+        SoilLogger.warning(
+            "[DeferredInit] Gave up %.1fs after gameplay started. sprayTypesComplete=%s, fillUnitRepatch=%s, fillUnitHookInstalled=%s. Custom fill types may be incomplete. No cause is established by this message.",
+            self._deferredInitMs / 1000,
+            tostring(hm._sprayTypesComplete == true),
+            tostring(fillUnitsPatched == true),
+            tostring(hm._fuSolidNames ~= nil))
+    end
+end
+
 function SoilFertilityManager:update(dt)
-    -- REFINED: periodic value-map checksum broadcast (MP drift detection).
-    -- Server-only, every 5 real minutes, only when clients are connected.
+    -- RSF-F201: admission reset is the first input act of every update interval,
+    -- before the #677 one-shot below, so its attempt marks survive the interval.
+    SoilContextInput.resetAdmission(SoilContextInput.record(SoilFertilityManager, "_f201Input"))
+
+    -- REFINED: periodic value-map sync round (MP drift detection). Server-only,
+    -- every 5 real minutes. [#995] The round patches the rows written since the
+    -- last one to every client, drip-fed, then broadcasts the checksums from the
+    -- row cache; nothing walks a whole layer in one tick any more.
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo
        and g_currentMission.missionDynamicInfo.isMultiplayer then
         self._vmChecksumTimer = (self._vmChecksumTimer or 0) + dt
@@ -1693,29 +1612,9 @@ function SoilFertilityManager:update(dt)
         end
     end
 
-    -- Deferred fill type registration retry (dedicated server timing fix: #431)
-    -- Also re-patches ALL vehicles every frame until all custom types are resolvable,
-    -- so modded maps that shift fill-type indices (e.g. Carpathian Countryside, #727)
-    -- are handled without depending on _sprayTypesComplete.
-    if self.soilSystem and self.soilSystem.hookManager then
-        self._deferredRetryCount = (self._deferredRetryCount or 0) + 1
-        if self._deferredRetryCount <= 120 then
-            local hm = self.soilSystem.hookManager
-            hm:registerCustomSprayTypes()
-            hm:reapplyFillUnitPatch()
-            hm:reapplyEffectTypeRemap()
-            hm:patchExistingSilos()
-            if hm._sprayTypesComplete then
-                if self._deferredRetryCount > 1 then
-                    SoilLogger.info("[DeferredInit] Fill-type re-patch complete on retry #%d", self._deferredRetryCount)
-                end
-                self._deferredRetryCount = 121  -- stop retrying once complete
-            end
-        elseif self._deferredRetryCount == 122 then
-            SoilLogger.warning("[DeferredInit] Fill types still unavailable after 120 retries - dedicated server or modded map may have incomplete fill type loading")
-            self.soilSystem.hookManager._sprayTypesComplete = true  -- stop retrying
-        end
-    end
+    -- Deferred fill type registration retry, extracted to its own method so a
+    -- test can drive it without running the rest of update(). See above.
+    self:_updateDeferredInit(dt)
 
     -- Deferred incompatibility dialog (Precision Farming)
     if self._pendingIncompatDialog then
@@ -1758,6 +1657,14 @@ function SoilFertilityManager:update(dt)
     -- ── MANDATORY GUARD: Mod must be enabled ──────────────────
     if not (self.settings and self.settings.enabled) then
         return
+    end
+
+    -- [SF-14 One Ground] Advance the bounded zone-yield capture job pump. Server
+    -- only (the module checks); a zero budget leaves queued jobs PENDING. One
+    -- bounded step per frame, never a full-field sweep.
+    if self.zoneYield and type(self.zoneYield.advanceJobs) == 'function' then
+        local budget = (ZoneYield and ZoneYield.JOB_OPS_PER_UPDATE) or 96
+        self.zoneYield:advanceJobs(budget)
     end
 
     -- Always update soil system (server side)
@@ -2001,7 +1908,11 @@ function SoilFertilityManager:_blendedWetness01(x, z, fieldId)
     if not (fid and fid > 0) then return rainScalar end
 
     local ok, scsMoisture = pcall(function()
-        local csm = g_cropStressManager
+        -- [MAINTENANCE row 248] SCS's manager from the mission (SCS main.lua:285), as CD15Model's
+        -- moistureSource reads it (src/disease/CD15Model.lua:317): SCS writes g_cropStressManager into
+        -- its own mod environment (getfenv(0), :282), so a bare read here is nil in a game and the
+        -- blend always fell back to the rain scalar. The bare global stays as the fallback.
+        local csm = (g_currentMission ~= nil and g_currentMission.cropStressManager) or g_cropStressManager
         if csm == nil or type(csm.getMoisture) ~= "function" then return nil end
         return csm:getMoisture(fid)
     end)
@@ -2108,6 +2019,14 @@ function SoilFertilityManager:updateAutoRates(dt)
     -- Calculate the ideal index and send if it changed
     local newIdx = self:calculateAutoRateIndex(fieldData, fillType)
     local currentIdx = rm:getIndex(vehicle.id)
+    if newIdx == nil then
+        -- [SF-79 D] A product sized by pH on a field with no current pH report:
+        -- "an unavailable required sample retains the selected rate", so nothing is
+        -- set and nothing is sent.
+        SoilLogger.debug("Auto-rate: vehicle %d holds index %d [%s on field %d] - pH unknown, rate held",
+            vehicle.id, currentIdx, fillType.name, fieldId)
+        return
+    end
     if newIdx ~= currentIdx then
         rm:setIndex(vehicle.id, newIdx)
         if SoilNetworkEvents_SendSprayerRate then
@@ -2131,19 +2050,24 @@ end
 --- computing a weighted average of nutrient deficit fractions, then maps that
 --- fraction linearly to the safe rate range 0.20x–1.20x (indices 2–12).
 ---
---- Crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE/PESTICIDE) use
---- the relevant pressure value instead of nutrient deficits.
+--- Crop-protection products (Soil's INSECTICIDE and FUNGICIDE, and HERBICIDE) apply at
+--- the full rate: they are not sized by a nutrient deficit or by their pressure.
 ---
 --- Shape Contract: `fieldData` must be the output of `SoilFertilitySystem:getFieldInfo()`.
 --- Expected fields: `nitrogen.value`, `phosphorus.value`, `potassium.value`, `pH`, `organicMatter`,
 --- `pestPressure` (number), `diseasePressure` (number), `weedPressure` (number).
+--- `pH` is nil when the field has no current pH report (SF-79 D, "No unknown-to-7.0"):
+--- the pH term then drops out, weight and deficit both, and nothing stands in for it.
 ---
 --- The cap of 1.20x keeps the rate below BURN_RISK_THRESHOLD (1.25x) even when
 --- the field is completely depleted, protecting the player from accidental burns.
 ---
 ---@param fieldData table  Return value of SoilFertilitySystem:getFieldInfo()
 ---@param fillType  table  FillType object (has .name string)
----@return number          1-based index into SoilConstants.SPRAYER_RATE.STEPS
+---@return number|nil      1-based index into SoilConstants.SPRAYER_RATE.STEPS, or nil when
+---                        the product is sized by pH and the pH is unknown, so no known term
+---                        is left to size it by; the caller then holds the selected rate
+---                        (SF-79 D: "An unavailable required sample retains the selected rate")
 function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
     local steps    = SoilConstants.SPRAYER_RATE.STEPS
     local defaults = SoilConstants.SPRAYER_RATE.AUTO_RATE_TARGETS
@@ -2199,7 +2123,7 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                     weightedDeficit = weightedDeficit + deficit * profile.K
                     totalWeight     = totalWeight     + profile.K
                 end
-                if profile.pH and profile.pH > 0 then
+                if profile.pH and profile.pH > 0 and type(fieldData.pH) == 'number' then
                     -- pH: how far below target normalised to the possible range [PH_MIN, target]
                     local phRange = targets.pH - phMin
                     if phRange > 0 then
@@ -2243,6 +2167,11 @@ function SoilFertilityManager:calculateAutoRateIndex(fieldData, fillType)
                     SoilLogger.debug(
                         "Auto-rate calc: %s | deficit=%.3f | target multiplier=%.3f",
                         fillType.name, deficitFraction, multiplier)
+                elseif profile.pH and profile.pH > 0 and type(fieldData.pH) ~= 'number' then
+                    -- [SF-79 D] Sized by pH, and the pH is unknown: no known term is left.
+                    -- Falling through to 1.0 would reset the selected rate, so return nil
+                    -- and let the caller hold it.
+                    return nil
                 end
             end
         end
@@ -2288,19 +2217,12 @@ function SoilFertilityManager:delete()
     -- Flush any buffered debug messages to file before shutdown
     SoilLogger.flushDebugLog()
 
-    -- Restore PlayerInputComponent hook if we installed one
-    if self._inputHookOriginal and PlayerInputComponent then
-        PlayerInputComponent.registerActionEvents = self._inputHookOriginal
-        self._inputHookOriginal = nil
-        SoilLogger.debug("PlayerInputComponent hook restored")
-    end
-
-    -- Restore InputBinding.endActionEventsModification hook if we installed one
-    if self._vehicleInputHookOriginal and InputBinding then
-        InputBinding.endActionEventsModification = self._vehicleInputHookOriginal
-        self._vehicleInputHookOriginal = nil
-        SoilLogger.debug("InputBinding.endActionEventsModification hook restored")
-    end
+    -- RSF-F201: retire this owner's registration activity. Old forwarding
+    -- targets go inert and the owner reference is released. The captured
+    -- PlayerInputComponent / InputBinding predecessors are NOT restored:
+    -- restoring per mission can remove a later mod's wrapper. They stay
+    -- installed for the whole session on the class-table record.
+    SoilContextInput.retire(SoilContextInput.record(SoilFertilityManager, "_f201Input"))
 
     -- Clean up sprayer rate state
     if self.sprayerRateManager then
@@ -2457,11 +2379,14 @@ function SoilFertilityManager:delete()
         self.settingsPanel = nil
     end
 
-    if self.soilSystem then
-        self.soilSystem:delete()
-    end
+    -- [SF-53 One Ground] The growth family drops BEFORE SoilFertilitySystem
+    -- releases the shared value maps (brief 3.8: "Delete GrowthCredit before
+    -- SoilFertilitySystem releases value maps"). The manager owns the single
+    -- family growth dispatch; remove its message pair first so a session reload
+    -- never routes a growth bell onto a torn-down provider.
+    self:unregisterGrowthFamilyDispatch()
 
-    -- SF-53 growth credit: drop the message-center subscription and the store.
+    -- SF-53 growth credit: unregister the daily accrual and drop the store.
     if self.growthCredit then
         self.growthCredit:delete()
         self.growthCredit = nil
@@ -2479,6 +2404,10 @@ function SoilFertilityManager:delete()
         self.zoneYield = nil
     end
 
+    if self.soilSystem then
+        self.soilSystem:delete()
+    end
+
     -- SF-77 topography cache: drop the terrain listener and the grids.
     if self.topography then
         self.topography:delete()
@@ -2491,6 +2420,70 @@ function SoilFertilityManager:delete()
     -- and the FSCareerMissionInfo:saveToXMLFile hook writes on a genuine save/autosave.
     SoilLogger.info("Shutting down")
 end
+-- ============================================================
+-- [SF-53 One Ground] THE SINGLE FAMILY GROWTH DISPATCH
+--
+-- The manager owns the one START_GROWTH_PERIOD / FINISHED_GROWTH_PERIOD message
+-- pair for the SF-2M family and routes each delivery to its conformed members
+-- (brief 3.6, 9: "Receive START and FINISHED only from SoilFertilityManager's
+-- one server family dispatch. Do not subscribe independently."). GrowthCredit,
+-- GrowthBlock and ZoneYield are all routed here; none subscribes independently.
+-- The dispatch is server-only (fruit-plane writes are server consequence). Each
+-- member call is pcall-guarded so one member can never take the others down with
+-- it.
+-- ============================================================
+
+function SoilFertilityManager:registerGrowthFamilyDispatch()
+    if self._growthDispatchSubscribed then return true end
+    if g_messageCenter == nil or MessageType == nil then return false end
+    local ok = pcall(function()
+        g_messageCenter:subscribe(MessageType.START_GROWTH_PERIOD, self.onGrowthStart, self)
+        g_messageCenter:subscribe(MessageType.FINISHED_GROWTH_PERIOD, self.onGrowthFinished, self)
+    end)
+    if ok then self._growthDispatchSubscribed = true end
+    return ok
+end
+
+function SoilFertilityManager:unregisterGrowthFamilyDispatch()
+    if not self._growthDispatchSubscribed then return end
+    local mc = g_messageCenter
+    if mc and MessageType and type(mc.unsubscribe) == 'function' then
+        pcall(function() mc:unsubscribe(MessageType.START_GROWTH_PERIOD, self) end)
+        pcall(function() mc:unsubscribe(MessageType.FINISHED_GROWTH_PERIOD, self) end)
+    end
+    self._growthDispatchSubscribed = false
+end
+
+--- START_GROWTH_PERIOD delivery. GrowthSystem publishes START before it installs
+--- the current period; route the transition period to every conformed member.
+function SoilFertilityManager:onGrowthStart(transitionPeriod)
+    if self.growthCredit and type(self.growthCredit.onStartGrowthPeriod) == 'function' then
+        pcall(self.growthCredit.onStartGrowthPeriod, self.growthCredit, transitionPeriod)
+    end
+    if self.growthBlock and type(self.growthBlock.onStartGrowthPeriod) == 'function' then
+        pcall(self.growthBlock.onStartGrowthPeriod, self.growthBlock, transitionPeriod)
+    end
+    if self.zoneYield and type(self.zoneYield.onStartGrowthPeriod) == 'function' then
+        pcall(self.zoneYield.onStartGrowthPeriod, self.zoneYield, transitionPeriod)
+    end
+end
+
+--- FINISHED_GROWTH_PERIOD delivery, payload (finishedPeriod, hasPendingGrowth).
+--- Routed to conformed members in the family's consequence order: credit spend
+--- first, then the hold restore/active cleanup (SF-78), then the SF-14 capture
+--- job queue.
+function SoilFertilityManager:onGrowthFinished(finishedPeriod, hasPendingGrowth)
+    if self.growthCredit and type(self.growthCredit.onFinishedGrowthPeriod) == 'function' then
+        pcall(self.growthCredit.onFinishedGrowthPeriod, self.growthCredit, finishedPeriod, hasPendingGrowth)
+    end
+    if self.growthBlock and type(self.growthBlock.onFinishedGrowthPeriod) == 'function' then
+        pcall(self.growthBlock.onFinishedGrowthPeriod, self.growthBlock, finishedPeriod, hasPendingGrowth)
+    end
+    if self.zoneYield and type(self.zoneYield.onFinishedGrowthPeriod) == 'function' then
+        pcall(self.zoneYield.onFinishedGrowthPeriod, self.zoneYield, finishedPeriod, hasPendingGrowth)
+    end
+end
+
 -- ============================================================
 -- SF-52 THE PUBLISHED GROWTH CONTRACT (cross-mod surface)
 --
@@ -2511,6 +2504,126 @@ end
 --   local info = sfm and sfm:getCellGrowthInfo(fieldId, x, z)
 -- ============================================================
 
+-- ============================================================
+-- RSF-F208 THE PUBLISHED CAPABILITY GETTER (cross-mod surface)
+--
+-- This is the ONE thing a consumer may test to decide whether Soil can receive a
+-- ground-condition delivery. StockGuard SG-2 binds to it as:
+--
+--   local sfm = g_currentMission and g_currentMission.soilFertilityManager
+--   local caps = sfm and sfm:getCapabilities()
+--   local live = caps and caps.groundCondition
+--                and caps.groundCondition.admissionRevision == 2
+--
+-- Everything else is explicitly NOT proof, by the contract's own words:
+--   * a registered `soil.groundCondition` property is not proof;
+--   * StockGuard's own getCapabilities() is not proof;
+--   * the presence of the `groundCondition` table on this manager is not proof.
+--
+-- Missing handle, missing or throwing getCapabilities, a revision other than 2,
+-- or a call failure all mean the same thing: Soil is ABSENT for this join. The
+-- consumer then suppresses nothing, delivers nothing, keeps its own quantity
+-- observation running, and reports live ground condition unavailable. There is no
+-- hard dependency in either direction and no guessed condition.
+--
+-- Absent is the NORMAL path. The ground-material family is gated, so on an
+-- ordinary save this returns an empty table, and that is correct.
+-- ============================================================
+
+--- Published capabilities of this Soil install.
+--- @return table  possibly empty; never nil, and never throws across the boundary
+function SoilFertilityManager:getCapabilities()
+    local sys = self.soilSystem
+    local admission = sys ~= nil and sys.groundConditionAdmission or nil
+    if admission == nil or type(admission.getCapabilities) ~= 'function' then
+        return {}
+    end
+    local ok, caps = pcall(function() return admission:getCapabilities() end)
+    if not ok or type(caps) ~= 'table' then return {} end
+    return caps
+end
+
+-- ============================================================
+-- [RSF-F215] The limited bale condition provider (SG-3's read and notification join)
+-- ============================================================
+-- Server-local. Listeners register at trusted server initialization only and are never
+-- saved or supplied by a client. Every answer is detached data; exact native unique id
+-- binding, never farm, fill type or capacity similarity. With the ground-material family
+-- off (Experimental Systems) the capabilities are nil and every read is UNAVAILABLE.
+
+local function yardLadderOf(self)
+    local sys = self.soilSystem
+    local yl = sys ~= nil and sys.yardLadder or nil
+    if yl == nil or type(yl.isArmed) ~= 'function' or not yl:isArmed() then return nil end
+    return yl
+end
+
+--- @return table|nil  { schema = "SG_SOIL_CONDITION_1", version = 1, ready, portions = true, notifications = true }
+function SoilFertilityManager:getBaleConditionCapabilities()
+    local yl = yardLadderOf(self)
+    if yl == nil then return nil end
+    local ok, caps = pcall(yl.getCapabilities, yl)
+    if not ok then return nil end
+    return caps
+end
+
+--- @return table|nil lease, string|nil reason
+function SoilFertilityManager:registerBaleConditionListener(listenerId, callbacks)
+    local yl = yardLadderOf(self)
+    if yl == nil then return nil, "UNAVAILABLE" end
+    local ok, lease, why = pcall(yl.registerListener, yl, listenerId, callbacks)
+    if not ok then return nil, "ERROR" end
+    return lease, why
+end
+
+--- @return boolean removed
+function SoilFertilityManager:unregisterBaleConditionListener(lease)
+    local yl = yardLadderOf(self)
+    if yl == nil then return false end
+    local ok, removed = pcall(yl.unregisterListener, yl, lease)
+    return ok and removed == true
+end
+
+--- @return table  { state = READY | RESTORING | UNAVAILABLE, reason, carrierRevision, carrierEventSequence, nativeBaleUniqueId, nativeFillType, actualLitres, portions }
+function SoilFertilityManager:getBaleConditionPortions(nativeBaleUniqueId)
+    local yl = yardLadderOf(self)
+    if yl == nil then return { state = "UNAVAILABLE", reason = "NOT_ARMED", nativeBaleUniqueId = nativeBaleUniqueId, portions = {} } end
+    local ok, result = pcall(yl.getConditionPortions, yl, nativeBaleUniqueId)
+    if not ok or type(result) ~= 'table' then
+        return { state = "UNAVAILABLE", reason = "ERROR", nativeBaleUniqueId = nativeBaleUniqueId, portions = {} }
+    end
+    return result
+end
+
+--- The same-owner compatibility delegate: a bale node resolved to its exact unique id.
+function SoilFertilityManager:getConditionPortionsForNode(nodeId)
+    local yl = yardLadderOf(self)
+    if yl == nil then return { state = "UNAVAILABLE", reason = "NOT_ARMED", portions = {} } end
+    local ok, result = pcall(yl.getConditionPortionsForNode, yl, nodeId)
+    if not ok or type(result) ~= 'table' then return { state = "UNAVAILABLE", reason = "ERROR", portions = {} } end
+    return result
+end
+
+--- [RSF-F215, MAINTENANCE rows 137 and 195] The ground-material family's mission start,
+--- run at the end of activateSoilSystem, after initialize() has armed the family (row 195:
+--- both owners' starts return early while unarmed). Every savegame item has loaded by now:
+--- the bale condition store's load is decided (if no bale did it first), a row whose bale
+--- never registered stops reading as restoring, and the ground coordinator's availability
+--- hold ends. EACH OWNER TRIGGERS ITS OWN decision: the coordinator arms on the condition
+--- owners alone, so it must not depend on the yard ladder being armed to leave its hold
+--- (Bob's MAJOR on #1022).
+function SoilFertilityManager:_groundMissionStarted()
+    local sys = self.soilSystem
+    if sys == nil then return end
+    if sys.yardLadder ~= nil and type(sys.yardLadder.onMissionStarted) == "function" then
+        pcall(sys.yardLadder.onMissionStarted, sys.yardLadder)
+    end
+    local gcc = sys.groundConditionCoordinator
+    if gcc ~= nil and type(gcc.onMissionStarted) == "function" then
+        pcall(gcc.onMissionStarted, gcc)
+    end
+end
+
 --- Per-cell growth judgement at a world position.
 --- @return table|nil { blocked, blockedBy, bands, credit, capturedEfficiency }
 function SoilFertilityManager:getCellGrowthInfo(fieldId, x, z)
@@ -2529,6 +2642,70 @@ function SoilFertilityManager:getFieldGrowthSummary(fieldId)
     local ok, summary = pcall(function() return v:getFieldGrowthSummary(fieldId) end)
     if not ok then return nil end
     return summary
+end
+
+--- Current-aware status of a farmland's growth summary.
+--- @return string UNAVAILABLE|PENDING|CURRENT|STALE
+function SoilFertilityManager:getFieldGrowthSummaryStatus(fieldId)
+    local v = self.viability
+    if v == nil or type(v.getFieldGrowthSummaryStatus) ~= 'function' then return 'UNAVAILABLE' end
+    local ok, status = pcall(function() return v:getFieldGrowthSummaryStatus(fieldId) end)
+    if not ok then return 'UNAVAILABLE' end
+    return status
+end
+
+--- One immutable complete ground-only region plan for a farmland (the SF-54
+--- condition source). Ground-only: no fruit identity, state or growth period.
+--- @return table|nil
+function SoilFertilityManager:getGrowthEligibleRegionPlan(farmlandId)
+    local v = self.viability
+    if v == nil or type(v.getGrowthEligibleRegionPlan) ~= 'function' then return nil end
+    local ok, plan = pcall(function() return v:getGrowthEligibleRegionPlan(farmlandId) end)
+    if not ok then return nil end
+    return plan
+end
+
+-- ============================================================
+-- SF-52 ONE GROUND: growth-input observation coordinates (cross-mod surface)
+--
+-- Additive manager delegates over SoilValueMaps' server-owned growth-input
+-- revision family (brief 3.2). A growth consumer reads getGrowthInputToken
+-- before and after it samples a farmland; equal coordinates prove the ground
+-- did not move mid-read. All three are nil-safe and pcall-safe, returning nil
+-- before coherent server initialization, for an unknown farmland, or on a
+-- non-authoritative client. Consumers compare equality, never an exact +1.
+-- ============================================================
+
+--- Global growth-input revision, or nil when unavailable.
+--- @return number|nil
+function SoilFertilityManager:getGrowthInputRevision()
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrowthInputRevision) ~= 'function' then return nil end
+    local ok, rev = pcall(function() return vm:getGrowthInputRevision() end)
+    if not ok then return nil end
+    return rev
+end
+
+--- The three-part observation token for a farmland (the public `fieldId`
+--- argument means farmland id), or nil when unavailable.
+--- @return table|nil { globalRevision, farmlandRevision, unscopedRevision }
+function SoilFertilityManager:getGrowthInputToken(fieldId)
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrowthInputToken) ~= 'function' then return nil end
+    local ok, token = pcall(function() return vm:getGrowthInputToken(fieldId) end)
+    if not ok then return nil end
+    return token
+end
+
+--- Metres per pixel of the loaded value-map carrier - the honest truth grain,
+--- never the friendly family name - or nil when the maps are unavailable.
+--- @return number|nil
+function SoilFertilityManager:getGrowthTruthGrainMetres()
+    local vm = self.soilSystem and self.soilSystem.valueMaps
+    if vm == nil or type(vm.getGrainMetres) ~= 'function' then return nil end
+    local ok, grain = pcall(function() return vm:getGrainMetres() end)
+    if not ok then return nil end
+    return grain
 end
 
 -- ============================================================
@@ -2573,7 +2750,9 @@ end
 ---@return number|nil
 function SoilFertilityManager:getSoilValueAtWorld(key, x, z)
     if SpatialNutrients == nil or SpatialNutrients.getSoilValueAtWorld == nil then return nil end
-    local ok, v = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
+    -- [SCS-041] Pass through the optional second return (metres-per-pixel grain)
+    -- without breaking one-value callers, which ignore it.
+    local ok, v, grain = pcall(SpatialNutrients.getSoilValueAtWorld, SpatialNutrients, self.soilSystem, key, x, z)
     if not ok then return nil end
-    return v
+    return v, grain
 end

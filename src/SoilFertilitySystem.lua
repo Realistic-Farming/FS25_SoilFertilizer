@@ -9,7 +9,7 @@
 -- =========================================================
 
 ---@class SoilFertilitySystem
-SoilFertilitySystem = {}
+SoilFertilitySystem = SoilFertilitySystem or {}
 local SoilFertilitySystem_mt = Class(SoilFertilitySystem)
 
 local COVERAGE_MILESTONES = { 0.10, 0.25, 0.50, 0.75, 1.0 }
@@ -41,6 +41,28 @@ local function getTuningMult(settings, settingId, lutKey)
     local lut = SoilConstants.TUNING and SoilConstants.TUNING[lutKey]
     if lut then return lut[idx] or lut[3] or 1.0 end
     return 1.0
+end
+
+--- RSF-F196 U2/U3: litres as the mass-equivalent a kg/ha rate can be compared
+--- with. The one conversion lives in HookManager.massEquivalent (the HUD ghost bar
+--- calls the same function, so bar and threshold cannot disagree); this wrapper
+--- only exists so a bench that loads this file without HookManager still runs,
+--- at passthrough, which is what every product outside the twelve dry ones is.
+--- In production HookManager loads before this file (main.lua).
+---@param fillType table|nil
+---@param liters number
+---@return number
+local function massEquivalent(fillType, liters)
+    if HookManager and type(HookManager.massEquivalent) == "function" then
+        return HookManager.massEquivalent(fillType, liters)
+    end
+    -- Observable, never silent: converting by 1 is the defect the unit rule
+    -- repairs, so a bar can assert this branch was not taken (#976 cold review).
+    -- The unit is WRAPPER INVOCATIONS, not applications: one applyFertilizer call
+    -- reaches this wrapper twice (the factor and the fully-treated comparison), so
+    -- a per-pass count read here would be wrong by two (#978 cold review).
+    SoilFertilitySystem.unitRuleFallbacks = (SoilFertilitySystem.unitRuleFallbacks or 0) + 1
+    return liters
 end
 
 --- Invalidate cached polygon vertices for a field when farmland ownership or
@@ -133,7 +155,18 @@ function SoilFertilitySystem.new(settings)
     -- Off by default: an existing save is untouched (zero writes).
     self.genesisActive = false
     self.genesisSeed   = 0
+    -- #880: deferred field re-scan. If the first scan finds no fields (a mod that
+    -- alters the mission-start lifecycle can make onStartMission fire before
+    -- g_fieldManager.fields is populated), the retry pump in update() re-runs the
+    -- scan so the fresh-save seeding is not skipped. False until a deferral.
+    self.fieldsScanPending = false
+    self.scanRetryTimer    = 0
+    self.scanRetryAttempts = 0
     self.hookManager = HookManager.new()
+    -- [SF-73] Target-accurate N/P/K: the resolver, the footprint and the results.
+    -- LOCKED behind ReleaseGate "sf73_target"; inert until a vehicle's AUTO is on
+    -- with the gate open and an N/P/K product in the cycle.
+    self.targetApplication = TargetApplication and TargetApplication.new(self) or nil
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
     self.hookManager:installFillUnitHookEarly()
@@ -146,6 +179,14 @@ function SoilFertilitySystem.new(settings)
     -- REFINED: engine bit-vector value maps (~2 m/px, PF-style). Replaces the
     -- 10-40 m zoneData cell grid as the per-pixel truth for N/P/K/pH/OM/compaction.
     self.valueMaps    = SoilValueMaps    and SoilValueMaps.new()    or nil
+    -- CD-15 step 1a: the local disease grid beside the field model. Its day and update
+    -- work run only where g_server exists, so a client holds an idle model; it binds
+    -- its geometry to the value maps above on its first day.
+    self.cd15         = CD15Model        and CD15Model.new(self)    or nil
+    -- [SF-79] Positional pH: the map revision advances on every applied pH
+    -- footprint write; a derived field report is CURRENT only at the revision it
+    -- was computed from. Session-local; the map's own GRLE file is the truth.
+    self._phMapRevision = 0
     -- [SF-43] MATERIAL DOWN. Created here beside the store it rides on; armed only
     -- after the store initializes, because arming asserts its layer keys resolved.
     self.materialDown = MaterialDown     and MaterialDown.new()     or nil
@@ -157,6 +198,16 @@ function SoilFertilitySystem.new(settings)
     -- [SF-46] THE YARD LADDER. Per-bale condition tracking on the shelter
     -- ladder, ending in condemnation.
     self.yardLadder = YardLadder and YardLadder.new() or nil
+    -- [RSF-F208] GROUND CONDITION RELOCATION. The exact-cell surface, the
+    -- pre-operation settlement barrier and the StockGuard admission interface.
+    -- Created beside the family it rides on; armed last, because it asserts that
+    -- both condition owners are actually ARMED and not merely present.
+    self.groundConditionCells = GroundConditionCells and GroundConditionCells.new() or nil
+    self.groundConditionCoordinator = GroundConditionCoordinator and GroundConditionCoordinator.new() or nil
+    self.groundConditionAdmission = GroundConditionAdmission and GroundConditionAdmission.new() or nil
+    -- [SG2-4c-3] Soil's `soil.groundCondition` property for StockGuard's SG-1: registered
+    -- after the coordinator arms, withdrawn at unload or when a condition owner stands down.
+    self.groundConditionProperty = GroundConditionProperty and GroundConditionProperty.new() or nil
     -- [SF-26] SPATIAL SCOUTING. The walked mask: per-farm, per-field walked
     -- cells that reveal the trouble's pattern where the player walked, on foot.
     -- Armed after the value maps initialize; its own bridges register in
@@ -289,6 +340,30 @@ function SoilFertilitySystem:initialize()
     if self.yardLadder and ReleaseGate.isSystemLive("ground_material") then
         self.yardLadder:arm(self.materialDown, self.materialWetness, self.hayBet)
     end
+    -- [RSF-F208] Armed last in the family: the cells assert both condition layers
+    -- share one geometry, the coordinator asserts both owners are armed, and the
+    -- admission interface publishes ONLY when the coordinator armed. Under the
+    -- gate, or on any refusal along that chain, getCapabilities() reports no
+    -- groundCondition and every consumer correctly treats Soil as absent for this
+    -- join. Absent is the normal path and it is what ships today.
+    if self.groundConditionCells and ReleaseGate.isSystemLive("ground_material") then
+        if self.groundConditionCells:arm(self.valueMaps) and self.groundConditionCoordinator then
+            if self.groundConditionCoordinator:arm(
+                   self.groundConditionCells, self.materialDown, self.materialWetness, self)
+               and self.groundConditionAdmission then
+                self.groundConditionAdmission:arm(
+                    self.groundConditionCoordinator, self.groundConditionCells)
+            end
+        end
+    end
+    -- [SG2-4c-3] Register `soil.groundCondition` with StockGuard when it published its
+    -- mission handle; the property refuses unless the coordinator armed, so a client, the
+    -- gate or any refusal above registers nothing. A separate registration from the
+    -- admission interface: it moves no admissionRevision. StockGuard absent is the
+    -- Soil-alone path.
+    if self.groundConditionProperty and self.groundConditionCoordinator then
+        self.groundConditionProperty:register(self.groundConditionCoordinator, g_currentMission)
+    end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.
     -- RELEASE GATE: Read the Dirt (the walked mask + the kneel + the handful read)
@@ -305,6 +380,11 @@ function SoilFertilitySystem:initialize()
         self:warning("FieldManager not available - will try delayed initialization")
     end
 
+    -- Populate HERBICIDE_TYPES from the engine's spray-type registry so map-added
+    -- herbicides (Roundup, atrazine, etc.) are recognized without a manual table entry.
+    -- Explicit entries in HERBICIDE_TYPES take precedence (custom effectiveness values).
+    self:populateHerbicideTypesFromSprayCategory()
+
     -- Install hooks via HookManager
     self.hookManager:installAll(self)
 
@@ -317,6 +397,28 @@ function SoilFertilitySystem:initialize()
     -- Log multifruit compatibility status
     self:logCropProfileStatus()
 
+end
+
+function SoilFertilitySystem:populateHerbicideTypesFromSprayCategory()
+    if not g_sprayTypeManager then return end
+    local wp = SoilConstants.WEED_PRESSURE
+    if not wp then return end
+    if not wp.HERBICIDE_TYPES then wp.HERBICIDE_TYPES = {} end
+
+    local added = 0
+    for _, sprayType in ipairs(g_sprayTypeManager:getSprayTypes()) do
+        if sprayType.isHerbicide and sprayType.fillType then
+            local name = sprayType.fillType.name
+            if name and wp.HERBICIDE_TYPES[name] == nil then
+                wp.HERBICIDE_TYPES[name] = 1.0
+                added = added + 1
+                self:info("Herbicide '%s' recognized by spray-type category", name)
+            end
+        end
+    end
+    if added > 0 then
+        self:info("Added %d herbicide(s) from spray-type categories", added)
+    end
 end
 
 -- Log which registered fruit types have explicit extraction profiles
@@ -357,6 +459,10 @@ end
 
 -- Cleanup hooks and resources
 function SoilFertilitySystem:delete()
+    -- [SG2-4c-3] Withdraw the property before the layers it reads go.
+    if self.groundConditionProperty then
+        self.groundConditionProperty:withdraw("unload")
+    end
     self.hookManager:uninstallAll()
     if self.layerSystem then
         self.layerSystem:delete()
@@ -369,6 +475,10 @@ function SoilFertilitySystem:delete()
     if self.valueMaps then
         self.valueMaps:delete()
         self.valueMaps = nil
+    end
+    if self.cd15 ~= nil then
+        self.cd15:delete()
+        self.cd15 = nil
     end
     self.fieldData = {}
     self.isInitialized = false
@@ -547,9 +657,10 @@ end
 --- actually receives on any stressed field whenever SCS is installed.
 ---
 --- DISPLAY USE ONLY. computeYieldModifier must never include this: SCS applies its
---- own cut itself, and HarvestContractUnderwrite divides out exactly the value the
---- hopper hook applied. Folding it into the applied path would double-charge the
---- player and break the contract top-up in the same stroke.
+--- own cut itself, upstream of ours, and the harvest underwrite measures SF's OWN share
+--- from the healthy-versus-actual cutter pair around our scaling (RSF-741). Folding SCS
+--- into the applied path would double-charge the player and hand the contract top-up a
+--- share SF never took, in the same stroke.
 ---
 --- Pull-only, pcall-guarded, neutral when absent - mirrors the SCS-001 moisture read
 --- in _applyRainLeaching. The function-type guard also keeps us neutral against an
@@ -622,7 +733,7 @@ function SoilFertilitySystem:computeYieldModifier(fieldId, fruitTypeIndex)
     -- field-average values, so SF's own share of the cut is identical on both paths.
     -- The monitor additionally multiplies in SeasonalCropStress's keep-factor
     -- (SCS-002) - deliberately NOT done here, because SCS applies that cut itself
-    -- upstream and HarvestContractUnderwrite inverts exactly what we return.
+    -- upstream, and the harvest underwrite measures only the cut this value causes (RSF-741).
     local modifier = self:_yieldModifierFromNutrients(
         field, cropName, field.nitrogen, field.phosphorus, field.potassium, fieldId)
 
@@ -732,6 +843,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sessionCoverageHa       = 0
         harvestField.sessionCoverageFraction = 0
         harvestField.sessionCoverageCells    = {}
+        harvestField.sessionOverlapOdo, harvestField.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
         harvestField.sessionLastProduct      = nil
         harvestField._geometricCoverageOwner = nil  -- #753
         harvestField._farmlandAreaConfirmed  = nil  -- re-confirm on next session's first spray (#507)
@@ -745,7 +857,7 @@ function SoilFertilitySystem:onHarvest(fieldId, fruitTypeIndex, liters, strawRat
         harvestField.sownCrop                = nil  -- crop harvested; lastCrop now carries it (#661)
         -- frozenYieldModifier is NOT cleared here (#598): onHarvest fires per-cut, so
         -- clearing here defeats the freeze and causes yield to drop with each combine pass.
-        -- The freeze is cleared once per game day in _processOneDailyField instead.
+        -- The freeze is cleared once per crop cycle in onSowing (SF-14 owns the cycle).
     end
 
     SoilLogger.debug("Harvest: Field %d, Crop %d, %.0fL (biological), area=%.1f", fieldId, fruitTypeIndex, liters, area or 0)
@@ -861,8 +973,24 @@ end
 ---@param fieldId number The field being fertilized
 ---@param fillTypeIndex number FS25 fill type index for fertilizer
 ---@param liters number Amount applied in liters
-function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters)
-    self:applyFertilizer(fieldId, fillTypeIndex, liters)
+---@param boomPoints table|nil RSF-F905: this tick's boom points, captured before the application
+function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters, boomPoints)
+    -- RSF-F196 V7: the resolved result enters the application path HERE, as the
+    -- second fence behind R2 (the dose is zeroed) and R3 (every consumer refuses
+    -- by name). A refused product returns exactly false BEFORE the nutrient buffer,
+    -- agronomy, organic input, overlay refresh or multiplayer broadcast; a valid
+    -- pass returns exactly true after its side effects complete, and both callers
+    -- gate the fertilizer-specific burn, scorch, boom paint and litre coverage on
+    -- result == true. Not a whole-helper gate: herbicide-, insecticide- and
+    -- fungicide-only products never come through this function and keep their
+    -- direct effects, paint, coverage and heat scorch. A system with no refused
+    -- table in reach (a bench) refuses nothing, which is today's behaviour.
+    local hm = self.hookManager
+    if hm ~= nil and type(hm.isRefusedProduct) == "function" and hm:isRefusedProduct(fillTypeIndex) then
+        return false
+    end
+
+    self:applyFertilizer(fieldId, fillTypeIndex, liters, boomPoints)
 
     local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
 
@@ -901,6 +1029,7 @@ function SoilFertilitySystem:onFertilizerApplied(fieldId, fillTypeIndex, liters)
             end
         end
     end
+    return true
 end
 
 -- Hook delegate: called by HookManager when field ownership changes.
@@ -931,6 +1060,9 @@ function SoilFertilitySystem:onFieldOwnershipChanged(fieldId, farmlandId, farmId
     local field = self:getOrCreateField(fieldId, true)
     if field then
         invalidatePolyVerts(field)
+        -- [SF-52] a field can join or leave this farmland on transfer, changing
+        -- the parcel union, so drop the union cache alongside the per-field one.
+        self:_invalidateFarmlandPolygons()
         self:_addToActiveSet(fieldId)
         SoilLogger.debug("[PERF-P1] Field %d acquired by farm %d - added to active set", fieldId, farmId)
     end
@@ -1023,6 +1155,17 @@ function SoilFertilitySystem:onSowing(fieldId, area, seedsFruitType, cropBiomass
     if not fieldId or fieldId <= 0 then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
+
+    -- SF-14: sowing opens a NEW crop cycle, so the previous crop's yield
+    -- capture and freeze are cleared here (not on the next game day). The
+    -- same crop does not change its yield result halfway through harvest, but
+    -- a fresh sowing must start clean: the old capture no longer describes
+    -- the standing crop and the old freeze no longer applies.
+    field.frozenYieldModifier  = nil
+    field.frozenYieldFruitType = nil
+    field.zoneYieldCaptureReady = nil
+    -- RSF-741 item 10: a new crop cycle ends the harvest-underwrite record too.
+    field.harvestUnderwriteProvenance = nil
 
     -- SF-18: opening (or extending) the establishment window. Every sowing pass
     -- extends, making re-drilling and multi-day drilling the same case.
@@ -1168,6 +1311,7 @@ function SoilFertilitySystem:resetSessionCoverage(fieldId, reason)
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
+    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
     field.sessionLastProduct      = nil
     field._farmlandAreaConfirmed  = nil
     field._geometricCoverageOwner = nil  -- #753: re-detect geometric path each session
@@ -1233,16 +1377,18 @@ function SoilFertilitySystem:_applyTillageOxidation(field, oxid, factor, areaHa)
     if not oxid or oxid <= 0 or not field then return false end
     local omDyn  = SoilConstants.OM_DYNAMICS
     local floor  = (omDyn and omDyn.DECAY_FLOOR) or SoilConstants.NUTRIENT_LIMITS.MIN
+    -- SF-56: scale oxidation by the tillage class at the pass location
+    local tx, tz = self._lastTillageX, self._lastTillageZ
+    local tillMult = 1.0
+    if tx and tz then tillMult = self:_tillageDecompMult(tx, tz) end
     local before = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-    local after  = math.max(floor, before - oxid * factor)
+    local after  = math.max(floor, before - oxid * tillMult * factor)
     if after >= before then return false end
     field.organicMatter = after
-    -- Positional loss on the OM value map (crop-incorporation precedent).
-    local tx, tz = self._lastTillageX, self._lastTillageZ
     if tx and tz then
         local zone = SoilConstants.ZONE
         local cellFactor = areaHa / zone.CELL_AREA_HA
-        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * cellFactor) }, zone.CELL_SIZE * 0.5)
+        self:vmLocalBump(tx, tz, { organicMatter = -(oxid * tillMult * cellFactor) }, zone.CELL_SIZE * 0.5)
     end
     return true
 end
@@ -1309,18 +1455,33 @@ function SoilFertilitySystem:onPlowing(fieldId, area, isAlsoSprayer, cropBiomass
             changed = true
         end
 
+        -- [SF-79 C] Plow normalisation targets 7.0 at the existing intensity
+        -- (0.1 x clamped accepted hectares / field hectares), ROUTED THROUGH THE
+        -- POSITIONAL WRITER like the meadow drift, with the scalar republished from
+        -- the derived report. Before this fix the block wrote field.pH directly:
+        -- the map never learned, and the next application's report refresh
+        -- overwrote the scalar from a map that never saw the plow, so the plow's pH
+        -- effect was discarded on the next spray. The magnitude is carried, not
+        -- re-derived. Equal bounds are the brief's "plow's equal 7.0 bounds"; the
+        -- writer banks a sub-step amount (brief 3.B) rather than losing it.
         local phBefore = field.pH or SoilConstants.FIELD_DEFAULTS.pH
         local phTarget = 7.0
         local phNormalization = 0.1 * factor
-        local phAfter = phBefore
-        if phBefore < phTarget then
-            phAfter = math.min(phBefore + phNormalization, phTarget)
-        elseif phBefore > phTarget then
-            phAfter = math.max(phBefore - phNormalization, phTarget)
-        end
-        if phAfter ~= phBefore then
-            field.pH = phAfter
-            changed = true
+        if type(self._phApplyField) == "function" then
+            self:_phApplyField(fieldId, PositionalPH.OP_NORMALIZE, phNormalization,
+                phTarget, phTarget, 'plow')
+            if (field.pH or phBefore) ~= phBefore then changed = true end
+        else
+            local phAfter = phBefore
+            if phBefore < phTarget then
+                phAfter = math.min(phBefore + phNormalization, phTarget)
+            elseif phBefore > phTarget then
+                phAfter = math.max(phBefore - phNormalization, phTarget)
+            end
+            if phAfter ~= phBefore then
+                field.pH = phAfter
+                changed = true
+            end
         end
     end
 
@@ -1814,10 +1975,9 @@ function SoilFertilitySystem:onHerbicideApplied(fieldId, effectiveness)
     self:log("[Herbicide] Field %d: weed pressure %.0f -> %.0f, protected for %d days",
         fieldId, before, field.weedPressure, field.herbicideDaysLeft)
 
-    -- Transition weeds to withered (brown) visual state in the game's density map.
-    -- The game's FieldState.weedFactor stays high until the density map is updated, so
-    -- we drive it ourselves: withered now so weeds turn brown, cleared on next daily tick.
-    self:applyWeedMapState(fieldId, SoilConstants.WEED_PRESSURE.WEED_STATE_WITHERED)
+    -- MAINTENANCE row 166: no weed map write here either (see onHerbicideAppliedDirect). This
+    -- once-per-day path has no caller in the mod; it keeps the same rule so it cannot bring the
+    -- whole-polygon paint back if it is ever wired up again.
 
     -- Broadcast in multiplayer
     if g_server and g_currentMission and g_currentMission.missionDynamicInfo and g_currentMission.missionDynamicInfo.isMultiplayer then
@@ -2366,6 +2526,57 @@ function SoilFertilitySystem:getScoutReport(fieldId)
     return report
 end
 
+--- [RSF-F231] The farm acting from THIS machine: the local player's record, as the
+--- kneel reads it (SF-22: the player record, never getFarmId() and never a farm-1
+--- fallback). A dedicated server has no local player, so its console has no farm
+--- and every local scout door refuses there; the brief rejects an admin override
+--- for what is ordinary land standing.
+---@return number|nil
+function SoilFertilitySystem.localScoutFarmId()
+    local player = g_localPlayer
+    if type(player) ~= "table" then return nil end
+    return player.farmId
+end
+
+--- [RSF-F231] The one standing test every scout door runs: the walked-cell rule
+--- (SpatialScouting.isFieldScoutAuthorized) against the farmland owner at the field,
+--- contracting included. With SpatialScouting absent it fails closed.
+---@param actingFarmId any
+---@param fieldId any
+---@return boolean
+function SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId)
+    if SpatialScouting == nil or type(SpatialScouting.isFieldScoutAuthorized) ~= "function" then
+        return false
+    end
+    return SpatialScouting.isFieldScoutAuthorized(actingFarmId, fieldId) == true
+end
+
+--- The second return of scoutField when the acting farm has no standing.
+SoilFertilitySystem.SCOUT_REFUSED = "NO_STANDING"
+
+--- [MAINTENANCE row 116] The standing every treatment door runs: the acting farm must
+--- own the field's farmland or be contracting its owner, the engine's own land rule
+--- (AccessHandler.canFarmAccessLand, farms/AccessHandler.lua:51-63: the owner, else
+--- Farm:getIsContractingFor, which canFarmAccessOtherId :35-49 asks). Unowned land
+--- (owner 0, economy/FarmlandManager.lua:275) is nobody's to treat, and a farm the
+--- engine does not name (nil or 0) is refused. Fails closed on a missing manager.
+---@param actingFarmId any
+---@param fieldId any
+---@return boolean
+function SoilFertilitySystem.isTreatAuthorized(actingFarmId, fieldId)
+    if type(actingFarmId) ~= "number" or actingFarmId <= 0 then return false end
+    if type(fieldId) ~= "number" then return false end
+    local fm = g_farmlandManager
+    if fm == nil or type(fm.getFarmlandOwner) ~= "function" then return false end
+    local ok, owner = pcall(fm.getFarmlandOwner, fm, fieldId)
+    if not ok or type(owner) ~= "number" or owner <= 0 then return false end
+    if owner == actingFarmId then return true end
+    local handler = g_currentMission and g_currentMission.accessHandler
+    if handler == nil or type(handler.canFarmAccessOtherId) ~= "function" then return false end
+    local ok2, allowed = pcall(handler.canFarmAccessOtherId, handler, actingFarmId, owner)
+    return ok2 and allowed == true
+end
+
 --- Deliberately scout a field: reveal its disease so getScoutReport returns the full
 --- truth from here on. The free bottom rung of the disease-intel economy - the player
 --- scouts each field one at a time (or buys a ProStaff report / gets a dog ping) to learn
@@ -2373,23 +2584,59 @@ end
 --- outbreak must be re-scouted. Server-authoritative in MP: a client marks it locally
 --- (optimistic - discovery is monotonic) and asks the server to make it authoritative and
 --- sync it farm-wide via the field-update broadcast.
+---
+--- CD-11 also records the durable `fieldEverScouted` bit here. This is the only place
+--- that SETS it; the one path that clears it is the one-time F66 resistance relief in
+--- _finalizeLoadedField (RSF-F237), which zeroes a field's scores and drops the bit with
+--- them so the readout says UNKNOWN rather than WORKING until the next scout. It is the
+--- gate the resistance readout reads (ResistanceBands.isFieldRevealed) and it outlives the
+--- per-outbreak diseaseDiscovered reset, so a farmer's resistance history stays visible
+--- through a new infection. It is written by the server alone: a client may reveal the
+--- disease optimistically but never sets the durable bit, which reaches it on the next
+--- field delivery. A client whose field is already revealed but still lacks the bit (an
+--- optimistic mark that never round-tripped) re-asks the server, which performs the
+--- durable write and one field update.
+---
+--- [RSF-F231] THE STANDING TEST SITS HERE, on the writer, because this is where the
+--- durable fact and the discovery flip are set: every door (the network event, the
+--- hotkey, the console, the dialog) supplies the farm it is acting for, and a
+--- caller that reaches the writer another way cannot bypass the rule. The acting
+--- farm must own the farmland or be contracting its owner (the walked-cell rule).
+--- A refusal writes NOTHING, flips nothing, sends nothing and broadcasts nothing,
+--- and returns NO report at all (nil plus SCOUT_REFUSED): the current report would be
+--- the full truth once the owner has scouted, so a refused door must not read it
+--- back (Bob, #998). On a client the same test runs against the synced farmland
+--- owner before the optimistic flip and the event; the server tests again from the
+--- sender's own player record.
 ---@param fieldId number
----@return table|nil report  the now-revealed scout report
-function SoilFertilitySystem:scoutField(fieldId)
+---@param actingFarmId number|nil  the farm this scout is made for; nil refuses
+---@return table|nil report  the now-revealed scout report; nil on a refusal
+---@return string|nil refused  SoilFertilitySystem.SCOUT_REFUSED when the farm has no standing
+function SoilFertilitySystem:scoutField(fieldId, actingFarmId)
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return self:getScoutReport(fieldId) end
+    if not SoilFertilitySystem.isScoutAuthorized(actingFarmId, fieldId) then
+        return nil, SoilFertilitySystem.SCOUT_REFUSED
+    end
 
+    local changed = false
     if not field.diseaseDiscovered then
         field.diseaseDiscovered = true
-        if g_currentMission and g_currentMission.missionDynamicInfo
-           and g_currentMission.missionDynamicInfo.isMultiplayer then
-            if not g_server then
-                if SoilScoutFieldEvent then
-                    g_client:getServerConnection():sendEvent(SoilScoutFieldEvent.new(fieldId))
-                end
-            elseif SoilFieldUpdateEvent then
-                SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
+        changed = true
+    end
+    if g_server ~= nil and field.fieldEverScouted ~= true then
+        field.fieldEverScouted = true
+        changed = true
+    end
+
+    if g_currentMission and g_currentMission.missionDynamicInfo
+       and g_currentMission.missionDynamicInfo.isMultiplayer then
+        if not g_server then
+            if SoilScoutFieldEvent and (changed or field.fieldEverScouted ~= true) then
+                g_client:getServerConnection():sendEvent(SoilScoutFieldEvent.new(fieldId))
             end
+        elseif changed and SoilFieldUpdateEvent then
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
         end
     end
     return self:getScoutReport(fieldId)
@@ -2415,6 +2662,25 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
     local field = self:getOrCreateField(fieldId, false)
     if not field then
         return false, "sf_treat_no_field", {}
+    end
+
+    -- STANDING (MAINTENANCE row 116). Every door supplies the farm it acts for in
+    -- opts.farmId: the network event from the sender's player record, the console and
+    -- the dialog from the local player. That farm must own the field's farmland or be
+    -- contracting its owner; a door with no farm (a dedicated server's console) is
+    -- refused. On a pure client the same test runs against the synced owner before the
+    -- request is sent; the server tests again from the sender's own record. A refusal
+    -- writes nothing, charges nobody and broadcasts nothing.
+    --
+    -- A caller that pays nothing (opts.charge == false) is not a player's door: it is
+    -- another mod's server-side treatment on land that mod admitted by its own rule
+    -- (NPCFavor's NPC treatment, NPCTreatment.lua:201, on land with no owner; ProStaff's
+    -- disease flush, ProStaffDiseaseFlush.lua:393, on the farm's own fields). Those keep
+    -- their behaviour. No client reaches this exemption: the event builds its own opts
+    -- with charge = true and the wire carries no opts, and a pure client's call is only
+    -- a request the server re-tests with charge = true.
+    if opts.charge ~= false and not SoilFertilitySystem.isTreatAuthorized(opts.farmId, fieldId) then
+        return false, "sf_treat_no_standing", {}
     end
 
     -- Clients ask the server to perform the authoritative application (MP).
@@ -2477,13 +2743,10 @@ function SoilFertilitySystem:applyNamedFungicide(fieldId, chemId, opts)
         local area = field.fieldArea or 1.0
         cost = (chem.costPerHa or 0) * area
         if cost > 0 then
+            -- THE ACTING FARM PAYS, and only it (row 116): the standing test above
+            -- admitted opts.farmId, so there is no fallback to the host's farm or to
+            -- farm 1 here; a treatment with no farm was refused before any write.
             local farmId = opts.farmId
-            if not farmId then
-                if g_localPlayer and g_localPlayer.farmId then farmId = g_localPlayer.farmId
-                elseif g_currentMission and g_currentMission.player and g_currentMission.player.farmId then
-                    farmId = g_currentMission.player.farmId
-                else farmId = 1 end
-            end
             if g_currentMission and g_currentMission.addMoney and farmId and farmId > 0 then
                 pcall(function()
                     g_currentMission:addMoney(-cost, farmId, MoneyType.PURCHASE_FERTILIZER, true, true)
@@ -2581,6 +2844,13 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:onDayChanged()
         end
+        -- CD-15 step 1a: the local disease model captures its logical day here, at the
+        -- existing daily settlement (server only; nil on a client). [CD-15 1b, #1062's
+        -- MINOR 1] Under pcall: a raise marks the model unavailable and the pass runs on.
+        if self.cd15 ~= nil then
+            local okCd, errCd = pcall(self.cd15.onDayChanged, self.cd15)
+            if not okCd then self.cd15:fail("onDayChanged", errCd) end
+        end
     end
 
     -- Rain effects (+ SCS-001 irrigation-driven leaching)
@@ -2637,11 +2907,31 @@ end
 function SoilFertilitySystem:update(dt)
     if not self.settings.enabled then return end
 
+    -- #880: bounded deferred field re-scan (see _scanRetryTick). Server-side only
+    -- in effect: on a client scanFields returns true immediately and never sets
+    -- the pending flag.
+    self:_scanRetryTick(dt)
+
+    -- CD-15 step 1a: the local disease day cursor, at most 256 cells a call. [CD-15 1b,
+    -- #1062's MINOR 1] Under pcall: a raise marks the model unavailable and the pass runs on.
+    if self.cd15 ~= nil then
+        local okCd, errCd = pcall(self.cd15.update, self.cd15, dt)
+        if not okCd then self.cd15:fail("update", errCd) end
+    end
+
+    -- [SG2-4c-3] A condition owner that stood down withdraws `soil.groundCondition`.
+    if self.groundConditionProperty ~= nil then self.groundConditionProperty:update() end
+
     self.lastUpdate = self.lastUpdate + dt
 
     if self.lastUpdate >= self.updateInterval then
         self.lastUpdate = 0
         -- Periodic checks could go here
+    end
+
+    -- [SF-73] result cadence and deleted-vehicle cleanup
+    if self.targetApplication then
+        self.targetApplication:update()
     end
 
     -- Handle network sync retry for multiplayer clients
@@ -2672,15 +2962,9 @@ function SoilFertilitySystem:update(dt)
         g_SoilFertilityManager.establishment:checkDayFallback()
     end
 
-    -- [SF-14] ZONE YIELD: daily cadence pump. When Time Guard is present its
-    -- accrual drives the capture; this call runs the capture on SF's own day
-    -- tracking when Time Guard is absent, the brief's named neutral flow.
-    -- Server only: the capture write is server-authoritative.
-    if g_server ~= nil and g_SoilFertilityManager and g_SoilFertilityManager.zoneYield
-        and g_SoilFertilityManager.zoneYield.isInitialized
-        and g_SoilFertilityManager.zoneYield.checkDayFallback then
-        g_SoilFertilityManager.zoneYield:checkDayFallback()
-    end
+    -- [SF-14] ZONE YIELD: no daily pump. The capture runs once per drained
+    -- FINISHED_GROWTH_PERIOD delivery (server-only by the value-map write's
+    -- nature); Time Guard creates no second ordinary capture.
 
     -- REFINED: round-robin display-layer mirror. Keeps the per-pixel
     -- weed/pest/disease/urgency/yield maps in step with the field-level
@@ -2688,6 +2972,9 @@ function SoilFertilitySystem:update(dt)
     -- feeding urgency...) without touching every write site. A few fields
     -- per tick, engine-side ops only when a value actually moved.
     self:_vmMirrorDisplayTick(dt)
+
+    -- #1037: one slice of the whole-field weed read (server only).
+    self:_weedReadTick()
 
     -- =========================================================
     -- PHASE 4: Batched daily field processing
@@ -2720,6 +3007,8 @@ function SoilFertilitySystem:update(dt)
             local cursor    = self._dailyBatchCursor
 
             while processed < self.DAILY_BATCH_SIZE and cursor < n do
+                -- #1037: a field waits while its whole-field weed read for today runs
+                if self:_weedReadPending(list[cursor + 1]) then break end
                 cursor = cursor + 1
                 local fid = list[cursor]
                 local fd  = self.fieldData[fid]
@@ -2752,7 +3041,7 @@ function SoilFertilitySystem:update(dt)
                 self.lastSeason = self._dailyBatchSeason
                 SoilLogger.debug("[PERF-P4] Day %d daily batch complete: %d field(s) in final slice, %d total",
                     self._dailyBatchDay, processed, n)
-            else
+            elseif processed > 0 then   -- #1037: no line for a frame spent waiting on a weed read
                 SoilLogger.debug("[PERF-P4] Day %d batch progress: cursor %d/%d (+%d this frame)",
                     self._dailyBatchDay, cursor, n, processed)
             end
@@ -2762,6 +3051,14 @@ end
 
 -- Scan all fields from FieldManager
 ---@return boolean True if successfully scanned fields, false if fields not ready yet
+-- #880: bounded deferred field re-scan window. If the first scan finds nothing,
+-- the retry pump in update() re-runs it at this cadence for at most this many
+-- attempts, so a mod that delays g_fieldManager.fields (e.g. one that alters the
+-- mission-start lifecycle) does not strand a fresh save with empty fieldData,
+-- which seeds nothing and reads as every field at zero on the maps.
+local SCAN_RETRY_INTERVAL_MS = 1000  -- retry cadence
+local SCAN_RETRY_MAX         = 20    -- ~20 s window, then give up (lazy path remains)
+
 function SoilFertilitySystem:scanFields()
     -- Guard: clients must not create local fieldData.
     -- Soil values are authoritative on the server and arrive via network sync events.
@@ -2776,11 +3073,13 @@ function SoilFertilitySystem:scanFields()
 
     if not g_fieldManager or not g_fieldManager.fields then
         self:warning("FieldManager not available yet")
+        self.fieldsScanPending = true   -- #880: defer, retry in update()
         return false
     end
 
     if next(g_fieldManager.fields) == nil then
         self:log("FieldManager fields table empty - not ready yet")
+        self.fieldsScanPending = true   -- #880: defer, retry in update()
         return false
     end
 
@@ -2802,6 +3101,7 @@ function SoilFertilitySystem:scanFields()
     -- g_currentMission.fieldManager does not exist; use the global g_fieldManager.fields table directly.
     if not g_fieldManager or not g_fieldManager.fields then
         self:warning("g_fieldManager.fields not available - scan deferred")
+        self.fieldsScanPending = true   -- #880: defer, retry in update()
         return false
     end
     local fields = g_fieldManager.fields
@@ -2895,7 +3195,48 @@ function SoilFertilitySystem:scanFields()
         return true
     end
 
+    self.fieldsScanPending = true   -- #880: nothing usable scanned yet; defer
     return false
+end
+
+-- #880: bounded deferred field re-scan. The initial scan can run while
+-- g_fieldManager.fields is still empty (mods that alter the mission-start
+-- lifecycle); fieldData left empty seeds nothing, which reads as every field at
+-- zero on the maps. Retry at a fixed cadence until the fields appear or the
+-- window closes. No-op unless the pending flag is set.
+function SoilFertilitySystem:_scanRetryTick(dt)
+    if not self.fieldsScanPending then return end
+    self.scanRetryTimer = (self.scanRetryTimer or 0) + dt
+    if self.scanRetryTimer < SCAN_RETRY_INTERVAL_MS then return end
+    self.scanRetryTimer = 0
+    self.scanRetryAttempts = (self.scanRetryAttempts or 0) + 1
+    if self.scanRetryAttempts > SCAN_RETRY_MAX then
+        self.fieldsScanPending = false
+        self:warning("[#880] Field scan still empty after %d retries - giving up (lazy field creation remains)", SCAN_RETRY_MAX)
+        return
+    end
+    if self:scanFields() then
+        self:_reseedAfterDeferredScan()
+    end
+end
+
+-- #880: replay the post-load seed steps that activateSoilSystem skipped when the
+-- initial scan found no fields (they looped over an empty fieldData and painted
+-- nothing). Called once a deferred scan finally populates the field list, so the
+-- maps and per-cell zone data match what a normal fresh save would have had.
+function SoilFertilitySystem:_reseedAfterDeferredScan()
+    local mgr = g_SoilFertilityManager
+    if not mgr or mgr.soilSystem ~= self then return end
+    self:prePopulateAllZoneData()
+    if mgr.seedGRLEFromFieldData then
+        mgr:seedGRLEFromFieldData()
+    end
+    if self:vmAvailable() then
+        self:seedValueMaps()
+    end
+    local mm = mgr.soilMinimapLayer
+    if mm and mm.markDirty then mm:markDirty() end
+    self:info("[#880] Deferred field scan seeded: zone data + GRLE + value maps")
 end
 
 --- Broadcast every tracked field to all connected clients.
@@ -3282,6 +3623,7 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         activeDisease = nil,        -- DISEASE_DEFS id of the current named infection (nil = none)
         activeDiseaseSeverity = 1.0,-- cached yield-severity multiplier for activeDisease
         diseaseDiscovered = false,  -- discovery gate: an active infection stays UNKNOWN in every scout report until deliberately scouted (or revealed by a future dog / ProStaff report)
+        fieldEverScouted = false,   -- CD-11: durable "this field has been scouted at least once". Server-written on the first successful scout; survives every outbreak reset (resistance history follows the ground, disease identity does not)
         lastFungicide = nil,        -- last chemical applied (for resistance / UI flavor)
         resistance = {},            -- CD-9: { [mode] = score 0..max } per-MOA resistance scores
         dryDayCount = 0,
@@ -3308,11 +3650,50 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
     self:log("Lazy-created field %d area=%.2f ha confirmed=%s",
         fieldId, self.fieldData[fieldId].fieldArea, tostring(confirmedArea))
 
+    -- [SF-73] A field born here freezes its N/P/K baseline at once, from its
+    -- genesis scalars, before any target write can change them.
+    if TargetApplication then
+        TargetApplication.freezeBaseline(self.fieldData[fieldId])
+    end
+
     -- Pre-populate zone tiles immediately so the overlay shows at full opacity
     -- as soon as a new field is created (e.g. on farmland purchase).
     self:_prePopulateZoneData(fieldId)
 
+    -- [SF-79 3.B] "New cultivated ground uses the frozen seed, never the later
+    -- report." A field born here has its genesis pH frozen as the seed at once,
+    -- and its raw-zero ground seeded from it before any write can land. The seed
+    -- returns 0 when the maps are not up yet; the load-time migration in
+    -- seedValueMaps catches that field later from the same frozen value.
+    if type(self._seedPHFootprint) == "function" then
+        local limits = SoilConstants.NUTRIENT_LIMITS
+        local seed = math.max(limits.PH_MIN, math.min(limits.PH_MAX, soil.pH))
+        self.fieldData[fieldId]._phSeedScalar = seed
+        self:_seedPHFootprint(fieldId, seed)
+    end
+
     return self.fieldData[fieldId]
+end
+
+-- [SF-79 3.C] Route a re-rolled field's pH through the positional writer, shared by
+-- both re-rolls. A FIELD SET at the re-rolled scalar over the parcel union, then the
+-- scalar is republished from the derived report so it equals the quantised map value.
+-- The writer refuses off the server (UNAVAILABLE 'not-server'), matching the console
+-- commands that call the re-rolls. When PositionalPH is absent nothing is painted,
+-- which is what the re-roll did on this branch before (vmSeedField skips pH).
+-- _phSeedScalar and _phPending are deliberately left alone: after a FIELD SET no
+-- raw-zero ground is left in the union, and re-freezing the seed would change what
+-- "frozen" means, which is not this item's call.
+function SoilFertilitySystem:_phRerollField(fieldId, field)
+    if type(self._applyPHFootprint) ~= "function" or field == nil then return nil end
+    local result = self:_applyPHFootprint(fieldId, {
+        operation = PositionalPH.OP_SET, scope = PositionalPH.SCOPE_FIELD,
+        value = field.pH, source = 'reroll',
+    })
+    if type(self._phRefreshScalar) == "function" then
+        self:_phRefreshScalar(fieldId)
+    end
+    return result
 end
 
 -- Re-roll the starting soil profile of EVERY known field using the current variation
@@ -3338,6 +3719,22 @@ function SoilFertilitySystem:rerollAllFields()
             self:_prePopulateZoneData(fieldId)
             -- REFINED: repaint the per-pixel value maps with the re-rolled profile
             self:vmSeedField(fieldId, true)
+            -- [SF-79 3.C] pH is not in vmSeedField's keys any more (the map is the
+            -- chemical authority), so the re-rolled pH goes through the positional
+            -- writer as a FIELD SET, the admin path's shape (:3766-3772). Without it
+            -- the map kept its old pixels, the report showed the OLD mean at once,
+            -- and the next pH write republished that old mean over the scalar: the
+            -- re-roll was invisible and then undone. SET's band is 0..RAW_MAX, so
+            -- raw-zero ground in the union is written too, which is the right
+            -- outcome for "re-roll the starting soil". The scalar is then refreshed
+            -- from the report so it equals the quantised map value.
+            self:_phRerollField(fieldId, field)
+            -- [SF-73] a re-roll is a new legitimate starting soil: the baseline
+            -- is established again from it (the ordinary recovery, section 6)
+            if TargetApplication then
+                field._sf73Baseline, field._sf73BaselineUnavailable = nil, nil
+                TargetApplication.freezeBaseline(field)
+            end
             count = count + 1
         end
     end
@@ -3385,6 +3782,13 @@ function SoilFertilitySystem:rerollUnownedFields()
                 self:_prePopulateZoneData(fieldId)
                 -- REFINED: repaint the per-pixel value maps with the re-rolled profile
                 self:vmSeedField(fieldId, true)
+                -- [SF-79 3.C] The re-rolled pH reaches the map (see rerollAllFields).
+                self:_phRerollField(fieldId, field)
+                -- [SF-73] the baseline follows the re-rolled starting soil
+                if TargetApplication then
+                    field._sf73Baseline, field._sf73BaselineUnavailable = nil, nil
+                    TargetApplication.freezeBaseline(field)
+                end
                 rerolled = rerolled + 1
             end
         end
@@ -3563,7 +3967,16 @@ function SoilFertilitySystem:refreshFieldOverlay(fieldId)
             self.valueMaps:paintPolygon("nitrogen",      verts, field.nitrogen)
             self.valueMaps:paintPolygon("phosphorus",    verts, field.phosphorus)
             self.valueMaps:paintPolygon("potassium",     verts, field.potassium)
-            self.valueMaps:paintPolygon("pH",            verts, field.pH)
+            -- [SF-79] The admin override sets a pH value through the writer (SET),
+            -- not a direct display repaint; a report never paints chemical pH.
+            if type(self._applyPHFootprint) == "function" then
+                self:_applyPHFootprint(fieldId, {
+                    operation = PositionalPH.OP_SET, scope = PositionalPH.SCOPE_FIELD,
+                    value = field.pH, source = 'admin',
+                })
+            else
+                self.valueMaps:paintPolygon("pH", verts, field.pH)
+            end
             self.valueMaps:paintPolygon("organicMatter", verts, field.organicMatter)
             -- Display layers repaint to the new field state too
             local disp = self:_vmDisplayValues(field)
@@ -3608,7 +4021,10 @@ end
 -- =========================================================
 
 -- fieldData keys mirrored into value maps (compaction has its own write path)
-local VM_NUTRIENT_KEYS = { "nitrogen", "phosphorus", "potassium", "pH", "organicMatter" }
+-- [SF-79] pH is deliberately NOT here: the pH value map is written positionally
+-- through PositionalPH's writer, and the scalar replay below would repaint the
+-- whole field from a field average (the shortcut SF-79 retires).
+local VM_NUTRIENT_KEYS = { "nitrogen", "phosphorus", "potassium", "organicMatter" }
 
 -- REFINED: field-level display layers rendered per-pixel. Values come from
 -- fieldData scalars / computed values; kept current by _vmMirrorDisplayTick.
@@ -3875,6 +4291,32 @@ function SoilFertilitySystem:seedValueMaps(force)
     for fieldId, field in pairs(self.fieldData) do
         self:paintOrganicStatus(fieldId, field)
     end
+    -- [SF-79 3.B] pH is NOT in VM_NUTRIENT_KEYS (the map is the chemical
+    -- authority, f9e3db4a), so nothing below seeds it, and until this ran nothing
+    -- did: on any save created after f9e3db4a the pH layer stayed raw zero, the
+    -- writer skipped it (every band starts at RAW_MIN), the report was EMPTY and
+    -- pH read UNAVAILABLE. The migration runs BEFORE the all-layers-restored
+    -- return because it is per-layer and preservation-first: band [0,0] fills
+    -- only unwritten ground, so a restored layer gets its holes filled and a
+    -- missing layer is recovered whole. One info line per call, never per field.
+    if type(self._migratePH) == "function" then
+        local phEntry = self.valueMaps.getLayerEntry and self.valueMaps:getLayerEntry(PositionalPH.PH_LAYER)
+        local phRestored = phEntry ~= nil and phEntry.loaded == true
+        local fields, polys, fromSeed, fromGenesis = 0, 0, 0, 0
+        for fieldId in pairs(self.fieldData) do
+            fields = fields + 1
+            local written, source = self:_migratePH(fieldId)
+            if written and written > 0 then
+                polys = polys + written
+                if source == 'seed' then fromSeed = fromSeed + 1
+                elseif source == 'genesis' then fromGenesis = fromGenesis + 1 end
+            end
+        end
+        -- "processed", not "seeded": setPolygonWhere reports success, never a changed-pixel
+        -- count, so on a fully seeded save every polygon is processed and none changes.
+        SoilLogger.info("[SF-79] pH seed: layer restored=%s, %d field(s), %d polygon(s) processed in band [0,0] (unwritten ground only; %d from a frozen seed, %d from genesis)",
+            tostring(phRestored), fields, polys, fromSeed, fromGenesis)
+    end
     if self.valueMaps.loadedFromSave and not force then
         SoilLogger.info("ValueMaps: all layers restored from savegame - seeding skipped")
         return
@@ -4030,11 +4472,152 @@ end
 
 --- Local read-modify-write bump around a work position (residue/amendment
 --- incorporation at the tillage tool). deltas = {nitrogen=dN, ...}.
-function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius)
-    if not worldX or not worldZ or not self:vmAvailable() then return end
+-- [SF-934] Teleport guard for the tillage sweep, in multiples of the worked line
+-- length: a jump farther than this never spans a quad, it seeds a fresh strip.
+SoilFertilitySystem.TILLAGE_TELEPORT_FACTOR = 3.0
+
+--- [SF-934] The parallelogram vmLocalBump paints this tick, plus the anchor
+--- bookkeeping behind it. Split out so every write inside ONE tick shares ONE
+--- footprint: cultivation bumps residue and then oxidation bumps OM in the same
+--- tick, and a second call that reseeded would concentrate its delta onto a thin
+--- strip while the first spread over the full swept quad. The per-tick cache keeps
+--- both on the same ground, which is also what physically happened.
+---@param fieldId number|nil  anchors are keyed per field so a pass never links fields
+---@return table|nil  { sx, sz, wx, wz, hx, hz, areaM2 }, or nil when nothing to paint
+function SoilFertilitySystem:_tillageQuad(fieldId, ax, az, bx, bz, lineLen)
+    local nowMs = (g_currentMission and g_currentMission.time) or 0
+    local cached = self._vmTillQuad
+    if cached ~= nil and cached.time == nowMs and cached.fieldId == fieldId
+        and cached.ax == ax and cached.az == az and cached.bx == bx and cached.bz == bz then
+        return cached.quad
+    end
+
+    local anchors = self._vmTillAnchors
+    if anchors == nil then anchors = {}; self._vmTillAnchors = anchors end
+    local anchor = (fieldId ~= nil) and anchors[fieldId] or nil
+
+    local sx, sz, wx, wz, hx, hz, areaM2
+
+    if anchor ~= nil then
+        -- Tip-swap guard: the work-area node pair can arrive in either order from one
+        -- tick to the next, so pair each tip with whichever anchor tip it is nearer.
+        -- Without it a swapped pair folds the quad into a bow tie and the paint dies.
+        local dxS = (ax - anchor.ax) + (bx - anchor.bx)
+        local dzS = (az - anchor.az) + (bz - anchor.bz)
+        local dxW = (ax - anchor.bx) + (bx - anchor.ax)
+        local dzW = (az - anchor.bz) + (bz - anchor.az)
+        local travX, travZ
+        if (dxW * dxW + dzW * dzW) < (dxS * dxS + dzS * dzS) then
+            travX, travZ = dxW * 0.5, dzW * 0.5
+        else
+            travX, travZ = dxS * 0.5, dzS * 0.5
+        end
+        local travel = math.sqrt(travX * travX + travZ * travZ)
+        if travel < 0.05 or travel > lineLen * SoilFertilitySystem.TILLAGE_TELEPORT_FACTOR then
+            anchor = nil   -- standing still, or a teleport: seed, never span the gap
+        else
+            -- Quad between the previously worked line (base) and this one (travel edge).
+            sx, sz = anchor.ax, anchor.az
+            wx, wz = anchor.bx, anchor.bz
+            hx, hz = ax, az
+            areaM2 = math.abs((wx - sx) * (hz - sz) - (wz - sz) * (hx - sx))
+        end
+    end
+
+    if anchor == nil then
+        -- Seed: a thin strip centred on the current worked line.
+        local ux, uz = -(bz - az) / lineLen, (bx - ax) / lineLen
+        local h = math.max(0.5, lineLen * 0.02)
+        sx, sz = ax - ux * h, az - uz * h
+        wx, wz = bx - ux * h, bz - uz * h
+        hx, hz = ax + ux * h, az + uz * h
+        areaM2 = lineLen * (h * 2)
+    end
+
+    if areaM2 == nil or areaM2 <= lineLen * 0.02 then return nil end
+
+    local quad = { sx = sx, sz = sz, wx = wx, wz = wz, hx = hx, hz = hz, areaM2 = areaM2 }
+    if fieldId ~= nil then
+        anchors[fieldId] = { ax = ax, az = az, bx = bx, bz = bz }
+    end
+    self._vmTillQuad = { time = nowMs, fieldId = fieldId,
+                         ax = ax, az = az, bx = bx, bz = bz, quad = quad }
+    return quad
+end
+
+--- Paint one tillage / sowing tick's deltas into the value maps ADDITIVELY, along
+--- the strip the implement actually worked.
+---
+--- [SF-934] The old body called SoilValueMaps:addValueAtWorld, which despite the
+--- name is a read-modify-SET. It sampled ONE pixel under the implement root, added
+--- the delta, then stamped that single result flat across a CELL_SIZE square,
+--- replacing every other pixel in the square with whatever the sampled pixel held.
+--- The square is wider than most implements, so neighbouring passes overlap and each
+--- pass copied its own sampled pixel over the overlap. Driving back down the same
+--- track sampled a different neighbour, so an unchanged POSITIVE delta could stamp
+--- the square DOWN instead of up: N and K fell on one pass and rose on the next. The
+--- nutrient arithmetic never reversed; the stamp copied a different pixel each time.
+---
+--- This is the move spraying already made (RSF-762 / RSF-836): paint the swept quad
+--- between the last worked line and the current one through addPaintStrip, a real
+--- per-pixel executeAdd with a saturation band. Consecutive ticks share no overlap,
+--- so a dose never stacks, and no pixel is overwritten with a neighbour's value.
+---
+--- MASS IS CONSERVED. Callers express each delta as this tick's whole amount
+--- concentrated into one zone cell, so the real mass is delta * CELL_AREA_HA. Spread
+--- over the strip's own area that becomes delta * CELL_AREA_HA / stripAreaHa per
+--- pixel, the same arithmetic paintBoomStrip uses.
+---
+--- THE FALLBACK IS ADDITIVE TOO. A first tick, a field change, a teleport or a
+--- missing work line cannot span a quad, so they seed a thin strip on the current
+--- line, still through addPaintStrip. A point-write fallback would keep the
+--- flattening stamp alive on exactly the ticks this bug appears on: the first tick
+--- of every pass and every headland turn. There is deliberately no addValueAtWorld
+--- path left here. An engine without executeAdd paints nothing rather than
+--- reintroducing the destructive stamp, which is what paintBoomStrip already does.
+---@param worldX number
+---@param worldZ number
+---@param deltas table        key -> semantic delta, pre-scaled to one zone cell
+---@param radius number|nil   half-span used ONLY when no work line is available
+---@param fieldId number|nil  defaults to the field the hook last recorded
+function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius, fieldId)
+    if not worldX or not worldZ or not deltas or not self:vmAvailable() then return end
+
+    local fid  = fieldId or self._lastTillageFieldId
+    local line = self._lastTillageLine
+
+    -- The line worked this tick. Prefer the implement's real lateral span, which the
+    -- hook derives from the work-area nodes so it carries width AND heading. Without
+    -- one, stand a span of `radius` either side of the point: still an area, never a
+    -- single sampled pixel.
+    local ax, az, bx, bz
+    if line ~= nil and line.ax ~= nil and line.bx ~= nil then
+        ax, az, bx, bz = line.ax, line.az, line.bx, line.bz
+    else
+        local half = radius or 4.0
+        ax, az, bx, bz = worldX - half, worldZ, worldX + half, worldZ
+    end
+    local lineLen = math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
+    if lineLen < 0.01 then
+        -- A degenerate span (co-located work-area nodes) must not silently paint
+        -- nothing: fall back to the same square the no-line case uses.
+        local half = radius or 4.0
+        ax, az, bx, bz = worldX - half, worldZ, worldX + half, worldZ
+        lineLen = half * 2
+        if lineLen < 0.01 then return end
+    end
+
+    local quad = self:_tillageQuad(fid, ax, az, bx, bz, lineLen)
+    if quad == nil then return end
+
+    local zone   = SoilConstants.ZONE
+    local cellHa = (zone and zone.CELL_AREA_HA) or 0.01
+    local scale  = cellHa / (quad.areaM2 / 10000)
+    local vm     = self.valueMaps
+
     for key, d in pairs(deltas) do
         if d and d ~= 0 then
-            self.valueMaps:addValueAtWorld(key, worldX, worldZ, d, radius or 4.0)
+            vm:addPaintStrip(key, quad.sx, quad.sz, quad.wx, quad.wz, quad.hx, quad.hz, d * scale)
         end
     end
 end
@@ -4135,14 +4718,28 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         areaM2 = boomLen * (h * 2)
     end
 
-    if areaM2 and areaM2 > 0.001 then
+    local minArea = boomLen * 0.02
+    if areaM2 and areaM2 > minArea then
         local areaHa = areaM2 / 10000
         local scale = sd.area / areaHa
         local vm = self.valueMaps
         if sd.dN  ~= 0 then vm:addPaintStrip("nitrogen",      sx, sz, wx, wz, hx, hz, sd.dN  * scale) end
         if sd.dP  ~= 0 then vm:addPaintStrip("phosphorus",    sx, sz, wx, wz, hx, hz, sd.dP  * scale) end
         if sd.dK  ~= 0 then vm:addPaintStrip("potassium",     sx, sz, wx, wz, hx, hz, sd.dK  * scale) end
-        if sd.dPH ~= 0 then vm:addPaintStrip("pH",            sx, sz, wx, wz, hx, hz, sd.dPH * scale) end
+        -- [SF-79] pH is written through the positional writer (cohort-correct:
+        -- the saturation cohort is established before the interior add), not the
+        -- add-then-saturate strip primitive.
+        if sd.dPH ~= 0 and type(self._applyPHFootprint) == "function" then
+            self:_applyPHFootprint(fieldId, {
+                operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_STRIP,
+                sx = sx, sz = sz, wx = wx, wz = wz, hx = hx, hz = hz,
+                value = sd.dPH * scale, source = 'application',
+                isTrueLime = sd.isTrueLime == true,
+            })
+            self:_phRefreshScalar(fieldId)
+        elseif sd.dPH ~= 0 then
+            vm:addPaintStrip("pH", sx, sz, wx, wz, hx, hz, sd.dPH * scale)
+        end
         if sd.dOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, sd.dOM * scale) end
 
         -- Advance the anchor to the line this quad actually painted.
@@ -4232,6 +4829,9 @@ function SoilFertilitySystem:updateDailySoil(elapsedDays)
     self._pendingDailyUpdate = true
     self._dailyBatchCursor   = 0
 
+    -- #1037: today's whole-field weed reads, one per cropped field, taken before its pass.
+    self:_queueDailyWeedReads()
+
     -- [SF-23] SPATIAL NUTRIENTS: refresh the cached moisture bands once per day,
     -- before the per-field batch runs, so the leach path reads settled water.
     -- Server-only (the daily pass is server-authoritative). Bands that cannot be
@@ -4267,10 +4867,32 @@ end
 --- converted field settles. Opt-in per field, so normal crops are never touched. The
 --- shared daily housekeeping (buffer/coverage/freeze reset, compaction decay) runs in
 --- _processOneDailyField before this is called. Coefficients live in SoilConstants.MEADOW.
+--- SF-56: read the engine's PLOW_LEVEL / STUBBLE_SHRED_LEVEL at (x,z) and
+--- return the decomposition multiplier for that cell's tillage class.
+--- plowed > 0: 1.0, stubble > 0 (plow not fresher): 0.8, neither: 0.6.
+--- Returns 1.0 (the baseline identity) when the read fails or is unavailable.
+---@param x number
+---@param z number
+---@return number multiplier
+function SoilFertilitySystem:_tillageDecompMult(x, z)
+    local fgs = g_currentMission and g_currentMission.fieldGroundSystem
+    if not fgs or not FieldDensityMap then return 1.0 end
+    local td = SoilConstants.OM_DYNAMICS and SoilConstants.OM_DYNAMICS.TILLAGE_DECOMPOSITION
+    if not td then return 1.0 end
+    local ok1, plow = pcall(fgs.getValueAtWorldPos, fgs, FieldDensityMap.PLOW_LEVEL, x, 0, z)
+    local ok2, stub = pcall(fgs.getValueAtWorldPos, fgs, FieldDensityMap.STUBBLE_SHRED_LEVEL, x, 0, z)
+    if not ok1 then plow = 0 end
+    if not ok2 then stub = 0 end
+    if (plow or 0) > 0 then return td.PLOWED or 1.0 end
+    if (stub or 0) > 0 then return td.STUBBLE or 0.8 end
+    return td.UNTILLED or 0.6
+end
+
+---@param fieldId number
 ---@param field table
 ---@param timeFactor number  1 / daysPerMonth (Issue #349 month normalization)
 ---@param limits table       SoilConstants.NUTRIENT_LIMITS
-function SoilFertilitySystem:_applyMeadowProfile(field, timeFactor, limits)
+function SoilFertilitySystem:_applyMeadowProfile(fieldId, field, timeFactor, limits)
     local m = SoilConstants.MEADOW
     if not m then return end
 
@@ -4283,12 +4905,18 @@ function SoilFertilitySystem:_applyMeadowProfile(field, timeFactor, limits)
     field.organicMatter = math.min(limits.ORGANIC_MATTER_MAX,
         (field.organicMatter or 0) + m.OM_GAIN * timeFactor)
 
-    -- Slow pH drift toward neutral, at a reduced rate vs cropland.
+    -- Slow pH drift toward neutral, at a reduced rate vs cropland. [SF-79] routed
+    -- through the positional writer; the scalar is republished from the report.
     local phRate = (SoilConstants.PH_NORMALIZATION.RATE or 0) * m.PH_DRIFT_FACTOR * timeFactor
-    if field.pH < limits.PH_NEUTRAL_LOW then
-        field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phRate)
-    elseif field.pH > limits.PH_NEUTRAL_HIGH then
-        field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phRate)
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_NORMALIZE, phRate,
+            limits.PH_NEUTRAL_LOW, limits.PH_NEUTRAL_HIGH, 'meadow')
+    else
+        if field.pH < limits.PH_NEUTRAL_LOW then
+            field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phRate)
+        elseif field.pH > limits.PH_NEUTRAL_HIGH then
+            field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phRate)
+        end
     end
 
     -- Grassland sheds accumulated weed/pest/disease pressure instead of building it.
@@ -4311,39 +4939,280 @@ local WEED_SAMPLE_OFFSETS = {
     { 0, 30 }, { 21, 21 }, { 30, 0 }, { 21, -21 }, { 0, -30 }, { -21, -21 }, { -30, 0 }, { -21, 21 },
 }
 
---- Average the game's weed factor across the field instead of reading a single centre
---- point. Returns an averaged weedFactor in [0,1], or 0 when no managed crop is present
---- at the centre (bare/grass/forage skip exactly as before). A ring point counts only if
---- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
---- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
---- field where every ring point is rejected this collapses to the old centre-only read.
----@param fsField table   g_fieldManager field (has posX/posZ, farmland)
+--- Herbicide-withered weed states (dead, brown). Vanilla still gives states 8/9 a harvest
+--- factor (0.5 / 0.75 in maps_weed.xml) and they persist until tillage/harvest, so reading
+--- weedFactor raw turned dead weeds into 50-75% weed pressure (#1030). Built once from the
+--- map's own herbicide replacement targets (excluding targets that are themselves sources);
+--- falls back to WITHERED_STATES from Constants.
+---@return table set of withered weed state integers
+function SoilFertilitySystem:_getWitheredWeedStates()
+    if self._witheredWeedStates then return self._witheredWeedStates end
+    local set = {}
+    local weedSystem = g_currentMission and g_currentMission.weedSystem
+    if weedSystem then
+        local ok, repData = pcall(function() return weedSystem:getHerbicideReplacements() end)
+        if ok and repData and repData.weed and repData.weed.replacements then
+            -- A target that is also a source key is a living state some other state
+            -- turns into (possible on custom maps), not a dead one: skip it.
+            local reps = repData.weed.replacements
+            for _, target in pairs(reps) do
+                if type(target) == "number" and target ~= 0 and reps[target] == nil then
+                    set[target] = true
+                end
+            end
+        end
+    end
+    if next(set) == nil then
+        for _, st in ipairs(SoilConstants.WEED_PRESSURE.WITHERED_STATES or {}) do set[st] = true end
+    end
+    self._witheredWeedStates = set
+    return set
+end
+
+-- #1037: the daily weed read measures the WHOLE field. The rings above reach about 30 m
+-- from one point, about 4% of a 6.6 ha field, so a field sprayed over most of its area,
+-- centre included, read 0% for good while the unsprayed strip grew back. The whole-field
+-- read counts the weed map's pixels inside the field's own polygon, value by value, the
+-- way the engine's herbicide mission measures a field (HerbicideMission.lua:36-55), and
+-- slices the polygon across frames the way FieldGetInfoTask reads a field
+-- (FieldGetInfoTask.lua:38-85; DensityMapUpdateTask.lua:23, 30 m of Z a frame). Server
+-- only, one slice per frame.
+-- Each field's read is taken for its own daily pass, never carried to a later one: the
+-- day's batch queues a read for every field with a crop at its centre (updateDailySoil),
+-- the batch waits on a field while its read runs (update), and the pass uses only a read
+-- taken for today. A read carried over could predate a cultivation or a sowing, and the
+-- day after would report weeds the field no longer has. A read that cannot start, or
+-- fails, never holds the batch: that field's pass keeps the ring average.
+local WEED_READ_SLICE_M = 30
+
+--- #1037: queue a whole-field weed read for the given batch day (a field already queued
+--- is not queued twice; a queued read that has not started yet now serves this day).
+--- Needs the engine field's density-map polygon (Field.lua:170).
 ---@param fieldId number
-function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
-    if not (fsField and fsField.posX and fsField.posZ) then return 0 end
+---@param fsField table   g_fieldManager field
+---@param day number      the daily batch this read is for
+function SoilFertilitySystem:_requestWeedFieldRead(fieldId, fsField, day)
+    if g_server == nil then return end
+    if not (fsField and type(fsField.getDensityMapPolygon) == "function") then return end
+    self._weedReadQueue  = self._weedReadQueue or {}
+    self._weedReadQueued = self._weedReadQueued or {}
+    if self._weedReadQueued[fieldId] then
+        for _, job in ipairs(self._weedReadQueue) do
+            if job.fieldId == fieldId then job.day = day end
+        end
+        return
+    end
+    self._weedReadQueued[fieldId] = true
+    table.insert(self._weedReadQueue, { fieldId = fieldId, fsField = fsField, day = day })
+end
+
+--- #1037: true while the field's whole-field weed read is queued or running.
+function SoilFertilitySystem:_weedReadPending(fieldId)
+    return self._weedReadQueued ~= nil and self._weedReadQueued[fieldId] == true
+end
+
+--- #1037: queue today's whole-field weed read for every active field whose daily pass
+--- will sample weeds: the setting on, a field the sim has not put to sleep, not a meadow,
+--- not grassland, and a managed crop at the centre (the same gates the daily pass
+--- applies). Server only.
+function SoilFertilitySystem:_queueDailyWeedReads()
+    if g_server == nil then return end
+    if not (self.settings.weedPressure and SoilConstants.WEED_PRESSURE) then return end
+    local nonCrops = (SoilConstants.YIELD_SENSITIVITY and SoilConstants.YIELD_SENSITIVITY.NON_CROP_NAMES) or {}
+    for _, fieldId in ipairs(self._activeFieldList or {}) do
+        local field = self.fieldData[fieldId]
+        local cropLower = field and field.lastCrop and string.lower(field.lastCrop) or nil
+        -- The daily pass's FieldSentry gate (_processOneDailyField): a field put to sleep
+        -- skips the pass, and a meadow returns before the weed block, so neither may queue
+        -- a read or hold the batch for one. The pass calls refreshContract first; this
+        -- queue does not, and accepts a one-day lag on a contract that starts or ends
+        -- today. refreshContract asks every contract provider and the deco detector, and
+        -- here that would run for every active field in the one frame the batch is queued.
+        -- On the day of a flip the lag costs at most one unused read or one day on the
+        -- ring average, never a stale value (the pass uses a read only for its own day).
+        -- The meadow toggle has no lag: refreshContract never changes it.
+        local asleep, meadow = false, false
+        if FieldSentry_API ~= nil and type(FieldSentry_API.isFieldSimDisabled) == "function" then
+            local disabled, _, isMeadow = FieldSentry_API.isFieldSimDisabled(fieldId)
+            asleep = disabled == true
+            meadow = isMeadow == true
+        end
+        if field and not asleep and not meadow and not (cropLower and nonCrops[cropLower]) then
+            local fsField = self:_fsFieldFor(fieldId)
+            if fsField and self:_weedCentreState(fsField, fieldId) then
+                self:_requestWeedFieldRead(fieldId, fsField, self._dailyBatchDay)
+            end
+        end
+    end
+end
+
+--- #1037: build one read. One pixel count for EVERY value the weed map can hold, so each
+--- pixel of the polygon lands in exactly one count and their sum is the field's own pixel
+--- total: the denominator is counted here, not taken from execute's return values. A live
+--- state weighs its factor; 0, a withered state (#1032) and a value with no factor weigh 0.
+---@return boolean started
+function SoilFertilitySystem:_startWeedFieldRead(job)
+    local weedSystem = g_currentMission and g_currentMission.weedSystem
+    if weedSystem == nil or g_terrainNode == nil then return false end
+    local mapId, firstChannel, numChannels = weedSystem:getDensityMapData()
+    local factors = weedSystem:getFactors()
+    local area = job.fsField:getDensityMapPolygon()
+    if mapId == nil or type(numChannels) ~= "number" or type(factors) ~= "table" or area == nil then
+        return false
+    end
+
+    local withered = self:_getWitheredWeedStates()
+    local modifier = DensityMapModifier.new(mapId, firstChannel, numChannels, g_terrainNode)
+    local multi = DensityMapMultiModifier.new()
+    local values = 1
+    for _ = 1, numChannels do values = values * 2 end
+    job.weightOf = {}
+    for value = 0, values - 1 do
+        local filter = DensityMapFilter.new(modifier)
+        filter:setValueCompareParams(DensityValueCompareType.EQUAL, value)
+        local name = "weed" .. value
+        multi:addExecuteGet(name, modifier, filter)
+        local factor = factors[value]
+        local live = type(factor) == "number" and factor > 0 and not withered[value]
+        job.weightOf[name] = live and factor or 0
+    end
+    area:applyToModifier(multi)
+    job.multi = multi
+    job.minZ, job.maxZ = multi:getPolygonMinMaxZ()
+    job.curZ = job.minZ
+    job.weighted, job.pixels = 0, 0
+    return true
+end
+
+--- #1037: read one slice of the running job; store the field's factor, tagged with the
+--- day it was taken for, when the last slice is done. Each slice resets the stats and
+--- counts into a fresh table, so the sum is right whether the engine reports a slice's
+--- counts or its running total.
+---@return boolean finished
+function SoilFertilitySystem:_readWeedFieldSlice(job)
+    local multi = job.multi
+    if job.minZ ~= nil then
+        local toZ = math.min(job.curZ + WEED_READ_SLICE_M, job.maxZ)
+        multi:setPolygonClipRegion(job.curZ, toZ)
+        job.curZ = toZ
+    end
+    multi:resetStats()
+    local counts = {}
+    multi:execute(nil, counts)
+    for name, weight in pairs(job.weightOf) do
+        local n = counts[name] or 0
+        job.pixels   = job.pixels + n
+        job.weighted = job.weighted + n * weight
+    end
+    if job.minZ ~= nil and job.curZ < job.maxZ then return false end
+
+    if job.pixels > 0 then
+        self._weedFieldReads = self._weedFieldReads or {}
+        local factor = math.max(0, math.min(1, job.weighted / job.pixels))
+        self._weedFieldReads[job.fieldId] = { day = job.day, factor = factor, pixels = job.pixels }
+        SoilLogger.debug("[#1037] whole-field weed read: field=%d day=%s factor=%.3f pixels=%d",
+            job.fieldId, tostring(job.day), factor, job.pixels)
+    end
+    return true
+end
+
+--- #1037: advance the whole-field weed read by one slice. Called every frame from
+--- update(); server only.
+function SoilFertilitySystem:_weedReadTick()
+    if g_server == nil then return end
+    local job = self._weedReadActive
+    if job == nil then
+        local queue = self._weedReadQueue
+        if queue == nil or #queue == 0 then return end
+        job = table.remove(queue, 1)
+        local okS, started = pcall(self._startWeedFieldRead, self, job)
+        if not (okS and started) then
+            if not okS then
+                SoilLogger.debug("[#1037] whole-field weed read could not start for field %d: %s",
+                    job.fieldId, tostring(started))
+            end
+            self._weedReadQueued[job.fieldId] = nil
+            return
+        end
+        self._weedReadActive = job
+    end
+    local okR, finished = pcall(self._readWeedFieldSlice, self, job)
+    if not okR then
+        SoilLogger.debug("[#1037] whole-field weed read failed for field %d: %s", job.fieldId, tostring(finished))
+    end
+    if not okR or finished then
+        self._weedReadActive = nil
+        self._weedReadQueued[job.fieldId] = nil
+    end
+end
+
+--- #1037: the engine field for a Soil field id (the daily pass's own lookup).
+---@param fieldId number
+---@return table|nil g_fieldManager field
+function SoilFertilitySystem:_fsFieldFor(fieldId)
+    if not (g_fieldManager and g_fieldManager.fields) then return nil end
+    local fsField = g_fieldManager.fields[fieldId]
+    if fsField and fsField.farmland and fsField.farmland.id == fieldId then return fsField end
+    for _, f in ipairs(g_fieldManager.fields) do
+        if f and f.farmland and f.farmland.id == fieldId then return f end
+    end
+    return nil
+end
+
+--- The centre read gates the whole weed sample: only trust weed data when a managed
+--- (non-forage) crop is actually present. Bare/UNKNOWN or grass/forage → nil.
+---@return table|nil fs the field's FieldState, updated at the centre
+---@return number|nil centreFruit
+function SoilFertilitySystem:_weedCentreState(fsField, fieldId)
+    if not (fsField and fsField.posX and fsField.posZ) then return nil end
     if not self._fieldStateCache then self._fieldStateCache = {} end
     if not self._fieldStateCache[fieldId] then
         local cok, cfs = pcall(FieldState.new)
         self._fieldStateCache[fieldId] = (cok and cfs) and cfs or false
     end
     local fs = self._fieldStateCache[fieldId]
-    if not fs then return 0 end
+    if not fs then return nil end
 
     local nonCrops = (SoilConstants.YIELD_SENSITIVITY and
         SoilConstants.YIELD_SENSITIVITY.NON_CROP_NAMES) or {}
 
-    -- Centre read gates the whole sample: only trust weed data when a managed
-    -- (non-forage) crop is actually present. Bare/UNKNOWN or grass/forage → skip.
     local ok = pcall(function() fs:update(fsField.posX, fsField.posZ) end)
     if not (ok and fs.isValid and fs.fruitTypeIndex ~= FruitType.UNKNOWN) then
-        return 0
+        return nil
     end
     local centreFruit = fs.fruitTypeIndex
     local fruitDesc   = g_fruitTypeManager and g_fruitTypeManager:getFruitTypeByIndex(centreFruit)
     local fruitName   = (fruitDesc and fruitDesc.name and string.lower(fruitDesc.name)) or ""
-    if nonCrops[fruitName] then return 0 end
+    if nonCrops[fruitName] then return nil end
+    return fs, centreFruit
+end
 
-    local sum   = fs.weedFactor or 0
+--- The field's weed factor for the daily pass, in [0,1], or 0 when no managed crop is
+--- present at the centre (bare/grass/forage skip exactly as before). #1037: the whole-field
+--- read taken for today's pass (see _queueDailyWeedReads); without one, the average of the
+--- centre and two rings. A ring point counts only if
+--- it is valid, carries the SAME crop as the centre, and (when the engine reports it) sits
+--- in this field's farmland, so roads and neighbouring parcels are rejected. On a small
+--- field where every ring point is rejected this collapses to the old centre-only read.
+---@param fsField table   g_fieldManager field (has posX/posZ, farmland)
+---@param fieldId number
+function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
+    local fs, centreFruit = self:_weedCentreState(fsField, fieldId)
+    if not fs then return 0 end
+
+    -- #1037: the whole field, from a read taken for this day's pass and no other.
+    local read = self._weedFieldReads and self._weedFieldReads[fieldId]
+    if read ~= nil and read.day == self._dailyBatchDay then return read.factor end
+
+    -- Dead (herbicide-withered) weeds read as 0: vanilla already applies their harvest
+    -- factor, and they neither compete nor draw nutrients (#1030).
+    local withered = self:_getWitheredWeedStates()
+    local function liveWeedFactor()
+        if fs.weedState ~= nil and withered[fs.weedState] then return 0 end
+        return fs.weedFactor or 0
+    end
+
+    local sum   = liveWeedFactor()
     local count = 1
 
     for i = 2, #WEED_SAMPLE_OFFSETS do
@@ -4355,7 +5224,7 @@ function SoilFertilitySystem:_sampleFieldWeedFactor(fsField, fieldId)
             -- accept" and only reject on a definite different-farmland reading.
             local farmOk = (fs.farmlandId == nil) or (fs.farmlandId == 0) or (fs.farmlandId == fieldId)
             if farmOk then
-                sum   = sum + (fs.weedFactor or 0)
+                sum   = sum + liveWeedFactor()
                 count = count + 1
             end
         end
@@ -4419,15 +5288,10 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.sessionCoverageHa       = 0
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
+    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
     field.sessionLastProduct      = nil
     field._geometricCoverageOwner = nil  -- #753
     field.sprayTrailPts           = nil
-
-    -- Clear the yield-modifier freeze from the previous harvest session (#598).
-    -- Frozen on the first cut of a harvest pass and held until the next game day so
-    -- that per-cut nutrient depletion does not cause yield to drop mid-harvest (#556).
-    field.frozenYieldModifier  = nil
-    field.frozenYieldFruitType = nil
 
     -- ── Compaction natural decay ─────────────────────────────────────────────
     if self.settings.compactionEnabled and SoilConstants.COMPACTION then
@@ -4461,8 +5325,15 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- toggle; the profile itself lives here in S&F (locked decision, #651). The shared
     -- housekeeping above (buffer/coverage/freeze reset, compaction decay) already ran.
     if isMeadow then
-        self:_applyMeadowProfile(field, timeFactor, limits)
+        self:_applyMeadowProfile(fieldId, field, timeFactor, limits)
         return
+    end
+
+    -- ── SF-56: tillage-class decomposition multiplier ──────────────────────
+    local fsField = self:_findFieldObject(fieldId)
+    local tillMult = 1.0
+    if fsField and fsField.posX and fsField.posZ then
+        tillMult = self:_tillageDecompMult(fsField.posX, fsField.posZ)
     end
 
     -- ── Passive organic-matter oxidation (#695) ──────────────────────────────
@@ -4474,7 +5345,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     local omDyn = SoilConstants.OM_DYNAMICS
     if omDyn and (omDyn.DAILY_DECAY or 0) > 0 then
         local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
-        field.organicMatter = math.max(omDyn.DECAY_FLOOR or 0, om - omDyn.DAILY_DECAY * timeFactor)
+        field.organicMatter = math.max(omDyn.DECAY_FLOOR or 0, om - omDyn.DAILY_DECAY * tillMult * timeFactor)
     end
 
     -- ── Fallow recovery ──────────────────────────────────────────────────────
@@ -4569,10 +5440,17 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     end
 
     -- ── pH slow drift toward neutral ─────────────────────────────────────────
-    if field.pH < limits.PH_NEUTRAL_LOW then
-        field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)
-    elseif field.pH > limits.PH_NEUTRAL_HIGH then
-        field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phNorm.RATE * timeFactor)
+    -- [SF-79] routed through the positional writer; the scalar is republished
+    -- from the derived report.
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_NORMALIZE, phNorm.RATE * timeFactor,
+            limits.PH_NEUTRAL_LOW, limits.PH_NEUTRAL_HIGH, 'daily')
+    else
+        if field.pH < limits.PH_NEUTRAL_LOW then
+            field.pH = math.min(limits.PH_NEUTRAL_LOW, field.pH + phNorm.RATE * timeFactor)
+        elseif field.pH > limits.PH_NEUTRAL_HIGH then
+            field.pH = math.max(limits.PH_NEUTRAL_HIGH, field.pH - phNorm.RATE * timeFactor)
+        end
     end
 
     -- ── Weed pressure - sourced from game's native weed density map ─────────
@@ -4602,6 +5480,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
                     field.sessionCoverageHa       = 0
                     field.sessionCoverageFraction = 0
                     field.sessionCoverageCells    = {}
+                    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
                     field.sessionLastProduct      = nil
                     field._geometricCoverageOwner = nil  -- #753
                     field.sprayTrailPts           = nil
@@ -4616,17 +5495,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             -- the old centre-only guard. See _sampleFieldWeedFactor.
             local gameWeedFactor = 0.0
             if g_fieldManager and g_fieldManager.fields then
-                local fsField = g_fieldManager.fields[fieldId]
-                if not fsField or not fsField.farmland or fsField.farmland.id ~= fieldId then
-                    fsField = nil
-                    for _, f in ipairs(g_fieldManager.fields) do
-                        if f and f.farmland and f.farmland.id == fieldId then
-                            fsField = f
-                            break
-                        end
-                    end
-                end
-                gameWeedFactor = self:_sampleFieldWeedFactor(fsField, fieldId)
+                gameWeedFactor = self:_sampleFieldWeedFactor(self:_fsFieldFor(fieldId), fieldId)
             end
             -- When herbicide is active the game's density map still shows dying weeds for
             -- 1-2 days - reading it would overwrite the pressure reduction from onHerbicideApplied.
@@ -5003,7 +5872,13 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                     field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
                     field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
                     field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
-                    field.pH         = math.max(limits.PH_MIN, field.pH      - (leachFactor * rain.PH_ACIDIFICATION))
+                    -- [SF-79] pH acidification goes through the positional writer.
+                    if type(self._phApplyField) == "function" then
+                        self:_phApplyField(fieldId, PositionalPH.OP_DELTA,
+                            -(leachFactor * rain.PH_ACIDIFICATION), nil, nil, 'rain')
+                    else
+                        field.pH = math.max(limits.PH_MIN, field.pH - (leachFactor * rain.PH_ACIDIFICATION))
+                    end
                     -- REFINED: mirror leaching onto the value maps. Per-tick amounts are
                     -- far below one raw map step, so they accumulate in field._vmPend and
                     -- flush as a uniform polygon shift once large enough.
@@ -5221,16 +6096,20 @@ function SoilFertilitySystem:isAmendmentBurnRisk(fruitTypeIndex, growthState)
     local fruitName    = fruitDesc.name and string.lower(fruitDesc.name)
     local perennialSet = SoilConstants.PERENNIAL_FORAGE_NAMES
     local gs = growthState or 0
+    local cutStates = fruitDesc.cutStates
+    if cutStates and cutStates[gs] then return false end
+    if fruitDesc.witheredState and gs == fruitDesc.witheredState then return false end
+    -- Wheel-flattened foliage ("tire tracks") is not a canopy either, so a rut on a freshly-cut
+    -- field must not take the amendment burn (#905, follow-up to #842). The engine parses
+    -- isDestructedByWheel into a single wheelDestructionState (nil until set, one state per fruit),
+    -- so this can never exempt a standing crop; on grass/meadow it lands on the cut state (no-op).
+    if fruitDesc.wheelDestructionState and gs == fruitDesc.wheelDestructionState then return false end
     if fruitName and perennialSet and perennialSet[fruitName] then
-        -- Perennial forage: burnable only inside the harvest window (tall sward).
         local minH = fruitDesc.minHarvestingGrowthState
         local maxH = fruitDesc.maxHarvestingGrowthState
-        local cutStates = fruitDesc.cutStates
         return (minH and minH > 0 and gs >= minH
-            and (not maxH or maxH <= 0 or gs <= maxH)
-            and not (cutStates and cutStates[gs])) or false
+            and (not maxH or maxH <= 0 or gs <= maxH)) or false
     end
-    -- Annual: burnable once established past the early seedling stage.
     local minH = fruitDesc.minHarvestingGrowthState or 6
     local frac = (SoilConstants.AMEND_BURN and SoilConstants.AMEND_BURN.ANNUAL_SEEDLING_FRACTION) or 0.33
     local establishedState = math.max(2, math.ceil(minH * frac))
@@ -5245,30 +6124,123 @@ end
 --- than BURN_PASS_GAP_MS (boom lifted, headland turn) opens a fresh pass. The penalty never
 --- decreases (an OM application won't lower an existing lime burn), and is cleared on harvest
 --- (consumed) or on sow/tillage (#681).
+--- RSF-F905: the increment is scaled by the share of this tick's covered cells that
+--- carry a burnable crop (0-1). nil means "no measured share", which is today's
+--- single-point verdict and accrues the full increment. A measured zero still runs
+--- the clock (the pass stays open) but adds nothing.
 ---@param field table   Field data record
 ---@param maxPen number Cap this burn type builds up to (LIME_MAX / OM_MAX)
+---@param share number|nil Covered-crop share for this tick; nil = full increment
 ---@return number penalty  The current accumulated amendment-burn penalty (0-1)
-function SoilFertilitySystem:applyAmendmentBurnSlice(field, maxPen)
+function SoilFertilitySystem:applyAmendmentBurnSlice(field, maxPen, share)
     local burnCfg = SoilConstants.SPRAYER_RATE
     local gapMs   = (burnCfg and burnCfg.BURN_PASS_GAP_MS) or 1500
     local fullMs  = (burnCfg and burnCfg.BURN_FULL_DAMAGE_MS) or 8000
     local now     = (g_currentMission and g_currentMission.time) or 0
+    if share == nil then share = 1 end
 
     local last = field._amendBurnTickTime
     field._amendBurnTickTime = now
     local dt = (last and (now - last) <= gapMs) and (now - last) or 0
 
-    if dt > 0 and fullMs > 0 then
-        local inc    = maxPen * (dt / fullMs)
+    -- A zero share advances the clock above but never touches the record, so a pass
+    -- over exempt ground leaves the field exactly as absent as it was.
+    if dt > 0 and fullMs > 0 and share > 0 then
+        local inc    = maxPen * (dt / fullMs) * share
         local ramped = math.min(maxPen, (field.amendBurnPenalty or 0) + inc)
         field.amendBurnPenalty = math.max(field.amendBurnPenalty or 0, ramped)
     end
     return field.amendBurnPenalty or 0
 end
 
+--- RSF-F905: the share (0-1) of this tick's boom cells, inside this field's polygon,
+--- that carry a crop the amendment burn can scorch. This is the covered-ground verdict
+--- that replaces the single-point sample for the burn.
+---
+--- Returns nil for a MISSING read, which the caller must treat as "fall back to the
+--- single-point verdict", never as "nothing burnable": no boom points (the sweep
+--- returned nothing), no field polygon (an unavailable polygon must not become a
+--- count-everything, which is fine for the hectare meter in markBoomCells but would
+--- burn the farmer for headland overhang), no engine density read, or a read that
+--- failed. Returns a real 0 when the set was obtained and holds no burnable cell,
+--- including when the polygon rejected every cell.
+---
+--- The polygon is the COMPLETE parcel union for this farmland id (_getFarmlandPolygons,
+--- SF-52), not the first-match _getFieldPolyVerts: a farmland can carry several engine
+--- fields, and the first-match helper rejects every cell on the second parcel (its own
+--- note at the hectare meter records that symptom). For a yield penalty that would
+--- switch the burn off on every second parcel, which is F347 again by another road.
+--- A cell belongs when its centre lies inside ANY parcel of the metered farmland.
+---
+--- Cells are floored and deduplicated exactly as markBoomCells does, the membership
+--- test is the cell centre, and the crop is read at that same centre with the engine's
+--- own per-cell get (as GrowthBlock, GrowthCredit and ZoneYield already do). The
+--- verdict per cell is the unchanged isAmendmentBurnRisk. Sibling boom sections in
+--- the same tick pass the same boomPoints table, so the result is cached on the
+--- field record keyed by that table's identity; the cache lives only on this field,
+--- so a section that meters a different field always uses its own polygon.
+---@param fieldId    number
+---@param field      table       self.fieldData[fieldId]
+---@param boomPoints table|nil   This tick's boom points, captured BEFORE the application
+---@return number|nil share      0-1, or nil for a missing read
+function SoilFertilitySystem:computeCoveredBurnShare(fieldId, field, boomPoints)
+    if not boomPoints or #boomPoints == 0 or not field then return nil end
+    if field._amendBurnShareSrc == boomPoints then
+        return field._amendBurnShare
+    end
+    field._amendBurnShareSrc = boomPoints
+    field._amendBurnShare    = nil
+
+    if FSDensityMapUtil == nil or type(FSDensityMapUtil.getFruitTypeIndexAtWorldPos) ~= "function" then
+        return nil
+    end
+    local polygons = self:_getFarmlandPolygons(fieldId)
+    if polygons == nil or #polygons == 0 then return nil end
+
+    local cellSize = SoilConstants.ZONE.CELL_SIZE
+    local seen = {}
+    local sampled, burnable = 0, 0  -- sampled = in-polygon cells, crop or not
+    for _, pt in ipairs(boomPoints) do
+        local cx = math.floor(pt.x / cellSize)
+        local cz = math.floor(pt.z / cellSize)
+        local cellKey = cx * 10000 + cz
+        if not seen[cellKey] then
+            seen[cellKey] = true
+            local cellCx = (cx + 0.5) * cellSize
+            local cellCz = (cz + 0.5) * cellSize
+            local inside = false
+            for _, verts in ipairs(polygons) do
+                if _isPointInPoly(cellCx, cellCz, verts) then inside = true; break end
+            end
+            if inside then
+                local ok, fruitIndex, growthState = pcall(FSDensityMapUtil.getFruitTypeIndexAtWorldPos, cellCx, cellCz)
+                if not ok then return nil end  -- a failed read is a missing read
+                sampled = sampled + 1
+                if fruitIndex ~= nil and self:isAmendmentBurnRisk(fruitIndex, growthState) then
+                    burnable = burnable + 1
+                end
+            end
+        end
+    end
+
+    local share = (sampled > 0) and (burnable / sampled) or 0
+    field._amendBurnShare = share
+    return share
+end
+
 -- Apply fertilizer
-function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
+---@param boomPoints table|nil  RSF-F905: this tick's boom points, captured before the
+--- application (see computeCoveredBurnShare). nil = no coverage read available.
+function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boomPoints)
     if not self.settings.enabled then return end
+
+    -- [SF-73] A target cycle enters this path ONCE with its actual physical litres.
+    -- Every independent physical consequence stays (nutrient buffer, the coarse
+    -- field N/P/K/OM scalars, positional pH/OM, burn, organic input, coverage);
+    -- only the legacy per-pixel N/P/K writes are replaced by the target's frozen
+    -- polygon writer, and the volume-based "fully treated" notice is not a crop
+    -- window outcome, so it is not shown. The area hook names the field.
+    local sf73 = self._sf73TargetField ~= nil and self._sf73TargetField == fieldId
 
     local field = self:getOrCreateField(fieldId, true)
     if not field then
@@ -5291,74 +6263,83 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
 
     -- Issue #437: pH/OM amendment burn on growing crops.
     -- LIME/LIQUIDLIME on growing crop → -80% yield. OM amendments → -20%.
-    -- Throttled to one warning per field per crop cycle via _amendBurnNotified flag.
+    -- The NOTIFICATION is throttled to one per field per crop cycle via _amendBurnNotified.
+    -- The burn itself is not (RSF-F905 / F347): that flag used to sit in this gate too, so
+    -- the metered slice ran exactly once per cycle, on the first tick of the pass, where
+    -- dt is always zero, and the penalty could never accrue past zero.
     local isLimeAmendment = entry.pH and entry.pH > 0  -- raises pH (LIME, LIQUIDLIME)
     local isOMAmendment   = entry.OM and not (entry.pH and entry.pH > 0)
-    if (isLimeAmendment or isOMAmendment) and not field._amendBurnNotified then
-        local spx, spz = self._lastSprayX, self._lastSprayZ
-        if spx and spz and g_farmlandManager then
-            local farmlandTmp = g_farmlandManager:getFarmlandAtWorldPosition(spx, spz)
-            local fsField = farmlandTmp and g_fieldManager and g_fieldManager.farmlandIdFieldMapping and g_fieldManager.farmlandIdFieldMapping[farmlandTmp.id]
-            -- Issue #532: use live FieldState query (fsField.fieldState is stale on freshly-plowed/fallow fields)
-            local hasCrop = false
-            local cropFruitIndex, cropGrowthState = nil, nil
-            if fsField and fsField.posX and fsField.posZ then
-                local ok, fs = pcall(function()
-                    local s = FieldState.new()
-                    s:update(fsField.posX, fsField.posZ)
-                    return s
-                end)
-                if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
-                    hasCrop          = true
-                    cropFruitIndex   = fs.fruitTypeIndex
-                    cropGrowthState  = fs.growthState
+    if isLimeAmendment or isOMAmendment then
+        -- RSF-F905: the MEASURED covered-crop share of this tick's boom cells decides when
+        -- it is available (#905: one boom point under stubble must not excuse, or one
+        -- point under crop must not charge, a whole boom width). The slice then runs even
+        -- at a share of zero so the pass clock keeps ticking, and the single-point verdict
+        -- below is not consulted. A missing or failed read (nil) keeps today's single-point
+        -- verdict at the last spray position: it is never treated as "nothing burnable".
+        local share = self:computeCoveredBurnShare(fieldId, field, boomPoints)
+        local runSlice = (share ~= nil)
+        if share == nil then
+            local spx, spz = self._lastSprayX, self._lastSprayZ
+            if spx and spz and g_farmlandManager then
+                local farmlandTmp = g_farmlandManager:getFarmlandAtWorldPosition(spx, spz)
+                local fsField = farmlandTmp and g_fieldManager and g_fieldManager.farmlandIdFieldMapping and g_fieldManager.farmlandIdFieldMapping[farmlandTmp.id]
+                -- Issue #532: use live FieldState query (fsField.fieldState is stale on freshly-plowed/fallow fields)
+                local hasCrop = false
+                local cropFruitIndex, cropGrowthState = nil, nil
+                if fsField and fsField.posX and fsField.posZ then
+                    local ok, fs = pcall(function()
+                        local s = FieldState.new()
+                        -- Sample at the boom point (#842), not the field's stored reference
+                        -- point: on a part-harvested field the reference cell can read crop
+                        -- while the boom is over stubble (or the reverse), firing the wrong
+                        -- burn verdict. Read the ground actually under the applicator.
+                        s:update(spx, spz)
+                        return s
+                    end)
+                    if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
+                        hasCrop          = true
+                        cropFruitIndex   = fs.fruitTypeIndex
+                        cropGrowthState  = fs.growthState
+                    end
                 end
+                -- A short/early crop must not take the amendment burn: a seedling annual or a
+                -- short/cut perennial sward has no leaf canopy to scorch (#645/#646/#681). The
+                -- shared helper decides whether the crop is established enough to actually burn.
+                -- Liming or spreading organics on a short/cut sward is standard practice.
+                local burnExempt = not hasCrop or not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState)
+                runSlice = hasCrop and not burnExempt
             end
-            -- Perennial forage (grass, meadow, alfalfa…) is exempt from amendment burn
-            -- while the sward is short - young regrowth or freshly cut. Liming or spreading
-            -- organics on a short/cut sward is standard practice (small leaf area, low burn
-            -- risk), so only penalise once it has regrown into its harvest window (tall).
-            -- Annual crops are never exempt. Shared by lime (#646) and organic matter
-            -- (#629/#645).
-            -- A short/early crop must not take the amendment burn: a seedling annual or a
-            -- short/cut perennial sward has no leaf canopy to scorch (#645/#646/#681). The
-            -- shared helper decides whether the crop is established enough to actually burn.
-            local burnExempt = not hasCrop or not self:isAmendmentBurnRisk(cropFruitIndex, cropGrowthState)
-            if hasCrop and not burnExempt then
+        end
 
-                local ab = SoilConstants.AMEND_BURN
+        if runSlice then
+            local ab = SoilConstants.AMEND_BURN
+            local cap
+            if isLimeAmendment then
+                -- #646/#681: established crops take the lime burn, built up over application
+                -- time (#688) toward LIME_MAX instead of an instant -80%.
+                cap = (ab and ab.LIME_MAX) or 0.80
+            else
+                -- #629/#645/#681: organic fertilizer (slurry/manure/digestate) on an established
+                -- crop builds up over application time toward OM_MAX (#688). Finished compost
+                -- scorches far more gently than fresh slurry/manure - stabilized humus carries
+                -- no free salt/ammonia to burn the canopy - so it caps at the lower COMPOST_MAX
+                -- (agronomic constant, Arissani 2026-07-24).
+                cap = (fillType.name == "COMPOST" and ab and ab.COMPOST_MAX)
+                   or (ab and ab.OM_MAX) or 0.20
+            end
+            self:applyAmendmentBurnSlice(field, cap, share)
+            -- Notify once per field per crop cycle, and only for a tick that actually
+            -- charges something: a measured zero share is the repair working, not a burn.
+            if (share == nil or share > 0) and not field._amendBurnNotified then
+                field._amendBurnNotified = true
                 if isLimeAmendment then
-                    -- #646/#681: liming cut/early perennial forage or a freshly-sown annual is
-                    -- realistic, so skip the burn there. Established crops still take it, but it
-                    -- now builds up over application time (#688) instead of instant -80%.
-                    if not burnExempt then
-                        self:applyAmendmentBurnSlice(field, (ab and ab.LIME_MAX) or 0.80)
-                        if not field._amendBurnNotified then
-                            field._amendBurnNotified = true
-                            self:showNotification(
-                                g_i18n:getText("sf_notify_lime_crop_title"),
-                                string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
-                        end
-                    end
+                    self:showNotification(
+                        g_i18n:getText("sf_notify_lime_crop_title"),
+                        string.format(g_i18n:getText("sf_notify_lime_crop_body"), fieldId))
                 else
-                    -- #629/#645/#681: organic fertilizer (slurry/manure/digestate) on short/cut
-                    -- perennial forage or a freshly-sown annual is standard practice, so skip it.
-                    -- On an established crop it builds up over application time toward OM_MAX (#688).
-                    if not burnExempt then
-                        -- Finished compost scorches an established crop far more gently than fresh
-                        -- slurry/manure - stabilized humus carries no free salt/ammonia to burn the
-                        -- canopy - so it caps at the lower COMPOST_MAX (agronomic constant, Arissani
-                        -- 2026-07-24). Seedling / short-cut sward stay exempt (handled above).
-                        local omCap = (fillType.name == "COMPOST" and ab and ab.COMPOST_MAX)
-                                   or (ab and ab.OM_MAX) or 0.20
-                        self:applyAmendmentBurnSlice(field, omCap)
-                        if not field._amendBurnNotified then
-                            field._amendBurnNotified = true
-                            self:showNotification(
-                                g_i18n:getText("sf_notify_om_crop_title"),
-                                string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
-                        end
-                    end
+                    self:showNotification(
+                        g_i18n:getText("sf_notify_om_crop_title"),
+                        string.format(g_i18n:getText("sf_notify_om_crop_body"), fieldId))
                 end
             end
         end
@@ -5428,6 +6409,12 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             e.applied = e.applied + clamped
             if clamped > 0 then self:onInsecticideAppliedIncremental(fieldId, clamped) end
         end
+        -- #1030: the grant runs on every tick, whatever the day's cap left for `clamped`.
+        -- This route's coverage is tracked by the hook after this call returns, so the grant
+        -- reads the fraction the previous tick left.
+        if self:_grantCropProtection(fieldId, field, "insecticide") then
+            self:_broadcastProtectionUpdate(fieldId, field)
+        end
 
     elseif entry.diseaseReduction then
         local targetRate = SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name] or SoilConstants.SPRAYER_RATE.BASE_RATES.FUNGICIDE
@@ -5444,12 +6431,22 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             e.applied = e.applied + clamped
             if clamped > 0 then self:onFungicideAppliedIncremental(fieldId, clamped) end
         end
+        -- #1030: as the insecticide route above.
+        if self:_grantCropProtection(fieldId, field, "fungicide") then
+            self:_broadcastProtectionUpdate(fieldId, field)
+        end
 
     else
         -- 2. Apply standard nutrients (scaled by the liters applied this frame)
         local rrIdx  = self.settings.replenishmentRate or 3
         local rrMult = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
-        local factor = (liters / 1000) / areaInHa * rrMult
+        -- RSF-F196 U3 (site 1 of 4): litres become mass-equivalent BEFORE the divide
+        -- by area. A dry product's tank drains rate/density litres per hectare (C2),
+        -- so each litre carries 1/density of the configured mass; converting back
+        -- makes one full hectare at 1.0x deliver exactly the configured kg/ha and the
+        -- same nutrient consequence a full pass had before the repair. Passthrough
+        -- products (liquids, base-game FERTILIZER and LIME) convert by nothing.
+        local factor = (massEquivalent(fillType, liters) / 1000) / areaInHa * rrMult
 
         -- Capture before-values for diagnostic logging (debug mode only).
         local dbgN0, dbgP0, dbgK0, dbgPH0 = field.nitrogen, field.phosphorus, field.potassium, field.pH
@@ -5470,8 +6467,26 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if entry.N then field.nitrogen   = math.min(limits.MAX, field.nitrogen   + entry.N * factor * tunFert) end
         if entry.P then field.phosphorus = math.min(limits.MAX, field.phosphorus + entry.P * factor * tunFert) end
         if entry.K then field.potassium  = math.min(limits.MAX, field.potassium  + entry.K * factor * tunFert) end
-        if entry.pH then field.pH        = math.max(limits.PH_MIN, math.min(limits.PH_MAX, field.pH + entry.pH * factor * tunFert)) end
+        -- [SF-79] pH is NOT mutated as a field scalar here. The positional writer
+        -- owns the map and the scalar is republished from the derived report after
+        -- the boom strip / narrow-tool write below. A field-average repaint is the
+        -- exact shortcut SF-79 retires.
         if entry.OM then field.organicMatter = math.max(0, math.min(limits.ORGANIC_MATTER_MAX, field.organicMatter + entry.OM * factor * tunFert)) end
+
+        -- [SF-79 3.A] isTrueLime: does this pass also earn vanilla lime credit? That is
+        -- the ENGINE's own axis, sprayType.isLime (SprayTypeManager.lua:62, true only for
+        -- a spray type registered as LIME), the flag FSDensityMapUtil.updateSprayArea
+        -- tests before it calls updateLimeArea (:1296-1297). It is NOT the pH-sign axis
+        -- the #437 burn gate above and the VR section curve use: GYPSUM moves pH and earns
+        -- no lime credit, and a product could raise pH without being registered as LIME.
+        -- The two agree on today's profiles and are still separate facts. Diagnostic
+        -- classification only: the writer never reads it, and nothing here grants or
+        -- fabricates native credit. It rides the dose record below, which resets on a
+        -- product change, so one record always means one product.
+        local sprayType = g_sprayTypeManager ~= nil
+            and type(g_sprayTypeManager.getSprayTypeByFillTypeIndex) == "function"
+            and g_sprayTypeManager:getSprayTypeByFillTypeIndex(fillTypeIndex) or nil
+        local isTrueLime = sprayType ~= nil and sprayType.isLime == true
 
         -- #735: stash THIS tick's field-average nutrient delta so markBoomCells can paint
         -- the boom's newly-covered cells with the correct LOCAL dose (each cell = its own
@@ -5484,13 +6499,16 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         local now = (g_currentMission and g_currentMission.time) or 0
         if not field._sprayDose or field._sprayDose.time ~= now or field._sprayDose.product ~= fillType.name then
             field._sprayDose = { dN = 0, dP = 0, dK = 0, dPH = 0, dOM = 0,
-                                 area = areaInHa, time = now, product = fillType.name }
+                                 area = areaInHa, time = now, product = fillType.name,
+                                 isTrueLime = isTrueLime }
         end
         local sd = field._sprayDose
         sd.area = areaInHa
-        if entry.N  then sd.dN  = sd.dN  + entry.N  * factor * tunFert end
-        if entry.P  then sd.dP  = sd.dP  + entry.P  * factor * tunFert end
-        if entry.K  then sd.dK  = sd.dK  + entry.K  * factor * tunFert end
+        -- [SF-73] a target cycle's N/P/K reaches the map through its polygon writer,
+        -- so the boom strip carries only this product's pH and OM
+        if entry.N and not sf73 then sd.dN  = sd.dN  + entry.N  * factor * tunFert end
+        if entry.P and not sf73 then sd.dP  = sd.dP  + entry.P  * factor * tunFert end
+        if entry.K and not sf73 then sd.dK  = sd.dK  + entry.K  * factor * tunFert end
         if entry.pH then sd.dPH = sd.dPH + entry.pH * factor * tunFert end
         if entry.OM then sd.dOM = sd.dOM + entry.OM * factor * tunFert end
 
@@ -5511,8 +6529,8 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
             local phBufPrev = phBuf - liters
             if math.floor(phBuf / 1000) ~= math.floor(phBufPrev / 1000) then
                 SoilLogger.info(
-                    "FertApply pH field=%d type=%-12s buf=%.0fL factor=%.4f  pH %.3f -> %.3f (area=%.2fha)",
-                    fieldId, fillType.name, phBuf, factor, dbgPH0, field.pH, areaInHa)
+                    "FertApply pH field=%d type=%-12s buf=%.0fL factor=%.4f  pH %.3f -> %.3f (area=%.2fha) trueLime=%s",
+                    fieldId, fillType.name, phBuf, factor, dbgPH0, field.pH, areaInHa, tostring(isTrueLime))
             end
             SoilLogger.debug(
                 "FertApply pH field=%d type=%-12s liters=%.4f factor=%.6f  pH %.3f -> %.3f (delta=%.4f)",
@@ -5532,23 +6550,62 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         end
 
         -- REFINED: per-pixel write at the sprayer position into the runtime value
-        -- maps (~2 m/px). The full boom-width strip is now painted per-cell by
-        -- markBoomCells (#735, correct local dose). This dot is the NARROW-TOOL
-        -- fallback only: tools whose span is under one cell yield no boom points, so
-        -- markBoomCells never runs and this dot is their sole per-pixel write. It
-        -- DEFERS whenever a boom paint happened in the last ~half second (a wide
-        -- sprayer), so it can't restamp the field average over the correct strip.
+        -- maps (~2 m/px). The full boom-width strip is painted per-cell by
+        -- paintBoomStrip (#735/#762, correct local dose). This dot is the
+        -- NARROW-TOOL fallback only: tools whose span is under one cell yield no
+        -- boom points, so the strip never paints and this dot is their sole
+        -- per-pixel write. It DEFERS whenever a boom paint happened in the last
+        -- ~half second (a wide sprayer), so it can't repaint over the correct strip.
+        -- The defer flag is the PREVIOUS tick's, so every tool's first tick of a
+        -- pass reaches this dot once before its strip.
+        --
+        -- The dot ADDS this tick's delta over a 5 m square through addPaintStrip,
+        -- the additive primitive paintBoomStrip uses, on the parallelogram
+        -- writeValueAtWorld builds for the same radius. It used to SET the field
+        -- scalar there through writeValueAtWorld, which levelled every pixel in the
+        -- square to the field average and erased the per-pixel record the strip had
+        -- built: a narrow tool crossing a boom strip flattened it, and every tool's
+        -- first tick stamped the average over the ground under the sprayer.
+        -- The delta is the same expression as the pH dot below and the scalar
+        -- update above: this tick's FIELD-AVERAGE delta, not a local dose (the strip
+        -- rescales by its own area; the dot has no travel geometry to rescale by).
+        -- The footprint is the 5 m square the stamp always used, about eleven times
+        -- the pH dot's grain cell; the dose magnitude is a MAINTENANCE item, not
+        -- decided here.
+        -- Seeding: none, like the strip. N/P/K/OM are seeded over the field polygon
+        -- at birth (vmSeedField) and addPaintStrip skips unrecorded pixels (raw 0),
+        -- so ground the seeder never covered stays unrecorded under every tool
+        -- instead of being invented at the field average by this one.
         local sprayX = self._lastSprayX
         local sprayZ = self._lastSprayZ
         local boomRecent = field._vmBoomPaintTime ~= nil
             and (now - field._vmBoomPaintTime) >= 0 and (now - field._vmBoomPaintTime) < 500
         if sprayX and sprayZ and self:vmAvailable() and not boomRecent then
             local vm = self.valueMaps
-            if entry.N  then vm:writeValueAtWorld("nitrogen",      sprayX, sprayZ, field.nitrogen,      2.5) end
-            if entry.P  then vm:writeValueAtWorld("phosphorus",    sprayX, sprayZ, field.phosphorus,    2.5) end
-            if entry.K  then vm:writeValueAtWorld("potassium",     sprayX, sprayZ, field.potassium,     2.5) end
-            if entry.pH then vm:writeValueAtWorld("pH",            sprayX, sprayZ, field.pH,            2.5) end
-            if entry.OM then vm:writeValueAtWorld("organicMatter", sprayX, sprayZ, field.organicMatter, 2.5) end
+            local r = 2.5
+            local sx, sz, wx, wz, hx, hz = sprayX - r, sprayZ - r, sprayX + r, sprayZ - r, sprayX - r, sprayZ + r
+            -- [SF-73] no legacy N/P/K dot on a target cycle
+            local dotN  = sf73 and 0 or (entry.N  or 0) * factor * tunFert
+            local dotP  = sf73 and 0 or (entry.P  or 0) * factor * tunFert
+            local dotK  = sf73 and 0 or (entry.K  or 0) * factor * tunFert
+            local dotPH = (entry.pH or 0) * factor * tunFert
+            local dotOM = (entry.OM or 0) * factor * tunFert
+            if dotN ~= 0 then vm:addPaintStrip("nitrogen",   sx, sz, wx, wz, hx, hz, dotN) end
+            if dotP ~= 0 then vm:addPaintStrip("phosphorus", sx, sz, wx, wz, hx, hz, dotP) end
+            if dotK ~= 0 then vm:addPaintStrip("potassium",  sx, sz, wx, wz, hx, hz, dotK) end
+            -- [SF-79] The narrow-tool pH dot goes through the positional writer, then
+            -- republishes the field scalar from the derived report.
+            if entry.pH and type(self._applyPHFootprint) == "function" then
+                self:_applyPHFootprint(fieldId, {
+                    operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_POINT,
+                    x = sprayX, z = sprayZ, value = entry.pH * factor * tunFert, source = 'application',
+                    isTrueLime = isTrueLime,
+                })
+                self:_phRefreshScalar(fieldId)
+            elseif dotPH ~= 0 then
+                vm:addPaintStrip("pH", sx, sz, wx, wz, hx, hz, dotPH)
+            end
+            if dotOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, dotOM) end
             local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
             if minimapLayer then minimapLayer:markDirty() end
         end
@@ -5557,9 +6614,10 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         if self.layerSystem and self.layerSystem.available then
             local x, z = self._lastSprayX, self._lastSprayZ
             if x and z then
-                if entry.N then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
-                if entry.P then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
-                if entry.K then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
+                -- [SF-73] the legacy GRLE N/P/K point stamp is the dot's twin: not on a target cycle
+                if entry.N and not sf73 then self.layerSystem:updatePixelForField("nitrogen",      x, z, field.nitrogen,      2.0) end
+                if entry.P and not sf73 then self.layerSystem:updatePixelForField("phosphorus",    x, z, field.phosphorus,    2.0) end
+                if entry.K and not sf73 then self.layerSystem:updatePixelForField("potassium",     x, z, field.potassium,     2.0) end
                 if entry.pH then self.layerSystem:updatePixelForField("pH",           x, z, field.pH,            2.0) end
                 if entry.OM then self.layerSystem:updatePixelForField("organicMatter",x, z, field.organicMatter, 2.0) end
             end
@@ -5623,14 +6681,16 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
         (SoilConstants.DISEASE_PRESSURE and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES   and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[fillType.name])    or
         (SoilConstants.WEED_PRESSURE    and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES      and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES[fillType.name])
     )
-    if not isCropProtection then
+    if not isCropProtection and not sf73 then
         local baseRateEntry = SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name] or
                              SoilConstants.SPRAYER_RATE.BASE_RATES.DEFAULT
         local targetVolume = areaInHa * baseRateEntry.value
         local coverageThreshold = targetVolume * SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD
 
         local minCoverage = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
-        if field.nutrientBuffer[fillTypeIndex] >= coverageThreshold and
+        -- RSF-F196 U3 (site 2 of 4): the buffer is litres (U1, unchanged) and the
+        -- threshold is derived from a kg/ha rate, so the litres convert first.
+        if massEquivalent(fillType, field.nutrientBuffer[fillTypeIndex]) >= coverageThreshold and
            (field.coverageFraction or 0) >= minCoverage then
             local today = (g_currentMission and g_currentMission.environment and
                            g_currentMission.environment.currentDay) or 0
@@ -5643,20 +6703,129 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters)
     end
 end
 
+-- =========================================================
+-- [SF-73] target-accurate N/P/K: the soil system's side
+-- =========================================================
+
+--- The three factors applyFertilizer's credit uses for a product, so the target
+--- inversion and the credit can never disagree: the declared kg/L mass equivalent
+--- (1 for passthrough products), the replenishment multiplier and the fertilizer
+--- tuning. Same expressions as the nutrient branch above.
+---@return number unitFactor, number rr, number tuning
+function SoilFertilitySystem:sf73CreditFactors(fillType)
+    local unitFactor = massEquivalent(fillType, 1)
+    local rrIdx  = self.settings.replenishmentRate or 3
+    local rr = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[rrIdx] or 1.0
+    local tuning = getTuningMult(self.settings, "tuningFertilizerEfficiency", "RATE_MULT")
+    return unitFactor, rr, tuning
+end
+
+--- The baseline a save writes for a field. A field never touched by SF-73 has had
+--- no SF-73 change, so its current scalars are still the legitimate pre-SF-73
+--- values and are frozen here rather than lost; a field marked unavailable stays so.
+---@return table|nil { N, P, K }
+function SoilFertilitySystem:sf73BaselineForSave(field)
+    if TargetApplication == nil or type(field) ~= "table" or field._sf73BaselineUnavailable then return nil end
+    if not TargetApplication.validBaseline(field._sf73Baseline) then TargetApplication.freezeBaseline(field) end
+    local b = field._sf73Baseline
+    if not TargetApplication.validBaseline(b) then return nil end
+    return b
+end
+
+--- Read contract 1 (SF-73 section 6): the machine-pass answer for a vehicle, a
+--- copy, or nil when there is none. Never a zero success for a missing plan.
+function SoilFertilitySystem:getApplicationTargetResult(vehicle)
+    local ta = self.targetApplication
+    if ta == nil then return nil end
+    local ok, r = pcall(ta.getApplicationTargetResult, ta, vehicle)
+    if ok then return r end
+    return nil
+end
+
+--- Whether SF-73 target mode governs this vehicle's pass, for the HUD (one read on
+--- every role; false when the module or the read is unavailable).
+function SoilFertilitySystem:isTargetModeForDisplay(vehicle)
+    local ta = self.targetApplication
+    if ta == nil or type(ta.isTargetModeForDisplay) ~= "function" then return false end
+    local ok, on = pcall(ta.isTargetModeForDisplay, ta, vehicle)
+    return ok and on == true
+end
+
+--- Whether SF-73's release lock is open on this peer, for the HUD's target block
+--- (section 7): the same fail-closed switch as target mode (TA:isGateOpen). The opt-in
+--- it reads is a synced setting, so a client answers as its server does. Locked, the
+--- HUD draws today's panel and nothing new.
+function SoilFertilitySystem:isTargetGateOpen()
+    local ta = self.targetApplication
+    if ta == nil or type(ta.isGateOpen) ~= "function" then return false end
+    local ok, open = pcall(ta.isGateOpen, ta)
+    return ok and open == true
+end
+
+--- [W1b] The field's last confirmed target footprint outcome (REACHED, a shortfall, or a
+--- post-spend failure), a copy, for the PDA; nil while SF-73 is locked or when this peer has
+--- seen none since load or join. Display only: one footprint's result, never a field claim.
+function SoilFertilitySystem:getLastTargetPassForField(fieldId)
+    if not self:isTargetGateOpen() then return nil end
+    local ta = self.targetApplication
+    if ta == nil or type(ta.getLastOutcomeForField) ~= "function" then return nil end
+    local ok, r = pcall(ta.getLastOutcomeForField, ta, fieldId)
+    if ok then return r end
+    return nil
+end
+
+--- [PDA pause] The field's last no-crop pause (an AUTO refusal for no growing crop on this
+--- field), a copy carrying `notedAt` and the `fieldCrop` stamp it was noted under, for the PDA;
+--- nil while SF-73 is locked or when this peer has seen none since load or join. Display only.
+--- getLastTargetPassForField above stays outcomes only.
+function SoilFertilitySystem:getLastTargetPauseForField(fieldId)
+    if not self:isTargetGateOpen() then return nil end
+    local ta = self.targetApplication
+    if ta == nil or type(ta.getLastPauseForField) ~= "function" then return nil end
+    local ok, r = pcall(ta.getLastPauseForField, ta, fieldId)
+    if ok then return r end
+    return nil
+end
+
+--- [W1b] The refusal reason a player surface names for a target result (the one display
+--- order the HUD and the PDA read, TargetNutrientCore.REASON_DISPLAY_ORDER), so another
+--- mod's view (FarmTablet, W1c) names the same reason. nil while SF-73 is locked, for an
+--- outcome, or for a result with no reason it knows.
+function SoilFertilitySystem:getTargetPrimaryReason(result)
+    if not self:isTargetGateOpen() then return nil end
+    if TargetNutrientCore == nil or type(TargetNutrientCore.primaryReason) ~= "function" then return nil end
+    local ok, reason = pcall(TargetNutrientCore.primaryReason, result)
+    if ok then return reason end
+    return nil
+end
+
+--- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
+--- field scalars without coordinates; strict LOCAL map truth with them.
+--- Unavailable (nil) while SF-73's release lock is closed, on the same switch as target
+--- mode (TA:isGateOpen, fail-closed): the readers (SeasonalCropStress, DairyCore) keep
+--- their complete legacy paths and move to crop windows when SF-73 unlocks (Design, on
+--- #1029).
+function SoilFertilitySystem:getCropNutrientRelationship(fieldId, x, z)
+    local ta = self.targetApplication
+    if ta == nil then return nil end
+    local okGate, open = pcall(ta.isGateOpen, ta)
+    if not okGate or open ~= true then return nil end
+    local ok, r = pcall(ta.getCropNutrientRelationship, ta, fieldId, x, z)
+    if ok then return r end
+    return nil
+end
+
 --- Incremental insecticide application (called every frame while spraying)
 function SoilFertilitySystem:onInsecticideAppliedIncremental(fieldId, reduction)
     if not self.settings.pestPressure then return end
     local field = self:getOrCreateField(fieldId, false)
     if not field then return end
 
-    local pp = SoilConstants.PEST_PRESSURE
     local before = field.pestPressure or 0
     field.pestPressure = math.max(0, before - reduction)
-    -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
-    local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-    if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.insecticideDaysLeft = SoilDuration.seasonScaled(pp.INSECTICIDE_DURATION_DAYS)
-    end
+    -- #1030: the protection grant is not here. Every caller runs this only when its
+    -- capped reduction is positive, so a grant here never came once the day's cap was
+    -- spent. The callers grant through _grantCropProtection on every tick instead.
 
     -- Update per-cell pest pressure for existing zoneData entries only.
     -- Do NOT create new entries here - doing so would stamp N/P/K/pH/OM field-average
@@ -5679,16 +6848,9 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
     local field = self:getOrCreateField(fieldId, false)
     if not field then return end
 
-    local dp = SoilConstants.DISEASE_PRESSURE
-    local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
-        or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
     local before = field.diseasePressure or 0
     field.diseasePressure = math.max(0, before - reduction)
-    -- Duration is in in-game DAYS (decremented 1/game-day); see #639 / onHerbicideApplied.
-    local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-    if (field.sessionCoverageFraction or 0) >= protThreshold then
-        field.fungicideDaysLeft = math.floor(SoilDuration.seasonScaled(dp.FUNGICIDE_DURATION_DAYS) * (cm.fungicideMult or 1))
-    end
+    -- #1030: the protection grant is not here (see onInsecticideAppliedIncremental).
 
     -- Update per-cell disease pressure for existing zoneData entries only.
     -- Do NOT create new entries here - doing so would stamp N/P/K/pH/OM field-average
@@ -5701,6 +6863,66 @@ function SoilFertilitySystem:onFungicideAppliedIncremental(fieldId, reduction)
         local cell = field.zoneData[cellKey]
         if cell then
             cell.diseasePressure = math.max(0, (cell.diseasePressure or field.diseasePressure or 0) - reduction)
+        end
+    end
+end
+
+-- =====================================================================
+-- CROP-PROTECTION GRANT (#1030)
+-- =====================================================================
+-- The >= 80% coverage protection grant (COVERAGE.PROTECTION_THRESHOLD, #441) used to
+-- sit inside each route's `reduction > 0` block: the herbicide direct path, and the
+-- insecticide and fungicide incrementals, which the other four routes call only when
+-- their capped reduction is positive. Once a field's daily reduction cap was spent, a
+-- field that crossed 80% later that day was never protected. Every route now calls
+-- this on every application tick, after its own coverage tracking where it has one,
+-- whatever the reduction was. The threshold, the durations and the cap are unchanged.
+local PROTECTION_KINDS = {
+    herbicide   = { setting = "weedPressure",    days = "herbicideDaysLeft" },
+    insecticide = { setting = "pestPressure",    days = "insecticideDaysLeft" },
+    fungicide   = { setting = "diseasePressure", days = "fungicideDaysLeft" },
+}
+
+--- Grant (or refresh) a crop-protection window once the field's session coverage has
+--- reached the threshold. Durations are in in-game DAYS (decremented 1/game-day, #639).
+---@param kind string "herbicide" | "insecticide" | "fungicide"
+---@return boolean newlyGranted true only when the field had no window of this kind before
+function SoilFertilitySystem:_grantCropProtection(fieldId, field, kind)
+    local k = PROTECTION_KINDS[kind]
+    if not k or not field or not self.settings[k.setting] then return false end
+    local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
+    if (field.sessionCoverageFraction or 0) < protThreshold then return false end
+
+    local days
+    if kind == "herbicide" then
+        -- MAINTENANCE row 166: the grant writes no weed map. It used to call
+        -- applyWeedMapState(WITHERED) on the first grant, which reads ONE weed state at the
+        -- field's centre and writes its replacement to every pixel of the field polygon.
+        -- Vanilla herbicide already withers the ground the pass sprays, and Soil only
+        -- counts vanilla HERBICIDE (#839).
+        days = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
+    elseif kind == "insecticide" then
+        days = SoilDuration.seasonScaled(SoilConstants.PEST_PRESSURE.INSECTICIDE_DURATION_DAYS)
+    else
+        local cm = SoilConstants.DISEASE_CLIMATE_MOISTURE[self.settings.diseaseMoisture or 2]
+            or SoilConstants.DISEASE_CLIMATE_MOISTURE[2]
+        days = math.floor(SoilDuration.seasonScaled(SoilConstants.DISEASE_PRESSURE.FUNGICIDE_DURATION_DAYS)
+            * (cm.fungicideMult or 1))
+    end
+
+    local wasProtected = (field[k.days] or 0) > 0
+    field[k.days] = days
+    return not wasProtected and days > 0
+end
+
+--- One field update to the clients (server, multiplayer only): the send the herbicide
+--- path has made since #257. A route calls it for a newly granted window, so clients
+--- see protection turn on without waiting for the next full sync.
+function SoilFertilitySystem:_broadcastProtectionUpdate(fieldId, field)
+    if g_server and g_currentMission and g_currentMission.missionDynamicInfo
+        and g_currentMission.missionDynamicInfo.isMultiplayer then
+        if SoilFieldUpdateEvent then
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
         end
     end
 end
@@ -5751,19 +6973,28 @@ end
 --
 -- Area-based approach: liters consumed per tick is proportional to
 --   boom_width × speed × LPS_rate
--- Dividing by the product's reference rate (L/ha) converts liters → hectares covered.
--- This is field-size and boom-size independent and matches real application density.
+-- Dividing by the litres per hectare the pass actually applied converts liters →
+-- hectares covered. This is field-size and boom-size independent, and independent of
+-- the rate the player chose: Soil's usage formula is the worked area times the native
+-- rate times the start hook's multiplier, so dividing out both leaves the area (#1063).
 --
--- Called from the sprayer hook with raw liters (before rateMultiplier).
+-- Called from the sprayer hook with the liters it consumed (after the rate multiplier).
 -- For fertilizer products, updateFractions should be false because markBoomCells
 -- handles coverage via spatial cell deduplication (eliminates overlap inflation).
 -- For crop protection direct paths (herbicide/insecticide/fungicide) where no
 -- boomPoints are available, updateFractions remains true (liter-based fallback).
 ---@param fieldId        number
----@param liters         number   Raw liters consumed this tick (pre-rateMultiplier)
+---@param liters         number   Liters consumed this tick (the rate multiplier included)
 ---@param fillTypeName   string|nil
 ---@param updateFractions boolean|nil  false = skip area update, only record product name
-function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions)
+---@param litersPerHa    number|nil  the litres per hectare this pass applied: the product's
+---                                  native rate times the multiplier applied
+---                                  (HookManager.getNativeSprayRatePerHa, the start hook)
+function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName, updateFractions, litersPerHa)
+    -- MAINTENANCE row 169: while the sprayer hook replays a rig's secondary tanks, the pass's
+    -- coverage belongs to the active tank. Return before the #442 reset, the name write and
+    -- the area add, so a secondary neither wipes the session nor counts its ground twice.
+    if self._multiTankCoverageHold then return end
     if not liters or liters <= 0 then return end
     local field = self.fieldData[fieldId]
     if not field then return end
@@ -5773,6 +7004,7 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
         field.sessionCoverageHa       = 0
         field.sessionCoverageFraction = 0
         field.sessionCoverageCells    = {}
+        field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
         field._geometricCoverageOwner = nil  -- #753: re-detect geometric path for new product
         field.sprayTrailPts           = nil
     end
@@ -5793,11 +7025,15 @@ function SoilFertilitySystem:trackSprayerCoverage(fieldId, liters, fillTypeName,
     -- Crop protection fallback: liter-based area estimate (no boom position available).
     local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
 
-    local baseRates = SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.BASE_RATES
-    local rateEntry = fillTypeName and baseRates and (baseRates[fillTypeName] or baseRates.DEFAULT)
-    local ratePerHa = (rateEntry and rateEntry.value and rateEntry.value > 0) and rateEntry.value or 93.5
-
-    local areaThisTick = liters / ratePerHa
+    -- #1063: litres over the litres per hectare the pass applied, litres with litres.
+    -- RSF-F196 U3 site 3 (the mass conversion before a kg/ha BASE_RATES divisor) is
+    -- retired with that divisor: no litre meets a kg/ha number here any more. A caller
+    -- with no rate counts no area, and the miss is counted, never silent.
+    if type(litersPerHa) ~= "number" or not (litersPerHa > 0) or litersPerHa == math.huge then
+        SoilFertilitySystem.coverageRateMissing = (SoilFertilitySystem.coverageRateMissing or 0) + 1
+        return
+    end
+    local areaThisTick = liters / litersPerHa
     field.coveredAreaHa = (field.coveredAreaHa or 0) + areaThisTick
 
     local prevCoverage = field.coverageFraction or 0
@@ -5863,6 +7099,70 @@ function SoilFertilitySystem:_getFieldPolyVerts(fieldId, field)
     return nil
 end
 
+--- [SF-52] The COMPLETE parcel-union polygon collection for a public farmland
+--- id: EVERY current engine field polygon whose farmland.id matches, never the
+--- first match. SF-52's point membership, region plan and area-weighted summary
+--- use this so a second field on the same farmland no longer borrows the first
+--- field's geometry (brief section 2; invariant 2). The single-polygon
+--- _getFieldPolyVerts above keeps its first-match contract for its many other
+--- consumers, which this does not touch.
+---
+--- Returns an array of vertex arrays ({ {x=, z=}, ... }), each with >= 3 points,
+--- in field-manager order (the union fingerprint sorts, so order does not affect
+--- identity); nil when the farmland has no resolvable polygon yet. Cached per
+--- farmland id on self._farmlandPolygons and dropped on the same
+--- ownership/geometry invalidation as the single-polygon cache and at the start
+--- of each viability pass.
+---@param farmlandId number
+---@return table|nil polygons  { verts, verts, ... }
+function SoilFertilitySystem:_getFarmlandPolygons(farmlandId)
+    if farmlandId == nil then return nil end
+    self._farmlandPolygons = self._farmlandPolygons or {}
+    local cached = self._farmlandPolygons[farmlandId]
+    if cached ~= nil then
+        return cached or nil   -- false = resolved-but-unavailable
+    end
+
+    local polygons = {}
+    if g_fieldManager and g_fieldManager.fields then
+        for _, f in ipairs(g_fieldManager.fields) do
+            if f and f.farmland and f.farmland.id == farmlandId then
+                local polyNodes = f.polygonPoints
+                if polyNodes and #polyNodes > 0 then
+                    local verts = {}
+                    for i = 1, #polyNodes do
+                        local nodeId = polyNodes[i]
+                        if nodeId and nodeId ~= 0 then
+                            local ok, wx, _, wz = pcall(getWorldTranslation, nodeId)
+                            if ok and wx then
+                                verts[#verts + 1] = { x = wx, z = wz }
+                            end
+                        end
+                    end
+                    if #verts >= 3 then
+                        polygons[#polygons + 1] = verts
+                    end
+                end
+                -- NO break: collect every field polygon on this farmland.
+            end
+        end
+    end
+
+    if #polygons > 0 then
+        self._farmlandPolygons[farmlandId] = polygons
+        return polygons
+    end
+    self._farmlandPolygons[farmlandId] = false
+    return nil
+end
+
+--- [SF-52] Drop the parcel-union cache. Called on ownership/geometry change and
+--- at the start of each viability pass so the union re-resolves from the live
+--- g_fieldManager rather than a stale collection.
+function SoilFertilitySystem:_invalidateFarmlandPolygons()
+    self._farmlandPolygons = nil
+end
+
 --- Stamp zone cells at every position in boomPoints and update cell-deduped coverage.
 --- Coverage (session + daily) is incremented only for cells not previously visited,
 --- eliminating overlap inflation from headland turns and second passes.
@@ -5881,7 +7181,10 @@ end
 ---@param fieldId   number
 ---@param boomPoints table  Array of {x=, z=} world positions
 ---@param overlayOnly boolean|nil  When true, stamp visuals only; skip coverage counters
-function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
+---@param stampVehicle table|nil  The spraying vehicle. Recorded with its driven distance
+---       (_sfOdoM) in each new session stamp so overlap prevention can tell this
+---       vehicle's current pass from an earlier one (HookManager.isCellSprayedEarlier).
+function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly, stampVehicle)
     if not boomPoints or #boomPoints == 0 then return end
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return end
@@ -5919,10 +7222,15 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
             if polyVerts == nil or _isPointInPoly(cellCx, cellCz, polyVerts) then
 
                 -- ── Coverage deduplication ─────────────────────────────────────────
-                -- Store stamp timestamp (ms) so the overlap check can apply a grace period
-                -- and avoid suppressing sections that are still on their current pass.
+                -- The stamp records who stamped the cell and how far that vehicle had
+                -- driven, so the overlap check can tell the pass that stamped the cell
+                -- from an earlier one (HookManager.isCellSprayedEarlier).
                 if not field.sessionCoverageCells[cellKey] then
-                    field.sessionCoverageCells[cellKey] = (g_currentMission and g_currentMission.time) or 0
+                    field.sessionCoverageCells[cellKey] = {
+                        ms  = (g_currentMission and g_currentMission.time) or 0,
+                        odo = stampVehicle and stampVehicle._sfOdoM or nil,
+                        by  = stampVehicle,
+                    }
                     if not overlayOnly then
                         field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
                     end
@@ -6044,6 +7352,43 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly)
     end
 end
 
+--- MAINTENANCE row 234: overlap prevention's own finer record (HookManager's
+--- getBoomOverlapPositions and isOverlapCellSprayedEarlier). Each point stamps its
+--- ZONE.OVERLAP_CELL_SIZE cell once, with the stamping vehicle and its driven distance,
+--- as markBoomCells stamps the 10 m session cells (false where either is unknown), and
+--- only where the cell's centre is inside the field polygon, as there. Two plain maps,
+--- not a table per cell. Session only and server only: never saved or sent, cleared
+--- with the session cells. Writes nothing else.
+---@param fieldId number
+---@param points table|nil  Array of {x=, z=} world positions
+---@param stampVehicle table|nil
+function SoilFertilitySystem:markOverlapCells(fieldId, points, stampVehicle)
+    if not points or #points == 0 then return end
+    local field = self.fieldData and self.fieldData[fieldId]
+    if not field then return end
+    if HookManager == nil or type(HookManager.overlapCellKey) ~= "function" then return end
+    local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    local polyVerts = self:_getFieldPolyVerts(fieldId, field)
+    local odoMap, byMap = field.sessionOverlapOdo, field.sessionOverlapBy
+    if odoMap == nil or byMap == nil then
+        odoMap, byMap = {}, {}
+        field.sessionOverlapOdo, field.sessionOverlapBy = odoMap, byMap
+    end
+    local odo = stampVehicle and stampVehicle._sfOdoM or false
+    local by = stampVehicle or false
+    for _, pt in ipairs(points) do
+        local key = HookManager.overlapCellKey(pt.x, pt.z)
+        if odoMap[key] == nil then
+            local cx = (math.floor(pt.x / size) + 0.5) * size
+            local cz = (math.floor(pt.z / size) + 0.5) * size
+            if polyVerts == nil or _isPointInPoly(cx, cz, polyVerts) then
+                odoMap[key] = odo
+                byMap[key] = by
+            end
+        end
+    end
+end
+
 --- Direct-path buffering for non-profile products (Herbicide/Insecticide/Fungicide)
 -- NOTE: the formula (liters/targetVol)×REDUCTION depends on targetRate (from
 -- Constants, a real-world L/ha figure ~1.5) matching the actual vanilla sprayer
@@ -6093,18 +7438,6 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
     if reduction > 0 then
         local before = field.weedPressure or 0
         field.weedPressure = math.max(0, before - reduction)
-        -- Only grant protected status once 80% of the field has been covered (issue #441)
-        local protThreshold = SoilConstants.COVERAGE and SoilConstants.COVERAGE.PROTECTION_THRESHOLD or 0.80
-        local wasProtected = (field.herbicideDaysLeft or 0) > 0
-        if (field.sessionCoverageFraction or 0) >= protThreshold then
-            -- Duration is in in-game DAYS (decremented 1/game-day); see #639.
-            field.herbicideDaysLeft = SoilDuration.seasonScaled(SoilConstants.WEED_PRESSURE.HERBICIDE_DURATION_DAYS)
-            -- Apply weed map state (visual browning) exactly once when protection is first granted.
-            -- applyWeedMapState is server-only; guards inside it handle the nil-field case.
-            if not wasProtected and g_server then
-                self:applyWeedMapState(fieldId, SoilConstants.WEED_PRESSURE.WEED_STATE_WITHERED)
-            end
-        end
 
         -- Update per-cell weed pressure so the PDA cell-report shows changes immediately.
         -- onInsecticideAppliedIncremental does this for pest pressure; herbicide was missing it.
@@ -6124,22 +7457,22 @@ function SoilFertilitySystem:onHerbicideAppliedDirect(fieldId, effectiveness, li
             field.zoneData[cellKey].weedPressure = math.max(0,
                 (field.zoneData[cellKey].weedPressure or field.weedPressure or 0) - reduction)
         end
-
-        -- Broadcast updated weed pressure to all clients (dedicated server fix - Issue #257)
-        if g_server and g_currentMission and g_currentMission.missionDynamicInfo
-            and g_currentMission.missionDynamicInfo.isMultiplayer then
-            if SoilFieldUpdateEvent then
-                SoilNetworkEvents_BroadcastFieldUpdate(fieldId, field)
-            end
-        end
     end
 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99991] = (field.nutrientBuffer[99991] or 0) + liters
     self:trackSprayerCoverage(fieldId, liters, "HERBICIDE", false)
+
+    -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
+    -- One send per tick: the updated weed pressure (#257) and a newly granted window.
+    local granted = self:_grantCropProtection(fieldId, field, "herbicide")
+    if reduction > 0 or granted then
+        self:_broadcastProtectionUpdate(fieldId, field)
+    end
 end
 
-function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, liters)
+---@param fillName string|nil the pass's own fill type name (e.g. "PESTICIDE"), from the sprayer hook
+function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, liters, fillName)
     if not self.settings.pestPressure then return end
     local field = self:getOrCreateField(fieldId, true)
     if not field then return end
@@ -6186,7 +7519,21 @@ function SoilFertilitySystem:onInsecticideAppliedDirect(fieldId, effectiveness, 
 
     if not field.nutrientBuffer then field.nutrientBuffer = {} end
     field.nutrientBuffer[99992] = (field.nutrientBuffer[99992] or 0) + liters
-    self:trackSprayerCoverage(fieldId, liters, "INSECTICIDE")
+    -- MAINTENANCE row 168, the insecticide twin of the fungicide work-trail fix (8463752d):
+    -- tag coverage with the REAL fill name, not the literal "INSECTICIDE". The sprayer hook
+    -- already tracked this pass under fillType.name. The only name that reaches this route is
+    -- PESTICIDE, the compatibility slot for a mod that registers a fill type by that name (no
+    -- base-game, PF or known mod does; SF's own INSECTICIDE is a fertilizer profile and takes
+    -- applyFertilizer). Tagging "INSECTICIDE" here made
+    -- sessionLastProduct flip every tick, tripping the product-change reset (#442) that wipes
+    -- the session's coverage, so such a field never built past one pass's litres.
+    -- updateFractions=false: name-only, so this does not double-count the area already tracked.
+    self:trackSprayerCoverage(fieldId, liters, fillName or "INSECTICIDE", false)
+
+    -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
+    if self:_grantCropProtection(fieldId, field, "insecticide") then
+        self:_broadcastProtectionUpdate(fieldId, field)
+    end
 end
 
 function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, liters, chemId)
@@ -6386,6 +7733,11 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- Only the named physical fungicides hit this (generic FUNGICIDE's fill name IS "FUNGICIDE").
     -- updateFractions=false: name-only, so this does not double-count the area already tracked.
     self:trackSprayerCoverage(fieldId, liters, chemId or "FUNGICIDE", false)
+
+    -- #1030: the grant runs on every tick, whatever the day's cap left for `reduction`.
+    if self:_grantCropProtection(fieldId, field, "fungicide") then
+        self:_broadcastProtectionUpdate(fieldId, field)
+    end
 end
 
 --- Apply over-application burn penalty to a field.
@@ -6450,7 +7802,11 @@ function SoilFertilitySystem:applyBurnEffect(fieldId, rateMultiplier)
     local nDrain = math.min(fullN  * frac, math.max(0.0, fullN  - (field._burnPassN  or 0)))
     if phDrop <= 0 and nDrain <= 0 then return end
 
-    field.pH          = math.max(limits.PH_MIN, field.pH - phDrop)
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_DELTA, -phDrop, nil, nil, 'burn')
+    else
+        field.pH = math.max(limits.PH_MIN, field.pH - phDrop)
+    end
     field.nitrogen    = math.max(limits.MIN, field.nitrogen - nDrain)
     field._burnPassPh = (field._burnPassPh or 0) + phDrop
     field._burnPassN  = (field._burnPassN  or 0) + nDrain
@@ -6549,7 +7905,10 @@ function SoilFertilitySystem:applyScorchEffect(fieldId, fillTypeName)
         if fsField and fsField.posX and fsField.posZ then
             local ok, fs = pcall(function()
                 local s2 = FieldState.new()
-                s2:update(fsField.posX, fsField.posZ)
+                -- Sample at the boom point (#842), not the field's stored reference
+                -- point, so a part-harvested field reads the crop actually under the
+                -- applicator (see the matching gate in applyFertilizer).
+                s2:update(spx, spz)
                 return s2
             end)
             if ok and fs and fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
@@ -6585,7 +7944,11 @@ function SoilFertilitySystem:applyScorchEffect(fieldId, fillTypeName)
     local nDrain = math.min(fullN  * frac, math.max(0.0, fullN  - (field._scorchPassN  or 0)))
     if phDrop <= 0 and nDrain <= 0 then return end
 
-    field.pH          = math.max(limits.PH_MIN, field.pH - phDrop)
+    if type(self._phApplyField) == "function" then
+        self:_phApplyField(fieldId, PositionalPH.OP_DELTA, -phDrop, nil, nil, 'scorch')
+    else
+        field.pH = math.max(limits.PH_MIN, field.pH - phDrop)
+    end
     field.nitrogen    = math.max(limits.MIN, field.nitrogen - nDrain)
     field._scorchPassPh = (field._scorchPassPh or 0) + phDrop
     field._scorchPassN  = (field._scorchPassN  or 0) + nDrain
@@ -6735,6 +8098,15 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
     local ph = field.pH         or SoilConstants.FIELD_DEFAULTS.pH
     local om = field.organicMatter or SoilConstants.FIELD_DEFAULTS.organicMatter
 
+    -- [SF-79] pH read contract. The map/report is the authority; pH is numeric only
+    -- for LOCAL / FIELD_REPORT / APPROXIMATE. Stale or unavailable returns nil, with
+    -- pHLastKnown carrying the frozen scalar separately. No unknown-to-7.0.
+    local phStatus      = PositionalPH and PositionalPH.READ_FIELD or 'FIELD_REPORT'
+    local phGrain       = nil
+    local phRevision    = self._phMapRevision or 0
+    local phLastKnown   = field.pH
+    local phResolved    = false
+
     local fromZoneCell = false
     local posPest = nil
     local posDisease = nil
@@ -6758,7 +8130,15 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             n  = vn  or n
             p  = vp  or p
             k  = vk  or k
-            ph = vph or ph
+            -- [SF-79] a positional pH read is LOCAL; a missing pixel leaves the
+            -- positional request UNAVAILABLE below (RSF-F219): the field report
+            -- only supplies pHLastKnown, never the current slot or a default.
+            if type(vph) == 'number' then
+                ph = vph
+                phStatus = PositionalPH and PositionalPH.READ_LOCAL or 'LOCAL'
+                if type(self._phGrainMetres) == 'function' then phGrain = self:_phGrainMetres() end
+                phResolved = true
+            end
             om = vom or om
             posPest = vpest
             posDisease = vdis
@@ -6773,7 +8153,11 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
             n  = cell.N  or n
             p  = cell.P  or p
             k  = cell.K  or k
-            ph = cell.pH or ph
+            if type(cell.pH) == 'number' then
+                ph = cell.pH
+                phStatus = PositionalPH and PositionalPH.READ_APPROXIMATE or 'APPROXIMATE'
+                phResolved = true
+            end
             om = cell.OM or om
             fromZoneCell = true
         end
@@ -6923,6 +8307,56 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         if FieldSentry_Core.reasonL10nKey then fsReasonKey = FieldSentry_Core.reasonL10nKey(r) end
     end
 
+    if not phResolved then
+        if x ~= nil and z ~= nil then
+            -- [RSF-F219] A positional request that resolved neither a LOCAL pixel
+            -- nor an APPROXIMATE zone cell is UNAVAILABLE at that spot: nil pH,
+            -- nil grain, no report or default substituted into the current slot.
+            -- The miss is assigned outside the report-helper guard so a build
+            -- without _ensurePHReport still returns no seed. A CURRENT report
+            -- refreshes pHLastKnown only; _phRefreshScalar owns the field scalar.
+            ph = nil
+            phStatus = PositionalPH and PositionalPH.READ_UNAVAILABLE or 'UNAVAILABLE'
+            phGrain = nil
+            if type(self._ensurePHReport) == "function" then
+                local rep = self:_ensurePHReport(fieldId)
+                if rep ~= nil and PositionalPH ~= nil
+                    and rep.status == PositionalPH.REPORT_CURRENT
+                    and type(rep.value) == 'number' then
+                    phLastKnown = rep.value
+                end
+            end
+        elseif type(self._ensurePHReport) == "function" then
+            -- [SF-79] Resolve the field-level pH from the derived report when the
+            -- request was not a positional sample. A field with no current report
+            -- is UNAVAILABLE: pH is nil, pHLastKnown carries the scalar, and no
+            -- default is substituted.
+            local rep = self:_ensurePHReport(fieldId)
+            if rep ~= nil and rep.status == PositionalPH.REPORT_CURRENT and type(rep.value) == 'number' then
+                ph = rep.value
+                phStatus = PositionalPH.READ_FIELD
+                phResolved = true
+            else
+                ph = nil
+                phStatus = PositionalPH.READ_UNAVAILABLE
+            end
+        end
+    end
+
+    -- [SF-79] needsFertilization uses the same pH sample as its request. A known
+    -- other deficiency stays true; otherwise unknown pH yields an unknown result.
+    local knownOtherNeed = field.nitrogen < fertThresholds.nitrogen
+        or field.phosphorus < fertThresholds.phosphorus
+        or field.potassium < fertThresholds.potassium
+    local needsFert, needsFertKnown
+    if ph ~= nil then
+        needsFert = knownOtherNeed or (ph < fertThresholds.pH)
+        needsFertKnown = true
+    else
+        needsFert = knownOtherNeed
+        needsFertKnown = knownOtherNeed
+    end
+
     return {
         fieldId = fieldId,
         fieldArea = field.fieldArea or 1.0,
@@ -6936,6 +8370,10 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         cropTargets = cropTargets,
         organicMatter = om,
         pH = ph,
+        pHStatus = phStatus,
+        pHGrainMetres = phGrain,
+        pHRevision = phRevision,
+        pHLastKnown = phLastKnown,
         lastCrop = cropName,
         lastCrop2 = field.lastCrop2,
         lastCrop3 = field.lastCrop3,  -- #739: third-back crop, already stored+synced, now published for the rotation planner
@@ -6962,6 +8400,12 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         lastFungicide = field.lastFungicide,
         burnDaysLeft = field.burnDaysLeft or 0,
         amendBurnPenalty = field.amendBurnPenalty or 0,  -- pending lime/OM-on-crop burn (0-1); explains a low yield
+        -- RSF-F905: whether that number is authoritative. The owner test is the same
+        -- one the sync bridge uses (pureClient = g_server == nil). The owner (server, including
+        -- single player) always knows, so a never-limed or freshly-cleared field is a
+        -- KNOWN zero. A client knows only once a payload delivered the pair; until
+        -- then the surfaces must not assert "no burn" off a zero they never received.
+        amendBurnKnown = (g_server ~= nil) or (field.amendBurnKnown == true),
         amendBurnRisk = self:isAmendmentBurnRisk(liveFruitTypeIndex, liveGrowthState),  -- (#684) true → liming/manuring NOW would scorch the crop
         -- [SF50-C1] Growth state of the live crop, additive for the harvester panel's
         -- yield estimate. nil when no live fruit is detected (bare/cut field), which the
@@ -6974,12 +8418,8 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         sessionLastProduct      = field.sessionLastProduct,
         compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,
-        needsFertilization = (
-            field.nitrogen < fertThresholds.nitrogen or
-            field.phosphorus < fertThresholds.phosphorus or
-            field.potassium < fertThresholds.potassium or
-            field.pH < fertThresholds.pH
-        )
+        needsFertilization = needsFert,
+        needsFertilizationKnown = needsFertKnown
     }
 end
 
@@ -6999,7 +8439,9 @@ function SoilFertilitySystem:getFieldUrgency(fieldId)
 
     local phOpt = 6.5  -- optimal pH target (mid-point of neutral band 6.5-7.0)
     local phMin = SoilConstants.NUTRIENT_LIMITS and SoilConstants.NUTRIENT_LIMITS.PH_MIN or 5.0
-    local phDef = math.max(0, phOpt - info.pH) / (phOpt - phMin)
+    -- [SF-79] unknown pH contributes no urgency (never a fabricated deficit).
+    local phDef = (type(info.pH) == 'number')
+        and math.max(0, phOpt - info.pH) / (phOpt - phMin) or 0
 
     local weedDef = (info.weedPressure or 0) / 100
     local pestDef = (info.pestPressure or 0) / 100
@@ -7047,6 +8489,13 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- F66 relief marker. Its presence means this save has already had the one-time
     -- resistance reset, so the migration never runs twice. See _finalizeLoadedField.
     setXMLInt(xmlFile, key .. "#f66ResistanceReset", 1)
+    -- [SF-79] Positional pH schema marker. Its presence records that this save has
+    -- the positional pH contract; it never proves the pH carrier exists (a missing
+    -- map is an explicit recovery at load).
+    setXMLInt(xmlFile, key .. "#sf79PHSchema", 1)
+    -- [SF-73] The unknown-N/P/K schema marker: this save carries the field-owned
+    -- N/P/K baselines, so a missing one on load is unavailable, never re-frozen.
+    setXMLInt(xmlFile, key .. "#sf73UnknownNPK", 1)
 
     -- OM-213 organic premium provenance ledger (farm-level; rides this file as the
     -- safety copy, the same one StateLedger's block mirrors).
@@ -7082,6 +8531,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             setXMLInt(xmlFile, fieldKey .. "#fungicideDaysLeft", field.fungicideDaysLeft or 0)
             setXMLString(xmlFile, fieldKey .. "#activeDisease", field.activeDisease or "")
             setXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered", field.diseaseDiscovered and 1 or 0)
+            setXMLInt(xmlFile, fieldKey .. "#fieldEverScouted", field.fieldEverScouted and 1 or 0)  -- CD-11 durable scout bit
             setXMLString(xmlFile, fieldKey .. "#lastFungicide", field.lastFungicide or "")
             -- CD-10 re-onset cooldown. Persisted because a cooldown a save-and-reload
             -- defeats is not a cooldown -- it would silently do nothing. Server-side only;
@@ -7117,10 +8567,33 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             -- now-depleted field-average nutrients with the one-shot burn already consumed,
             -- so the yield figure silently changed after every reload and a save/reload
             -- erased an active burn penalty entirely (#656). Only written while a freeze is
-            -- live; cleared on the next game-day change by _processOneDailyField as before.
+            -- live; cleared on the next SOWING by onSowing (SF-14 owns the crop cycle).
             if field.frozenYieldModifier and field.frozenYieldFruitType then
                 setXMLFloat(xmlFile, fieldKey .. "#frozenYieldModifier", field.frozenYieldModifier)
                 setXMLInt(xmlFile, fieldKey .. "#frozenYieldFruitType", field.frozenYieldFruitType)
+            end
+            -- SF-14: persist the capture-ready marker so a fresh capture survives
+            -- save/reload and an upgraded save (no marker) keeps using fallback until
+            -- one fresh capture pass succeeds.
+            if field.zoneYieldCaptureReady == true then
+                setXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady", true)
+            end
+            -- RSF-741 item 10: the harvest-underwrite record (seven attributes), written
+            -- only while a valid armed record exists.
+            if HarvestContractUnderwrite ~= nil and type(HarvestContractUnderwrite.saveRecordXML) == "function" then
+                HarvestContractUnderwrite.saveRecordXML(xmlFile, fieldKey, field.harvestUnderwriteProvenance)
+            end
+
+            -- [SF-79] Positional pH metadata: frozen seed + sub-step remainders.
+            if type(self._phSaveFieldXML) == "function" then
+                self:_phSaveFieldXML(xmlFile, fieldKey, field)
+            end
+            -- [SF-73] The three frozen N/P/K baselines (only a valid set is written).
+            local b73 = self:sf73BaselineForSave(field)
+            if b73 ~= nil then
+                setXMLFloat(xmlFile, fieldKey .. "#sf73BaseN", b73.N)
+                setXMLFloat(xmlFile, fieldKey .. "#sf73BaseP", b73.P)
+                setXMLFloat(xmlFile, fieldKey .. "#sf73BaseK", b73.K)
             end
 
             -- Save daily application throttles
@@ -7182,6 +8655,13 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
                      and g_currentMission.environment.currentDay) or 0
     self.lastUpdateDay = getXMLInt(xmlFile, key .. "#lastUpdateDay") or _curDay
     self:_beginF66ResistanceRelief((getXMLInt(xmlFile, key .. "#f66ResistanceReset") or 0) == 1)
+    -- [SF-79] The positional pH schema marker, read once. Its one reader is the
+    -- per-field seed freeze below (_phFreezeSeedFromLoad): an unmarked save proves
+    -- its #pH predates the contract. It gates nothing else.
+    local sf79Marked = (getXMLInt(xmlFile, key .. "#sf79PHSchema") or 0) == 1
+    -- [SF-73] The unknown-N/P/K marker, with one reader: the per-field baseline
+    -- rule below (TargetApplication.applyLoadedBaseline).
+    local sf73Marked = (getXMLInt(xmlFile, key .. "#sf73UnknownNPK") or 0) == 1
 
     -- OM-213 organic premium provenance ledger (absent on older saves = empty).
     if g_SoilFertilityManager and g_SoilFertilityManager.organic then
@@ -7219,6 +8699,17 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             activeDisease = getXMLString(xmlFile, fieldKey .. "#activeDisease"),
             activeDiseaseSeverity = 1.0,
             diseaseDiscovered = (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1,
+            -- CD-11 durable scout bit, three states on load. Present 1/0 is the truth as
+            -- saved. ABSENT is a save from before the key existed: a field that was already
+            -- scouted then (diseaseDiscovered saved as 1) seeds true so its resistance
+            -- history does not go dark on upgrade; every other absence is false. This is
+            -- deliberately NOT `or false`, which would collapse absent and false together
+            -- and lose the seed.
+            fieldEverScouted = (function()
+                local v = getXMLInt(xmlFile, fieldKey .. "#fieldEverScouted")
+                if v ~= nil then return v == 1 end
+                return (getXMLInt(xmlFile, fieldKey .. "#diseaseDiscovered") or 0) == 1
+            end)(),
             lastFungicide = getXMLString(xmlFile, fieldKey .. "#lastFungicide"),
             hybridBlockedUntilDay = getXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay"),
             -- CD-9: Deserialize per-MOA resistance from comma-separated mode:score pairs
@@ -7238,6 +8729,11 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             amendBurnPenalty = getXMLFloat(xmlFile, fieldKey .. "#amendBurnPenalty") or nil,
             frozenYieldModifier  = getXMLFloat(xmlFile, fieldKey .. "#frozenYieldModifier") or nil,
             frozenYieldFruitType = getXMLInt(xmlFile, fieldKey .. "#frozenYieldFruitType") or nil,
+            zoneYieldCaptureReady = (getXMLBool(xmlFile, fieldKey .. "#zoneYieldCaptureReady") == true) or nil,
+            -- RSF-741 item 10: absent or invalid keys load as no record (vanilla).
+            harvestUnderwriteProvenance = (HarvestContractUnderwrite ~= nil
+                and type(HarvestContractUnderwrite.loadRecordXML) == "function")
+                and HarvestContractUnderwrite.loadRecordXML(xmlFile, fieldKey) or nil,
             coverageFraction = getXMLFloat(xmlFile, fieldKey .. "#coverageFraction") or 0,
             lastAlertSeason = getXMLInt(xmlFile, fieldKey .. "#lastAlertSeason") or nil,
             compaction = 0,
@@ -7259,6 +8755,26 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
         -- Organic certification state (leaves the field conventional if absent)
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
             g_SoilFertilityManager.organic:loadFieldState(xmlFile, fieldKey, self.fieldData[fieldId])
+        end
+
+        -- [SF-79] Restore the positional pH metadata (seed + remainders). The report
+        -- stays absent until re-derived from the pH map, so a persisted placeholder
+        -- can never present as current local soil.
+        if type(self._phLoadFieldXML) == "function" then
+            self:_phLoadFieldXML(xmlFile, fieldKey, self.fieldData[fieldId])
+        end
+        -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED save, once.
+        if type(self._phFreezeSeedFromLoad) == "function" then
+            self:_phFreezeSeedFromLoad(self.fieldData[fieldId], sf79Marked)
+        end
+        -- [SF-73] An unmarked save freezes its N/P/K baseline from these loaded
+        -- scalars; a marked one keeps only a valid stored set.
+        if TargetApplication then
+            TargetApplication.applyLoadedBaseline(self.fieldData[fieldId], sf73Marked, {
+                N = getXMLFloat(xmlFile, fieldKey .. "#sf73BaseN"),
+                P = getXMLFloat(xmlFile, fieldKey .. "#sf73BaseP"),
+                K = getXMLFloat(xmlFile, fieldKey .. "#sf73BaseK"),
+            })
         end
 
         -- Load daily application throttles
@@ -7363,8 +8879,15 @@ function SoilFertilitySystem:_finalizeLoadedField(fieldId, f)
     if type(f) ~= "table" then return end
 
     -- F66 relief (see _beginF66ResistanceRelief). One-time, both load paths.
+    -- RSF-F237: a relieved field also drops its durable scout bit. The classifier
+    -- reads a revealed field with no score as WORKING, so zeroed scores behind an
+    -- open gate would tell the farmer a burned mode is fine. Clearing the bit here,
+    -- before any encode or broadcast, makes the field read UNKNOWN until it is
+    -- scouted again. diseaseDiscovered is not touched: disease identity is a
+    -- different question from resistance history.
     if self._f66ReliefPending and type(f.resistance) == "table" and next(f.resistance) ~= nil then
         f.resistance = {}
+        f.fieldEverScouted = false
         self._f66ReliefCleared = (self._f66ReliefCleared or 0) + 1
     end
 
@@ -7434,7 +8957,11 @@ end
 -- save. StateLedger's serializer round-trips arbitrary nested tables.
 function SoilFertilitySystem:getSoilStateTable()
     local defaults = SoilConstants.FIELD_DEFAULTS
-    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, fields = {} }
+    -- [SF-79] sf79PHSchema mirrors the XML root marker, so a ledger restore makes
+    -- the same seed-freeze decision an XML load makes.
+    -- [SF-73] sf73UnknownNPK mirrors the XML root marker the same way.
+    local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, sf79PHSchema = 1,
+                  sf73UnknownNPK = 1, fields = {} }
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -7461,6 +8988,7 @@ function SoilFertilitySystem:getSoilStateTable()
                 fungicideDaysLeft     = field.fungicideDaysLeft or 0,
                 activeDisease         = field.activeDisease or "",
                 diseaseDiscovered     = field.diseaseDiscovered or false,
+                fieldEverScouted      = field.fieldEverScouted == true,   -- CD-11 durable scout bit
                 lastFungicide         = field.lastFungicide or "",
                 hybridBlockedUntilDay = field.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 dryDayCount           = field.dryDayCount or 0,
@@ -7485,6 +9013,30 @@ function SoilFertilitySystem:getSoilStateTable()
             if field.frozenYieldModifier and field.frozenYieldFruitType then
                 e.frozenYieldModifier  = field.frozenYieldModifier
                 e.frozenYieldFruitType = field.frozenYieldFruitType
+            end
+            -- SF-14 capture-ready marker (matches XML save).
+            if field.zoneYieldCaptureReady == true then
+                e.zoneYieldCaptureReady = true
+            end
+            -- RSF-741 item 10: the harvest-underwrite record (matches the XML save).
+            if HarvestContractUnderwrite ~= nil and type(HarvestContractUnderwrite.recordToFlat) == "function" then
+                HarvestContractUnderwrite.recordToFlat(field.harvestUnderwriteProvenance, e)
+            end
+            -- [SF-79] Positional pH metadata (matches XML save).
+            if type(field._phSeedScalar) == "number" then
+                e.sf79PHSeed = field._phSeedScalar
+            end
+            -- [SF-73] The frozen N/P/K baselines (matches XML save).
+            local b73 = self:sf73BaselineForSave(field)
+            if b73 ~= nil then
+                e.sf73BaseN, e.sf73BaseP, e.sf73BaseK = b73.N, b73.P, b73.K
+            end
+            if field._phPending and #field._phPending > 0 then
+                local pt = {}
+                for i, p in ipairs(field._phPending) do
+                    pt[i] = { cause = p.cause, kind = p.kind, amount = p.amount, domainKey = p.domainKey }
+                end
+                e.sf79PHPending = pt
             end
             -- Organic certification sub-table (only when present).
             if field.organic then
@@ -7525,7 +9077,10 @@ end
 -- Apply a plain-table snapshot (from getSoilStateTable / StateLedger) back into
 -- fieldData. Mirrors loadFromXMLFile's raw read + clamps, then routes every
 -- field through the shared _finalizeLoadedField. Returns the field count.
-function SoilFertilitySystem:applySoilStateTable(data)
+---@param data table the ledger snapshot (getSoilStateTable's shape)
+---@param xmlRootMarked boolean|nil the root #sf79PHSchema of the soilData.xml
+--- safety copy, read by the caller. See the marker read below.
+function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
     local defaults = SoilConstants.FIELD_DEFAULTS
     self.fieldData = {}
     local _curDay = (g_currentMission and g_currentMission.environment
@@ -7537,6 +9092,28 @@ function SoilFertilitySystem:applySoilStateTable(data)
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
     self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
+    -- [SF-79] The schema marker, with the same one reader as the XML load: the
+    -- per-field seed freeze below. Two sources, either one marks:
+    --   1. data.sf79PHSchema, mirrored into the snapshot by getSoilStateTable
+    --      from #982 on;
+    --   2. xmlRootMarked, the root #sf79PHSchema of the soilData.xml safety copy,
+    --      read by loadSoilData's ledger branch.
+    -- The second exists because EVERY ledger snapshot written before #982 lacks
+    -- the key, dev and tester snapshots included, and with StateLedger delivering
+    -- a block this function is the only loader that runs (SoilFertilityManager
+    -- loadSoilData). On this path an absent key is not "unmarked": those builds
+    -- wrote the marker into the safety copy and their field.pH may already be
+    -- the later report, so freezing from the snapshot alone would persist a
+    -- forbidden seed at the next save. A missing safety copy counts as unmarked
+    -- (the caller passes false), which keeps the freeze for released players
+    -- whose saves predate the marker entirely.
+    local sf79Marked = (data.sf79PHSchema or 0) == 1 or xmlRootMarked == true
+    -- [SF-73] The unknown-N/P/K marker from the snapshot alone. Unlike the pH
+    -- marker of #982 there is no safety-copy fallback to carry: the XML marker and
+    -- this key ship in the same build, so no snapshot exists that lacks the key
+    -- while its save already had SF-73 baselines, and a snapshot without it is
+    -- from a build before SF-73, whose scalars are the legitimate pre-SF-73 values.
+    local sf73Marked = (data.sf73UnknownNPK or 0) == 1
 
     local count = 0
     local fields = data.fields or {}
@@ -7565,6 +9142,12 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 activeDisease         = e.activeDisease,
                 activeDiseaseSeverity = 1.0,
                 diseaseDiscovered     = e.diseaseDiscovered or false,
+                -- CD-11 durable scout bit, three states (same rule as the XML route):
+                -- present true/false is the truth; absent seeds from diseaseDiscovered.
+                fieldEverScouted      = (function()
+                    if e.fieldEverScouted ~= nil then return e.fieldEverScouted == true end
+                    return e.diseaseDiscovered == true
+                end)(),
                 lastFungicide         = e.lastFungicide,
                 hybridBlockedUntilDay = e.hybridBlockedUntilDay,   -- CD-10 re-onset cooldown
                 resistance = (function() local rt = {}; if e.resistance and type(e.resistance) == "table" then for k, v in pairs(e.resistance) do rt[k] = v end end; return rt end)(),
@@ -7573,6 +9156,13 @@ function SoilFertilitySystem:applySoilStateTable(data)
                 amendBurnPenalty      = e.amendBurnPenalty,
                 frozenYieldModifier   = e.frozenYieldModifier,
                 frozenYieldFruitType  = e.frozenYieldFruitType,
+                zoneYieldCaptureReady = e.zoneYieldCaptureReady == true and true or nil,
+                -- RSF-741 item 10: absent keys (an older snapshot) or an invalid set is no record.
+                harvestUnderwriteProvenance = (HarvestContractUnderwrite ~= nil
+                    and type(HarvestContractUnderwrite.recordFromFlat) == "function")
+                    and HarvestContractUnderwrite.recordFromFlat(e) or nil,
+                -- [SF-79] Positional pH metadata (matches the XML save).
+                _phSeedScalar         = e.sf79PHSeed,
                 coverageFraction      = e.coverageFraction or 0,
                 lastAlertSeason       = e.lastAlertSeason,
                 compaction            = 0,
@@ -7603,6 +9193,12 @@ function SoilFertilitySystem:applySoilStateTable(data)
             self.herbicideAppliedDay[fieldId]   = e.herbicideAppliedDay or 0
             self.insecticideAppliedDay[fieldId] = e.insecticideAppliedDay or 0
             self.fungicideAppliedDay[fieldId]   = e.fungicideAppliedDay or 0
+            -- [SF-79] Positional pH pending remainders (report re-derives on demand),
+            -- kept only when they name their cause and kind (MAINTENANCE row 72).
+            f._phPending = {}
+            if type(self._phRestorePending) == "function" then
+                self:_phRestorePending(fieldId, f, e.sf79PHPending, "ledger")
+            end
             -- Per-area zone cells.
             if e.zoneData then
                 for cellKey, cell in pairs(e.zoneData) do
@@ -7615,6 +9211,16 @@ function SoilFertilitySystem:applySoilStateTable(data)
                         compaction      = cell.compaction or 0,
                     }
                 end
+            end
+            -- [SF-79 3.B] Freeze the pre-migration scalar from an UNMARKED snapshot,
+            -- once, after the seed restore above so a carried seed is never re-frozen.
+            if type(self._phFreezeSeedFromLoad) == "function" then
+                self:_phFreezeSeedFromLoad(f, sf79Marked)
+            end
+            -- [SF-73] The same baseline rule as the XML load.
+            if TargetApplication then
+                TargetApplication.applyLoadedBaseline(f, sf73Marked,
+                    { N = e.sf73BaseN, P = e.sf73BaseP, K = e.sf73BaseK })
             end
             self.fieldData[fieldId] = f
             self:_finalizeLoadedField(fieldId, f)

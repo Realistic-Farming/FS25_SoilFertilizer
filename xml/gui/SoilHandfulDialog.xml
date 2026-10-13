@@ -48,6 +48,7 @@
         <Text profile="sfHandful_tileVal" id="hfValK"  text="" position="0px -52px"/>
         <Text profile="sfHandful_tileLbl" id="hfLblPh" text="" position="130px -34px"/>
         <Text profile="sfHandful_tileVal" id="hfValPh" text="" position="130px -52px"/>
+        <Text profile="sfHandful_tileGrain" id="hfPhGrain" text="" position="130px -74px"/>
         <Text profile="sfHandful_tileLbl" id="hfLblOm" text="" position="260px -34px"/>
         <Text profile="sfHandful_tileVal" id="hfValOm" text="" position="260px -52px"/>
       </GuiElement>

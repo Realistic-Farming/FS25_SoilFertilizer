@@ -3,7 +3,7 @@
 -- These two are the IN-GAME verification tool for F66 and CD-11, which makes a crash or a
 -- wrong verdict in them worse than useless: it would send someone chasing a bug that is not
 -- there, or clear a bug that is. So they get exercised for real here rather than trusted.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/settings/SoilSettingsGUI.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/settings/SoilSettingsGUI.lua
 
 local R = SoilConstants.RESISTANCE
 local B = R.BANDS
@@ -28,6 +28,7 @@ local function newField(extra)
     resistance             = {},
     diseasePressure        = 50,
     diseaseDiscovered      = true,
+    fieldEverScouted       = true,
     nutrientBuffer         = {},
   }
   for k, v in pairs(extra or {}) do f[k] = v end
@@ -36,11 +37,17 @@ end
 
 local function withMod(field, fn)
   local prevMgr, prevServer = g_SoilFertilityManager, g_server
+  local prevPlayer, prevFarmland, prevFarms = g_localPlayer, g_farmlandManager, g_farmManager
   local sys = newSys(field)
   g_SoilFertilityManager = { soilSystem = sys, settings = {} }
   g_server = {}
+  -- [RSF-F231] the readout gates on standing: this machine's farm 1 owns farmland 1.
+  g_localPlayer = { farmId = 1 }
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
   local ok, res = pcall(fn, sys)
   g_SoilFertilityManager, g_server = prevMgr, prevServer
+  g_localPlayer, g_farmlandManager, g_farmManager = prevPlayer, prevFarmland, prevFarms
   if not ok then error(res, 0) end
   return res
 end
@@ -63,11 +70,61 @@ end
 
 -- An unscouted field must say so loudly rather than printing a clean-looking table.
 do
-  local out = withMod(newField({ diseaseDiscovered = false }), function()
+  local out = withMod(newField({ diseaseDiscovered = false, fieldEverScouted = false }), function()
     return SoilSettingsGUI.consoleCommandResistance(SoilSettingsGUI, "1")
   end)
   T.ok("readout: unscouted says NO", out:find("Scouted: NO") ~= nil)
   T.ok("readout: unscouted explains the gate", out:find("UNKNOWN") ~= nil)
+end
+
+-- The band printed on one mode's row (the footer legend names every band, so a whole-text
+-- find would pass for the wrong reason).
+local function modeRowHas(out, mode, word)
+  for line in (out .. "\n"):gmatch("([^\n]*)\n") do
+    if line:sub(1, #mode + 1) == mode .. " " and line:find(word, 1, true) then return true end
+  end
+  return false
+end
+
+-- CD-11: the gate is the durable bit. A field whose outbreak was found but never scouted
+-- on the server says NO, even though diseaseDiscovered is true.
+do
+  local out = withMod(newField({ diseaseDiscovered = true, fieldEverScouted = false,
+                                 resistance = { ["3"] = R.MAX_SYNTHETIC } }), function()
+    return SoilSettingsGUI.consoleCommandResistance(SoilSettingsGUI, "1")
+  end)
+  T.ok("readout: discovered-only field says Scouted: NO", out:find("Scouted: NO") ~= nil)
+  T.ok("readout: discovered-only field still shows the flag", out:find("Disease discovered: YES") ~= nil)
+  T.ok("readout: discovered-only field mode 3 reads UNKNOWN", modeRowHas(out, "3", "UNKNOWN"))
+  T.ok("readout: discovered-only field mode 3 does not read FINISHED", not modeRowHas(out, "3", "FINISHED"))
+end
+
+-- A pure client reports receipt and prints bands only: no score, ratio or next-spray
+-- column is invented from zeros the server never sent.
+do
+  local prevMgr, prevServer = g_SoilFertilityManager, g_server
+  local prevPlayer, prevFarmland, prevFarms = g_localPlayer, g_farmlandManager, g_farmManager
+  local field = newField({ fieldEverScouted = true, resistance = { ["3"] = R.MAX_SYNTHETIC } })
+  g_SoilFertilityManager = { soilSystem = newSys(field), settings = {} }
+  g_server = nil
+  -- [RSF-F231] the client's readout gates on standing too: its farm 1 owns farmland 1.
+  g_localPlayer = { farmId = 1 }
+  g_farmlandManager = { getFarmlandOwner = function(_, id) return id == 1 and 1 or 0 end }
+  g_farmManager = { getFarmById = function() return { getIsContractingFor = function() return false end } end }
+  local before = SoilSettingsGUI.consoleCommandResistance(SoilSettingsGUI, "1")
+  T.ok("readout: client before delivery says WAITING", before:find("WAITING") ~= nil)
+  T.ok("readout: client before delivery mode 3 reads UNKNOWN", modeRowHas(before, "3", "UNKNOWN"))
+  T.ok("readout: client before delivery does not invent FINISHED from the raw score", not modeRowHas(before, "3", "FINISHED"))
+  T.ok("readout: client has no SCORE column", before:find("SCORE/MAX") == nil)
+  T.ok("readout: client has no NEXT SPRAY column", before:find("NEXT SPRAY") == nil)
+  ResistanceBands.applyFieldBands(field, { "3", B.FINISHED })
+  local after = SoilSettingsGUI.consoleCommandResistance(SoilSettingsGUI, "1")
+  T.ok("readout: client after delivery says RECEIVED", after:find("RECEIVED") ~= nil)
+  T.ok("readout: client after delivery mode 3 shows the delivered FINISHED", modeRowHas(after, "3", "FINISHED"))
+  T.ok("readout: client after delivery reads a silent mode as WORKING", modeRowHas(after, "11", "WORKING"))
+  T.ok("readout: client after delivery still has no SCORE column", after:find("SCORE/MAX") == nil)
+  g_SoilFertilityManager, g_server = prevMgr, prevServer
+  g_localPlayer, g_farmlandManager, g_farmManager = prevPlayer, prevFarmland, prevFarms
 end
 
 -- An untracked field id must not throw.

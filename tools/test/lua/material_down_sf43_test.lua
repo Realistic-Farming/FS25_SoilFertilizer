@@ -70,20 +70,25 @@ T.eq("guard window excludes the ceiling (a saturated pixel stops counting)", cal
 vm, calls = makeStore()
 vm:applyRawDeltaToLayer("materialAge", 30, 1, 254)
 T.eq("catch-up is two calls, flat in area", #calls, 2)
-T.eq("first is the add", calls[1].op, "add")
-T.eq("add delta is the boundaries crossed", calls[1].delta, 30)
-T.eq("add window stops short so nothing wraps past the ceiling", calls[1].high, 225)
-T.eq("second is the saturating set", calls[2].op, "set")
-T.eq("saturating pass writes the ceiling", calls[2].value, 255)
+-- The saturating set runs FIRST (MAINTENANCE row 106): after the add it would also
+-- take the pixels the add had just carried into its window.
+T.eq("first is the saturating set", calls[1].op, "set")
+T.eq("saturating pass writes the ceiling", calls[1].value, 255)
 -- THE BUG THIS CLOSES: at delta 30 a pixel sitting at 230 is outside the add window
--- on this tick and on every tick after it. Without pass 2 that band freezes forever.
-T.eq("saturating band starts where the add window ended", calls[2].low, 226)
-T.eq("saturating band stops below the ceiling", calls[2].high, 254)
+-- on this tick and on every tick after it. Without the saturating pass that band
+-- freezes forever.
+T.eq("saturating band starts where the add window ends", calls[1].low, 226)
+T.eq("saturating band stops below the ceiling", calls[1].high, 254)
+T.eq("second is the add", calls[2].op, "add")
+T.eq("add delta is the boundaries crossed", calls[2].delta, 30)
+T.eq("add window stops short so nothing wraps past the ceiling", calls[2].high, 225)
 
 -- ── 4. An unrepresentable sleep clamps rather than wraps ───
 vm, calls = makeStore()
 vm:applyRawDeltaToLayer("materialAge", 5000, 1, 254)
-T.eq("delta clamps to the raw span", calls[1].delta, SoilValueMaps.RAW_SPAN - 1)
+local clampAdd
+for _, c in ipairs(calls) do if c.op == "add" then clampAdd = c end end
+T.eq("delta clamps to the raw span", clampAdd.delta, SoilValueMaps.RAW_SPAN - 1)
 
 -- ── 5. THE FABRICATION FENCE ──────────────────────────────
 -- The block-walk fallback point-samples a block centre and executeSets the whole

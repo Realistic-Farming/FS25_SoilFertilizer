@@ -211,7 +211,7 @@
     <e k="sf_hud_yield" v="Yield" eh="97345487" />
     <e k="sf_hud_estYield" v="Est. Yield" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimal" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="Post-harvest ├é┬À Fertilize" eh="61d2d595" />
+    <e k="sf_hud_post_harvest" v="Post-harvest · Fertilize" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Drag: move   Corner: resize   RMB/Shift+H: done" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: move/resize" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="Incompatibility Detected" eh="89dbfc90" />
@@ -330,7 +330,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Per-Player HUD Options" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Each player controls their own HUD - not synced to the server. Options: Show HUD (on/off), Position (5 presets + drag), Color Theme (Green / Blue / Amber / Mono), Font Size (Small / Medium / Large), Transparency (25% to 100%), Imperial Units (on/off)." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Sprayer Rate Control" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="While in a sprayer or spreader, use SF Rate Up (]) and SF Rate Down ([) to adjust the application rate from 0.10x to 2.00x. Toggle Auto-Rate Control (Shift+L) to let the mod automatically target optimal nutrient levels and avoid burn risk." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="While in a sprayer or spreader, use SF Rate Up and SF Rate Down to adjust the application rate from 0.10x to 2.00x. Toggle Auto-Rate Control to let the mod automatically target optimal nutrient levels and avoid burn risk." eh="62c35b45" />
 
     <!-- Category 7: Multiplayer -->
     <e k="helpLine_sf_mp_p1_title" v="How Multiplayer Works" eh="8a4ce30e" />
@@ -542,6 +542,7 @@
     <e k="sf_treat_action_optimal" v="Optimal - No action needed." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Apply LIME or LIQUID LIME to raise pH." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Apply GYPSUM to lower pH / improve structure." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Plow in MANURE, COMPOST, or chop straw." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Monitor. Maintain organic inputs." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Apply UAN32, UREA, or ANHYDROUS." eh="ebc225b0" />
@@ -587,7 +588,6 @@
     <!-- ======================================================
          NOTIFICATIONS
          ====================================================== -->
-    <e k="sf_notify_welcome" v="Soil &amp; Fertilizer Mod Active | Shift+O to open settings | Type 'soilfertility' for commands" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="What's new in this version:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Thank you for using my mod, it means a lot to me &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Found a bug? Please report it on github!" eh="728e2cf3" />
@@ -633,7 +633,7 @@
     <e k="sf_hud_enter_drag_desc" v="Drag HUD to reposition - drag corner to resize - RMB or Esc to finish" eh="1d7b1dee" />
     <e k="sf_independent_panels_short" v="Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the ├ó╦åÔÇÖ button in their title bar." eh="6f96e17c" />
+    <e k="sf_desc_independentPanels" v="Drag each panel freely using Shift+H edit mode. Collapse panels with the - button in their title bar." eh="d61cf296" />
 
     <!-- ======================================================
          SETTINGS PANEL - CHROME
@@ -851,7 +851,7 @@
     <e k="sf_guide_p1_08" v="P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="pH  Soil acidity.  Target range: 6.5 ├óÔé¼ÔÇ£ 7.0." eh="66ec261a" />
+    <e k="sf_guide_p1_11" v="pH  Soil acidity.  Target range: 6.5 - 7.0." eh="9b966ead" />
     <e k="sf_guide_p1_12" v="STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="  No action needed this season." eh="58b36ac2" />
@@ -999,13 +999,13 @@
     <e k="sf_guide_p4_46" v="Treatment (Shift+T) lists what each field" eh="ccc651dc" />
     <e k="sf_guide_p4_47" v="  needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="Target range: 6.5 ├óÔé¼ÔÇ£ 7.0 for most crops." eh="142248c3" />
+    <e k="sf_guide_p4_18" v="Target range: 6.5 - 7.0 for most crops." eh="7d422dfe" />
     <e k="sf_guide_p4_19" v="" eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="  Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="  Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="Allow 1├óÔé¼ÔÇ£2 seasons for full normalization." eh="b64ec970" />
+    <e k="sf_guide_p4_24" v="Allow 1-2 seasons for full normalization." eh="a35d71d3" />
     <e k="sf_guide_p4_25" v="ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -1045,9 +1045,9 @@
     <e k="sf_guide_p5_22" v="DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="  It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="P and K: Every 2├óÔé¼ÔÇ£3 seasons is usually enough." eh="8863dc51" />
+    <e k="sf_guide_p5_25" v="P and K: Every 2-3 seasons is usually enough." eh="d6e2db5f" />
     <e k="sf_guide_p5_26" v="Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="pH: Only when outside the 6.5├óÔé¼ÔÇ£7.0 range." eh="2dcf1b6d" />
+    <e k="sf_guide_p5_27" v="pH: Only when outside the 6.5-7.0 range." eh="66a52606" />
     <e k="sf_guide_p5_28" v="HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1177,6 +1177,8 @@
     <e k="sf_scout_clean_title" v="No active disease" eh="6bc14095" />
     <e k="sf_scout_clean_hint" v="Field looks healthy. You can still apply a preventative." eh="b81cdbda" />
     <e k="sf_scout_disabled" v="Disease system disabled" eh="a2ffd328" />
+    <e k="sf_scout_no_standing" v="Your farm neither owns nor contracts this land. Nothing was scouted." eh="79c48f91" />
+    <e k="sf_treat_no_standing" v="Your farm neither owns nor contracts this land. Nothing was treated." eh="27d54bdd" />
     <e k="sf_admin_field_set_disease_label" v="Set Field Disease" eh="faa773f5" />
     <e k="sf_admin_field_set_disease_desc" v="Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
         <e k="sf_multi_tank_short"             v="Multi-Tank Application" />
@@ -1444,8 +1446,13 @@
     <e k="sf_handful_grain_cell" v="this cell" />
     <e k="sf_handful_grain_field" v="field average" />
     <e k="sf_handful_unscouted" v="Unscouted" />
+    <e k="sf_handful_ph_unavailable" v="unavailable here" />
+    <e k="sf_handful_ph_last_known" v="recorded field value" />
+    <e k="sf_handful_ph_approx" v="approximate" />
     <e k="sf_handful_kit_yes" v="Soil test kit in hand: exact figures" />
     <e k="sf_handful_kit_no" v="No soil test kit: readings are by hand, so they are qualitative" />
+    <e k="sf_handful_ppm" v="%d ppm" />
+    <e k="sf_handful_kit_tile" v="%s %s" />
     <e k="sf_handful_band_good" v="Good" />
     <e k="sf_handful_band_fair" v="Fair" />
     <e k="sf_handful_band_poor" v="Poor" />
@@ -1467,5 +1474,133 @@
     <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
     <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
     <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
-    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" />
+    <e k="sf_growth_label" v="Growth" eh="699aed86" />
+    <e k="sf_growth_blocked" v="Blocked" eh="4ecc0d90" />
+    <e k="sf_growth_excellent" v="Excellent" eh="fcc2d28a" />
+    <e k="sf_growth_normal" v="Normal" eh="960b44c5" />
+    <e k="sf_growth_unknown" v="Unknown, unscouted" eh="25f30088" />
+    <e k="sf_growth_cause" v="Cause" eh="50fc9b91" />
+    <e k="sf_growth_cause_unreported" v="Not yet reported" eh="84fb9c37" />
+    <e k="sf_growth_credit" v="Growth credit" eh="30ce7482" />
+    <e k="sf_growth_credit_days" v="%d days" eh="cdca48ec" />
+    <e k="sf_growth_credit_none" v="None" eh="6adf97f8" />
+    <e k="sf_growth_settled" v="Settled" eh="30533c6b" />
+    <e k="sf_growth_settled_today" v="Today" eh="1dd1c5fb" />
+    <e k="sf_growth_settled_day_ago" v="1 day ago" eh="44ba1391" />
+    <e k="sf_growth_settled_days_ago" v="%d days ago" eh="2ed6918e" />
+    <e k="sf_pda_growth_blocked" v="Blocked %d%%" eh="acc5c966" />
+    <e k="sf_pda_growth_ahead" v="Ahead %d%%" eh="e19aed44" />
+    <e k="sf_res_title" v="Resistance" eh="9db444f7" />
+    <e k="sf_res_state_unknown" v="Field %d: resistance not yet known. Scout this field to learn its history." eh="ab16e14a" />
+    <e k="sf_res_state_waiting" v="Field %d: waiting for the server's resistance picture." eh="b3c62e5b" />
+    <e k="sf_res_state_known" v="Field %d: resistance history known." eh="8717924c" />
+    <e k="sf_res_mode" v="Mode %s" eh="fdbc9304" />
+    <e k="sf_res_band_unknown" v="Not yet known" eh="8f4a0706" />
+    <e k="sf_res_band_working" v="Good control" eh="75eb95bf" />
+    <e k="sf_res_band_slipping" v="Reduced control" eh="cc4d1243" />
+    <e k="sf_res_band_finished" v="No control" eh="dd802b99" />
+    <e k="sf_res_note" v="Tank-applied fungicides build resistance on this field. Menu treatments do not use this resistance model and charge by field area." eh="effb087f" />
+    <e k="sf_res_pairs_btn" v="Tank pairs" eh="fb0e4920" />
+    <e k="sf_res_pairs_title" v="Tank pairs for field %d" eh="d2e9272f" />
+    <e k="sf_res_pairs_intro" v="Control words are this field's current bands. A pair marked organic is on the organic approved list. Nothing here ranks, buys or mixes." eh="efb73722" />
+    <e k="sf_res_pairs_line" v="%s (mode %s): %s. Pairs with %s." eh="2a537b39" />
+    <e k="sf_res_pairs_all" v="every other fungicide" eh="2eee400b" />
+    <e k="sf_res_pairs_organic" v="organic pair" eh="49f08add" />
+    <e k="sf_res_pairs_none" v="pair table not loaded" eh="abbe2edb" />
+    <e k="sf_res_pairs_nothing" v="no listed partner" eh="06752d51" />
+    <e k="sf_res_pairs_no_field" v="Select one of your fields first." eh="dfc6d58d" />
+    <e k="sf_dog_field_warning" v="Your dog senses something wrong with Field #%s." />
+    <e k="sf_dog_barn_warning" v="Your dog senses something wrong at Barn %s." />
+    <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
+    <e k="sf_hud_status_fair" v="Fair" eh="f7f20cf0" />
+    <e k="sf_hud_status_poor" v="Poor" eh="0e94d017" />
+    <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
+    <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
+    <e k="sf_notify_density_refused" v="%s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="SET FIELD STATE" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="SET FIELD DISEASE" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Last:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Rotation bonus active. Keep the sequence going." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="Same family too long. Change crop next season." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Rotate crops to avoid fatigue." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="ROTATION" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Fields %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Field %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Unknown" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Crop" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Effect" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Status" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Field %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_target_ai_boundary" v="%s stopped: target fertilizer paused on mixed, denied or unknown ground. Manual application is still available." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="A helper stopped: target fertilizer paused on mixed, denied or unknown ground. Manual application is still available." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Target fertilizer" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Field %d: product was spent, but the local N/P/K result is not confirmed. Target automatic has stopped; manual application is still available." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Last AUTO pass" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: target reached" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: short of target" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO stopped: product spent" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: dose pending" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: not spraying" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: target dose starts when spraying" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: waiting for the server" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: target unavailable" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO paused: no growing crop" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO paused: target unavailable" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO paused: crop boundary" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO paused: field boundary" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO paused: no access to this land" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO paused: invalid product" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO paused: sowing without target fertilizer" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO paused: not all boom sections on" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO paused: work areas overlap" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO paused: no target on a cultivator" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO paused: supply route not supported" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO paused: double rate is on" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: preparing the footprint" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Turn AUTO off for manual application." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="No soil reading under the boom." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="The boom reaches past the map edge." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="First boom line, nothing charged." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Confirmed for this footprint, not the whole field." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="More of this blend would overshoot %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="The machine cannot apply more at this speed." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Not enough product in the tank or supply." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="The dose is below one soil map step." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="Local N/P/K is not confirmed." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Charged when the boom closes a soil cell." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="No current result from the server." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="below" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="approaching" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="in window" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="above" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="unknown" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s on %s, field %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Boom footprint, %s m soil cells" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, window %s to %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Limiting nutrient: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Planned %s L, applied %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Useful %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
+    <e k="sf_tgt_pda_title" v="AUTO target" eh="015a43f5" />
+    <e k="sf_tgt_pda_window" v="Field report: N %s, P %s, K %s" eh="0fb4140e" />
+    <e k="sf_tgt_pda_window_none" v="Field report: crop window unavailable" eh="a5363bde" />
+    <e k="sf_tgt_pda_rel_below" v="low" eh="53cced8d" />
+    <e k="sf_tgt_pda_rel_near" v="near" eh="85f06cc8" />
+    <e k="sf_tgt_pda_rel_ok" v="ok" eh="444bcb3a" />
+    <e k="sf_tgt_pda_rel_high" v="high" eh="8d966b22" />
+    <e k="sf_tgt_pda_rel_unknown" v="?" eh="d1457b72" />
+    <e k="sf_tgt_pda_state_reached" v="Last pass: target reached" eh="e1958a65" />
+    <e k="sf_tgt_pda_state_binding" v="Last pass: short, blend limit" eh="8c2318f6" />
+    <e k="sf_tgt_pda_state_hardware" v="Last pass: short, machine limit" eh="7ccf8639" />
+    <e k="sf_tgt_pda_state_supply" v="Last pass: short, ran out" eh="718f2cb2" />
+    <e k="sf_tgt_pda_state_quantized" v="Last pass: short, under a map step" eh="03b4dc16" />
+    <e k="sf_tgt_pda_state_failed" v="Last pass: product spent" eh="15afe7ea" />
+    <e k="sf_tgt_pda_state_none" v="Last pass: none on this crop" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Last pause: no growing crop" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Turn AUTO off to apply manually" eh="05c625d3" />
+    <e k="sf_tgt_pda_scope" v="One footprint, not the whole field" eh="d96e3c9b" />
+    <e k="sf_tgt_pda_binding" v="More would overshoot %s" eh="53a1a1fe" />
+    <e k="sf_tgt_pda_manual_targets" v="Manual plan targets" eh="e44e77d3" />
+</elements>
 </l10n>

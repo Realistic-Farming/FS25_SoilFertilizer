@@ -1,22 +1,24 @@
 ---@class SoilMapOverlay
-SoilMapOverlay = {}
+SoilMapOverlay = SoilMapOverlay or {}
 local SoilMapOverlay_mt = Class(SoilMapOverlay)
 
 -- ── i18n helper ───────────────────────────────────────────
-local SF_MOD_NAME = g_currentModName
 
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
-    local i18n   = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        -- pcall-wrap getText for parity with the other UI panels' tr() helpers -
-        -- a missing/malformed l10n entry should fall back, never crash the overlay.
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 -- Word-wrap a string into lines that fit maxWidth at the given size. Uses the
@@ -84,6 +86,32 @@ SoilMapOverlay.CB_UNKNOWN = {0.38, 0.40, 0.43}
 -- ── Gradient helpers ──────────────────────────────────────
 -- Shared red→amber→green gradient.  t=0 is worst (red), t=1 is best (green).
 -- These are the same three stop-colors used in drawHealthGradientBar.
+-- [SF-50] pH-only 4-stop gradient (George CLOSED DESIGN 19:12; Wizard wants
+-- deeper multi-stage colour on the pH layer specifically). Stops: deep red ->
+-- amber -> bright green -> deep green, linearly interpolated. Every other
+-- layer stays on healthGradient below. Over-limed (>7.0) reaches this with
+-- t=0 from layerValueToT and lands on the deep-red stop, as before.
+local PH_STOPS = {
+    { 0.00, 0.88, 0.10, 0.10 },  -- deep red
+    { 0.33, 0.90, 0.70, 0.10 },  -- amber
+    { 0.66, 0.30, 0.90, 0.30 },  -- bright green
+    { 1.00, 0.10, 0.50, 0.10 },  -- deep green
+}
+local function pHGradient(t)
+    t = math.max(0, math.min(1, t))
+    for i = 1, #PH_STOPS - 1 do
+        local s0, s1 = PH_STOPS[i], PH_STOPS[i + 1]
+        if t <= s1[1] then
+            local a = (t - s0[1]) / (s1[1] - s0[1])
+            return s0[2] + (s1[2] - s0[2]) * a,
+                   s0[3] + (s1[3] - s0[3]) * a,
+                   s0[4] + (s1[4] - s0[4]) * a
+        end
+    end
+    local last = PH_STOPS[#PH_STOPS]
+    return last[2], last[3], last[4]
+end
+
 local function healthGradient(t)
     t = math.max(0, math.min(1, t))
     local r, g, b
@@ -108,15 +136,19 @@ local function layerValueToT(layerIdx, val)
     elseif layerIdx == 2 then return math.max(0, math.min(1, val / 100))        -- P   0-100
     elseif layerIdx == 3 then return math.max(0, math.min(1, val / 100))        -- K   0-100
     elseif layerIdx == 4 then
-        -- Match SoilHUD:pHColor bands (not a 6.75-centred bell):
-        -- 6.5-7.0 good, >7.0-7.5 poor (over-limed), >=5.5 fair, else poor.
+        -- [SF-49] Continuous pH ramp (George CLOSED DESIGN 16:08). The old
+        -- discrete 0.5/1.0 bands rendered mid-pass 6.29 and overlap 6.60 as
+        -- similar tints even though the painted VALUES were right - TEST 15:54
+        -- failed on legend alone. Ramping 5.5->6.5 across fair (0..0.5) and
+        -- 6.5->7.0 across optimal (0.5..1.0) makes 6.29 read amber (~0.395)
+        -- and 6.60 read greener (~0.60). Over-limed >7.0 stays poor (0.0).
         local pH = val or 7.0
         if pH >= 6.5 and pH <= 7.0 then
-            return 1.0
-        elseif pH > 7.0 and pH <= 7.5 then
+            return 0.5 + (pH - 6.5) / (7.0 - 6.5) * 0.5
+        elseif pH > 7.0 then
             return 0.0
         elseif pH >= 5.5 then
-            return 0.5
+            return (pH - 5.5) / (6.5 - 5.5) * 0.5
         else
             return 0.0
         end
@@ -330,6 +362,9 @@ function SoilMapOverlay:requestRefresh()
     self.fieldPolyCache        = {}
     self._pdaNextBuildMs       = 0
     self._pdaActiveLayer       = -1   -- force DMV rebuild on next draw
+    -- Growth inspect re-reads on the next tooltip draw (page OPEN / REFRESH),
+    -- one frame later than whatever asked, never inside a boundary message.
+    self._growthReread         = true
 end
 
 -- ── Layer selection ───────────────────────────────────────
@@ -926,14 +961,20 @@ function SoilMapOverlay:updateSamplePoints(force)
                         local scouting = self.soilSystem and self.soilSystem.spatialScouting
                         local compose = nil
                         if scouting and scouting:isArmed() then
-                            local owner = g_farmlandManager and g_farmlandManager.getFarmlandOwner
-                                and g_farmlandManager:getFarmlandOwner(farmlandId)
+                            -- [SF-22] Compose ONLY from the local VIEWING farm's own
+                            -- walked mask, never the land owner. A client holds only
+                            -- its own farm's mask bytes (another farm receives zero),
+                            -- so keying by owner would paint nothing for a contractor
+                            -- and risk leaking across farms on a listen host. A
+                            -- non-ordinary or unresolved viewer yields no compose
+                            -- object, so the cell stays UNKNOWN.
+                            local viewingFarm = g_localPlayer and g_localPlayer.farmId
                             local day = g_currentMission and g_currentMission.environment
                                 and g_currentMission.environment.currentDay
-                            if owner and owner > 0 and day then
+                            if SpatialScouting.isOrdinaryFarmId(viewingFarm) and day then
                                 compose = {
                                     scouting = scouting,
-                                    farmId   = owner,
+                                    farmId   = viewingFarm,
                                     fieldId  = farmlandId,
                                     day      = day,
                                 }
@@ -1118,6 +1159,92 @@ function SoilMapOverlay:screenToWorldPosition(ingameMap, screenX, screenY)
     return worldX, worldZ
 end
 
+-- ── Growth inspect (BUILD 09:40, Stage 7 v1) ─────────────
+-- The cell tooltip answers why a patch is behind or ahead. It reads the
+-- growth family's published getter LIVE at the click (and once more after a
+-- requestRefresh, deferred to the next tooltip draw), never from a stored
+-- mirror and never from a day-boundary subscriber.
+--
+-- Gates, in order, and what each one yields:
+--   family not live (Soil disabled or stood down by Precision Farming,
+--   growth_modulation not opted in, viability absent)  -> no section at all
+--   cell unscouted (field undiscovered AND not a fresh walked cell of the
+--   VIEWING farm's own mask)                             -> UNKNOWN, getter
+--                                                          never called
+--   getter nil (off-field, layer unreadable)             -> no section
+--   otherwise                                            -> the reading
+--
+-- What v1 shows: blocked or not, nitrogen and compaction as NAMED causes, the
+-- growth credit in days as of the field's last settle day, EXCELLENT / NORMAL
+-- for ground that is not blocked. A block with no named cause is reported as
+-- real with the cause not yet reported: the family may grow causes later and
+-- this surface must not pretend to a closed list. Moisture, water and the
+-- captured harvest score are never rendered here.
+
+--- The mod's own discovery gate, the same one the disease layer paints by.
+--- The field's discovered flag reveals the whole field; otherwise only a
+--- fresh walked cell of the local viewing farm's mask counts as scouted.
+---@return boolean
+function SoilMapOverlay:_isCellScouted(farmlandId, worldX, worldZ)
+    local soilSystem = self.soilSystem
+    local fieldEntry = soilSystem and soilSystem.fieldData and soilSystem.fieldData[farmlandId]
+    if fieldEntry ~= nil and fieldEntry.diseaseDiscovered then return true end
+    local scouting = soilSystem and soilSystem.spatialScouting
+    if scouting == nil or type(scouting.isArmed) ~= "function" or not scouting:isArmed() then
+        return false
+    end
+    if SpatialScouting == nil or type(SpatialScouting.cellKey) ~= "function"
+       or type(SpatialScouting.isOrdinaryFarmId) ~= "function"
+       or type(scouting.isFresh) ~= "function" then
+        return false
+    end
+    local viewingFarm = g_localPlayer and g_localPlayer.farmId
+    local day = g_currentMission and g_currentMission.environment
+        and g_currentMission.environment.currentDay
+    if not SpatialScouting.isOrdinaryFarmId(viewingFarm) or day == nil then return false end
+    local ok, fresh = pcall(function()
+        return scouting:isFresh(viewingFarm, farmlandId, SpatialScouting.cellKey(worldX, worldZ), day)
+    end)
+    return ok and fresh == true
+end
+
+--- Read the growth judgement for a selected cell. Returns a small record the
+--- tooltip renders from; never nil, so "unread" (nil on the cell) stays
+--- distinct from "read and nothing to show".
+---   { state = "off" }                       family not live, or getter nil
+---   { state = "unknown" }                   unscouted
+---   { state = "read", info = <getter>, settledDay = <day|nil> }
+---@param sel table the selectedCell record
+---@return table
+function SoilMapOverlay:_readCellGrowth(sel)
+    local OFF = { state = "off" }
+    if sel == nil or sel.farmlandId == nil then return OFF end
+    local sfm = g_currentMission and g_currentMission.soilFertilityManager
+    if sfm == nil or type(sfm.getCellGrowthInfo) ~= "function" then return OFF end
+    -- Ride Soil's own stand-down: settings off, or Precision Farming present.
+    if (sfm.settings ~= nil and sfm.settings.enabled == false) or sfm._disabledByPF then return OFF end
+    -- growth_modulation is experimental; when the gate is closed the family
+    -- is not running and this surface has nothing honest to say.
+    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function"
+       and not ReleaseGate.isSystemLive("growth_modulation") then
+        return OFF
+    end
+    if not self:_isCellScouted(sel.farmlandId, sel.worldX, sel.worldZ) then
+        return { state = "unknown" }
+    end
+    local info = sfm:getCellGrowthInfo(sel.farmlandId, sel.worldX, sel.worldZ)
+    if type(info) ~= "table" then return OFF end
+    -- As-of day: the field summary's settle day. The published summary getter
+    -- does not carry it, so this same-mod read looks at the mask's own record
+    -- and treats absence as "not settled yet".
+    local settledDay = nil
+    local v = sfm.viability
+    local summaries = v and v._summaries
+    local s = summaries and summaries[sel.farmlandId]
+    if type(s) == "table" and type(s.day) == "number" then settledDay = s.day end
+    return { state = "read", info = info, settledDay = settledDay }
+end
+
 --- Called from SoilMapHooks.onMouseEvent when the soil page is active and the
 --- user clicks the map area. Finds which soil cell was clicked and stores it
 --- as self.selectedCell for drawing the tooltip in onDraw.
@@ -1171,6 +1298,8 @@ function SoilMapOverlay:onMapClick(ingameMap, screenX, screenY)
         info         = info,
         fromZoneCell = info.fromZoneCell or false,
     }
+    -- Growth read at the click: the explicit read the window allows.
+    self.selectedCell.growth = self:_readCellGrowth(self.selectedCell)
     -- Force overlay refresh so tile colors match the freshly-read tooltip data
     self.nextSampleUpdateTime = 0
     SoilLogger.debug("SoilMapOverlay: cell selected field=%s cell=[%d,%d]",
@@ -1248,7 +1377,13 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
                 if gap >= 0 then
                     addRow(gapLabel, string.format("+%d %s", math.floor(gap + 0.5), ppmUnit), ttGOOD[1], ttGOOD[2], ttGOOD[3])
                 else
-                    addRow(gapLabel, string.format("%d %s needed", math.floor(-gap + 0.5), ppmUnit), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                    -- RSF-F345: pattern key so a translator can reorder figure and unit; a
+                    -- malformed translation falls back to the English pattern instead of
+                    -- throwing out of the tooltip draw.
+                    local needN = math.floor(-gap + 0.5)
+                    local okNeed, needStr = pcall(string.format, tr("sf_map_gap_needed", "%d %s needed"), needN, ppmUnit)
+                    if not okNeed then needStr = string.format("%d %s needed", needN, ppmUnit) end
+                    addRow(gapLabel, needStr, ttPOOR[1], ttPOOR[2], ttPOOR[3])
                 end
             else
                 local crop = cropTitle(info.lastCrop)
@@ -1257,9 +1392,12 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
 
     elseif layerIdx == 4 then
         -- ── pH layer ────────────────────────────────────────────
-        local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
+        local pH = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
         local condLabel, actionLabel, condR, condG, condB
-        if pH >= 6.5 and pH <= 7.0 then
+        if pH == nil then
+            condLabel = tr("sf_map_target_no_data", "No data"); actionLabel = ""
+            condR, condG, condB = DIM[1], DIM[2], DIM[3]
+        elseif pH >= 6.5 and pH <= 7.0 then
             condLabel = tr("sf_map_ph_optimal", "Optimal");              actionLabel = tr("sf_map_ph_none_needed", "None needed")
             condR, condG, condB = ttGOOD[1], ttGOOD[2], ttGOOD[3]
         elseif pH > 7.0 and pH <= 7.5 then
@@ -1275,7 +1413,15 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
             condLabel = tr("sf_map_ph_very_acidic", "Very acidic");          actionLabel = tr("sf_map_ph_apply_lime_urgent", "Apply lime urgently")
             condR, condG, condB = ttPOOR[1], ttPOOR[2], ttPOOR[3]
         end
-        addRow("pH",        fmtV(string.format("%.1f", pH)), condR, condG, condB)
+        -- [RSF-F219] Guarded at the format call: the click stored the whole info
+        -- table and the layer is chosen here, so a cell clicked on another layer
+        -- and switched to pH through the settings panel reaches this branch with
+        -- a positional miss (info.pH == nil). No numeric row, no formatter call,
+        -- and pHLastKnown is never shown as the current pH. The No data
+        -- condition row above stays.
+        if pH ~= nil then
+            addRow("pH",    fmtV(string.format("%.1f", pH)), condR, condG, condB)
+        end
         addRow(tr("sf_map_condition", "Condition"), condLabel,   condR, condG, condB)
         addRow(tr("sf_map_treatment", "Treatment"), actionLabel, NEU[1], NEU[2], NEU[3])
 
@@ -1425,6 +1571,79 @@ function SoilMapOverlay:drawCellTooltip(ingameMap, mapX, mapY, mapWidth, mapHeig
         return
     end
 
+    -- ── Growth inspect rows (every layer) ─────────────────────
+    if sel.growth == nil or self._growthReread then
+        self._growthReread = false
+        sel.growth = self:_readCellGrowth(sel)
+    end
+    local growth = sel.growth
+    local growthLabel = tr("sf_growth_label", "Growth")
+    if growth.state == "unknown" then
+        addRow(growthLabel, tr("sf_growth_unknown", "Unknown, unscouted"), DIM[1], DIM[2], DIM[3])
+    elseif growth.state == "read" and type(growth.info) == "table" then
+        local gi = growth.info
+        local by = (type(gi.blockedBy) == "table") and gi.blockedBy or {}
+        local bands = (type(gi.bands) == "table") and gi.bands or {}
+        local EXC = (ViabilityMask and ViabilityMask.BAND_EXCELLENT) or "excellent"
+        local NRM = (ViabilityMask and ViabilityMask.BAND_NORMAL) or "normal"
+        local function bandText(b)
+            if b == EXC then return tr("sf_growth_excellent", "Excellent"), ttGOOD[1], ttGOOD[2], ttGOOD[3] end
+            return tr("sf_growth_normal", "Normal"), NEU[1], NEU[2], NEU[3]
+        end
+        if gi.blocked then
+            addRow(growthLabel, tr("sf_growth_blocked", "Blocked"), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+            local named = false
+            if by.n then
+                addRow(tr("sf_map_layer_n", "Nitrogen (N)"), tr("sf_growth_blocked", "Blocked"), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                named = true
+            end
+            if by.compaction then
+                addRow(tr("sf_map_layer_compaction", "Compaction"), tr("sf_growth_blocked", "Blocked"), ttPOOR[1], ttPOOR[2], ttPOOR[3])
+                named = true
+            end
+            if not named then
+                -- The block is real; the family has not named a cause this
+                -- surface knows how to show. Say so rather than guess.
+                addRow(tr("sf_growth_cause", "Cause"), tr("sf_growth_cause_unreported", "Not yet reported"), ttFAIR[1], ttFAIR[2], ttFAIR[3])
+            end
+        else
+            -- Ahead or level: only nitrogen and compaction vote here.
+            local overall = NRM
+            if bands.n == EXC or bands.compaction == EXC then overall = EXC end
+            local oTxt, oR, oG, oB = bandText(overall)
+            addRow(growthLabel, oTxt, oR, oG, oB)
+            if bands.n ~= nil then
+                local t, r, g, b = bandText(bands.n)
+                addRow(tr("sf_map_layer_n", "Nitrogen (N)"), t, r, g, b)
+            end
+            if bands.compaction ~= nil then
+                local t, r, g, b = bandText(bands.compaction)
+                addRow(tr("sf_map_layer_compaction", "Compaction"), t, r, g, b)
+            end
+        end
+        -- Growth credit in days. nil is the family's neutral reading and is
+        -- shown as none, never as zero.
+        if type(gi.credit) == "number" then
+            local days = math.floor(gi.credit + 0.5)
+            local cR, cG, cB = NEU[1], NEU[2], NEU[3]
+            if days > 0 then cR, cG, cB = ttGOOD[1], ttGOOD[2], ttGOOD[3] end
+            addRow(tr("sf_growth_credit", "Growth credit"), string.format(tr("sf_growth_credit_days", "%d days"), days), cR, cG, cB)
+        else
+            addRow(tr("sf_growth_credit", "Growth credit"), tr("sf_growth_credit_none", "None"), DIM[1], DIM[2], DIM[3])
+        end
+        -- As of the field's last settle day, when the summary carries one.
+        local today = g_currentMission and g_currentMission.environment
+            and g_currentMission.environment.currentMonotonicDay
+        if type(growth.settledDay) == "number" and type(today) == "number" then
+            local ago = math.max(0, math.floor(today - growth.settledDay + 0.5))
+            local agoTxt
+            if ago == 0 then agoTxt = tr("sf_growth_settled_today", "Today")
+            elseif ago == 1 then agoTxt = tr("sf_growth_settled_day_ago", "1 day ago")
+            else agoTxt = string.format(tr("sf_growth_settled_days_ago", "%d days ago"), ago) end
+            addRow(tr("sf_growth_settled", "Settled"), agoTxt, DIM[1], DIM[2], DIM[3])
+        end
+    end
+
     if #rows == 0 then return end
 
     -- ── Box sizing: height grows with row count ───────────────
@@ -1545,7 +1764,7 @@ function SoilMapOverlay:onDrawHud(frame)
         end
 
         local key = SoilMapOverlay.LAYER_KEYS[i]
-        local name = (g_i18n and g_i18n:getText(key)) or key
+        local name = SoilL10n.tr(key, key)
         
         setTextBold(isActive)
         setTextColor(isActive and 1 or 0.8, isActive and 1 or 0.8, isActive and 1 or 0.8, 1)
@@ -1650,7 +1869,7 @@ function SoilMapOverlay:drawSummaryAt(frame, panelX, panelY, panelWidth, panelHe
     setTextBold(true)
     setTextColor(0.93, 0.93, 0.93, 1)
     setTextAlignment(RenderText.ALIGN_LEFT)
-    renderText(barX, headerY, titleSize, g_i18n:getText("sf_map_health_overall") or "Average Soil Health")
+    renderText(barX, headerY, titleSize, SoilL10n.tr("sf_map_health_overall", "Average Soil Health"))
 
     setTextAlignment(RenderText.ALIGN_RIGHT)
     renderText(barX + barWidth, headerY, titleSize, string.format("%d%%", healthPercent))
@@ -1986,6 +2205,12 @@ function SoilMapOverlay:valueToLayerColor(layerIdx, val)
         end
         return GOOD[1], GOOD[2], GOOD[3]
     end
+    -- [SF-50] pH takes the 4-stop gradient; every other layer keeps the
+    -- 3-stop health ramp. Same t from layerValueToT either way, so the
+    -- over-limed>7.0 -> t=0 rule is shared.
+    if layerIdx == 4 then
+        return pHGradient(layerValueToT(layerIdx, val))
+    end
     return healthGradient(layerValueToT(layerIdx, val))
 end
 
@@ -2013,8 +2238,9 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
             else                             return GOOD[1], GOOD[2], GOOD[3] end
         elseif layerIdx == 4 then
             -- Match SoilHUD:pHColor (over-limed >7.0-7.5 is POOR, not FAIR).
-            local pH = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-            if pH >= 6.5 and pH <= 7.0 then    return GOOD[1], GOOD[2], GOOD[3]
+            local pH = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
+            if pH == nil then                  return 0.5, 0.5, 0.5
+            elseif pH >= 6.5 and pH <= 7.0 then    return GOOD[1], GOOD[2], GOOD[3]
             elseif pH > 7.0 and pH <= 7.5 then return POOR[1], POOR[2], POOR[3]
             elseif pH >= 5.5           then    return FAIR[1], FAIR[2], FAIR[3]
             else                               return POOR[1], POOR[2], POOR[3] end
@@ -2073,7 +2299,7 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
     if     layerIdx == 1 then val = info.nitrogen     and info.nitrogen.value     or 0
     elseif layerIdx == 2 then val = info.phosphorus   and info.phosphorus.value   or 0
     elseif layerIdx == 3 then val = info.potassium    and info.potassium.value    or 0
-    elseif layerIdx == 4 then val = info.pH           or 7.0
+    elseif layerIdx == 4 then val = info.pH
     elseif layerIdx == 5 then val = info.organicMatter or 0
     elseif layerIdx == 6 then val = self.soilSystem:getFieldUrgency(farmlandId)
     elseif layerIdx == 7 then val = info.weedPressure  or 0
@@ -2093,9 +2319,20 @@ function SoilMapOverlay:getLayerColor(layerIdx, info, farmlandId)
         end
     else   val = 100 end
 
+    -- [SF-79] unknown pH paints the neutral unknown tone, never a substituted 7.0.
+    if layerIdx == 4 and val == nil then
+        return self:unknownColor()
+    end
+
     -- Unscouted disease shows the neutral unknown tone, never the pressure ramp.
     if layerIdx == 9 and info.shownDiseasePressure == nil then
         return self:unknownColor()
+    end
+    -- [SF-50] pH takes the 4-stop gradient; every other layer keeps the
+    -- 3-stop health ramp. Same t from layerValueToT either way, so the
+    -- over-limed>7.0 -> t=0 rule is shared.
+    if layerIdx == 4 then
+        return pHGradient(layerValueToT(layerIdx, val))
     end
     return healthGradient(layerValueToT(layerIdx, val))
 end

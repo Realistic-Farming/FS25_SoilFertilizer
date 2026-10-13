@@ -29,6 +29,7 @@ do
     }
     g_farmlandManager = {
         getFarmlandAtWorldPosition = function() return { id = 5 } end,
+        getFarmlandOwner = function() return 1 end,   -- [SF-22] farm 1 owns this land
     }
     g_localPlayer = { farmId = 1 }
 
@@ -53,6 +54,7 @@ do
     }
     g_farmlandManager = {
         getFarmlandAtWorldPosition = function() return { id = 7 } end,
+        getFarmlandOwner = function() return 3 end,   -- [SF-22] the requesting farm owns it
     }
     -- The requesting player's record carries farm 3.
     g_currentMission.playerSystem = {
@@ -100,7 +102,7 @@ do
     T.ok("a client never writes locally", not written)
 end
 
--- ── The kneel write marks the mask dirty for NetworkSync ────────────────────
+-- ── The kneel hands its changed cell to the farm-private DELTA sender ────────
 do
     g_server = {}
     g_fieldManager = {
@@ -108,16 +110,19 @@ do
     }
     g_farmlandManager = {
         getFarmlandAtWorldPosition = function() return { id = 5 } end,
+        getFarmlandOwner = function() return 1 end,
     }
     g_localPlayer = { farmId = 1 }
-    local dirty = false
-    local saved = SoilScoutingBridge.markDirty
-    SoilScoutingBridge.markDirty = function() dirty = true end
+    local sentFarm, sentCells = nil, nil
+    local saved = SoilScoutingBridge.sendFarmDelta
+    SoilScoutingBridge.sendFarmDelta = function(_sc, farmId, list) sentFarm = farmId; sentCells = list end
 
     local m = newMask()
     m:revealCellAt(nil, 25, 35, 100)
-    T.ok("the kneel flags the NetworkSync module dirty", dirty)
+    T.eq("the kneel hands its cell to the DELTA sender under the kneeling farm", sentFarm, 1)
+    T.ok("the DELTA carries exactly the knelt cell",
+         sentCells ~= nil and #sentCells == 1 and sentCells[1].cellKey == S.cellKey(25, 35))
 
-    SoilScoutingBridge.markDirty = saved
+    SoilScoutingBridge.sendFarmDelta = saved
     g_server = nil
 end

@@ -7,23 +7,12 @@
 -- Hang fence: callers keep <=8 fixed Text rows (no SmoothList).
 -- =========================================================
 
-SoilTreatmentRates = {}
+SoilTreatmentRates = SoilTreatmentRates or {}
 
+-- The one gate (SoilL10n.tr, MAINTENANCE rows 59 and 60): hasText decides, the
+-- missing sentence is never compared. The fallback stays "fallback or key".
 local function tr(key, fallback)
-    if g_i18n ~= nil then
-        local ok, text = pcall(function() return g_i18n:getText(key) end)
-        if ok and type(text) == "string" and text ~= "" then
-            local lower = text:lower()
-            if lower ~= tostring(key):lower()
-                and text ~= ("$l10n_" .. key)
-                and not lower:find("^missing%s")
-                and not lower:find("^missing_")
-            then
-                return text
-            end
-        end
-    end
-    return fallback or key
+    return SoilL10n.tr(key, fallback or key)
 end
 
 local function fmt(key, fallback, ...)
@@ -306,8 +295,8 @@ local function collectPlanRows(fieldId)
             tr("sf_treat_action_k_fair", "Top-up with Liquid Potash or Potash (K)."), "fair", 3, 1)
     end
 
-    local ph = math.floor(((info.pH or 7.0) * 10) + 0.5) / 10
-    if ph < 6.5 then
+    local ph = info.pH and (math.floor((info.pH * 10) + 0.5) / 10) or nil
+    if ph ~= nil and ph < 6.5 then
         addStaticRow(rows, "pH",
             productWithHow("LIME", tr("rf_pda_treat_method_dry", "spreader")),
             "poor", 2, 0,
@@ -318,7 +307,7 @@ local function collectPlanRows(fieldId)
             "poor", 2, 0,
             tr("rf_pda_treat_next_how_liq_lime", "apply with a sprayer/tank"),
             "LIQUIDLIME", true)
-    elseif ph > 7.5 then
+    elseif ph ~= nil and ph > 7.5 then
         addStaticRow(rows, "pH",
             productWithHow("GYPSUM", tr("rf_pda_treat_method_dry", "spreader")),
             "fair", 2, 1,
@@ -460,8 +449,12 @@ function SoilTreatmentRates.buildNextStepLine(fieldId)
         body = body .. " " .. why
     end
 
-    -- Amendment burn: do not lime/manure now when crop would scorch.
-    if info and info.amendBurnRisk and (tip.nutrient == "pH" or tip.nutrient == "OM") then
+    -- Amendment burn: do not lime/manure now when crop would scorch. RSF-F905: same
+    -- condition as the HUD risk row (known, no burn yet, at risk), so the tip never
+    -- tells a farmer to wait on a crop that has already been scorched, and never
+    -- speaks on a client that has not received the burn value.
+    if info and info.amendBurnRisk and info.amendBurnKnown == true and (info.amendBurnPenalty or 0) <= 0
+       and (tip.nutrient == "pH" or tip.nutrient == "OM") then
         body = body .. " " .. tr("rf_pda_treat_burn_amend", "Wait: amending now can burn the crop.")
     end
 

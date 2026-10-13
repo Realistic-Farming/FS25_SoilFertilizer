@@ -10,6 +10,9 @@
 - [ ] Decide whether getFieldInfo exposes FieldSentry state or companions keep reading `g_currentMission.fieldSentry`.
 
 ## Bugs
+- [x] Unplantable cells + crop vanishing from PDA (issues #878/#879): two defects in the SF-18 establishment kill. `killRegion` released the density-change ignore toggle inside the pcall that armed it, so a mid-write error left the growth system ignoring density changes for the whole session (freezing crop visibility and re-drilling); the release now runs unconditionally. A whole-stand kill reset the window but never cleared `field.sownCrop`, so SF kept reporting a planted/growing crop the vanilla PDA showed as absent; `_recordFullKill` clears the display bridge at every full-kill site, partial kills keep the crop. 10 assertions in `sf18_kill_state_spec_test.lua`. PR #892 merged. Copy-save in-game check still owed to fully close #878 (the fruit-plane/planter mechanism).
+- [x] Starting Spring fresh-save all-zero fields (issue #880): the first `scanFields()` could run while `g_fieldManager.fields` was still empty (mission-start lifecycle mods), leaving `fieldData` empty so the post-load seeds painted nothing. Now a pending flag + bounded retry pump in `update()` re-scans until the fields appear (~20 s window), then replays zone-data + GRLE + value-map seeding. Client path untouched. 17 assertions in `deferred_scan_retry_spec_test.lua`. PR #891 merged.
+- [x] Liquid tank multi-buy pricing (issue #882): liquid MAP was already correct; the audit caught copper_hydroxide and sulfur tables shifted one step up (roughly one extra tank at every qty >= 2) and mancozeb's qty-8 cell 800 under. All three now satisfy total = qty x unit price. Numeric-only edits in the `multipleItemPurchaseAmountConfiguration` tables. PR #890 merged.
 - [x] 2026-07-26 bug sweep (54 total across ecosystem): SoilFertilizer bugs fixed and merged to main. See GitHub issues #748-#757 for individual tracking. All closed.
 - [x] Oilseed-radish nitrate by direct drill (issue #778): the crop-incorporation probe never ran on seeders, so terminating a cover crop with a direct drill (Väderstad Proceed V24) awarded only the flat DIRECT_DRILL residue and the nitrate HUD read "unchanged". Fixed by installing the #674 crop-biomass probe on `SowingMachine`, threading `_sfCropBiomass` into `onSowing`, and awarding the new `CROP_INCORPORATION.SOWING` profile (OM 0.4 / N 2.0 / P 0.4 / K 1.2) after the residue block, gated on `residueIncorporation` and biomass > 0. 20 assertions in crop_incorporation_sowing_778_test.lua. **Merged to main in PR #781.**
 - [x] Tractor side-tank NPK credit (issue #780): the credit died silently once the planter's liquid tank drained - `getActiveSprayType` returned nil, `getSprayerFillUnitIndex` fell back to a wrong-but-valid local unit (seed tank / second product tank), and `resolveSprayerFillTypeIndex` returned that local product, failing the nutrient-profile check. Fixed with an external-source guard (`wap.sprayVehicle ~= sprayer` -> wap.sprayFillType is authoritative) plus a recognized-product fallback to `wap.sprayFillType` with a debug log in the sprayer hook. 9 assertions in resolve_sprayer_filltype_780_test.lua. PR open.
@@ -155,3 +158,176 @@
 - [x] The field-average display mirror/seed stand down from `yieldEfficiency` while the capture is live (the display-only stamp is retired).
 - [x] 37 assertions in zone_yield_sf14_test.lua, including the calibration invariant: a uniform field's area-weighted read reconciles against computeYieldModifier output for the same inputs. Suite 2956/0 across 73 files; syntax + lint clean. Deployed 2.5.0.77.
 - [~] In-game (owed): per-patch payout across a non-uniform header, uniform-field reconciliation vs the pre-family harvest, save/reload mid-harvest, harvest-read cost at full header width (named bench item, not asserted).
+
+## SF-52 One Ground conformance provider (2026-09-09, draft PR into development)
+- [x] Growth-input revision family at the SoilValueMaps mutator boundary (global / per-farmland / unscoped, session-local, never persisted); `_observeGrowthWrite` with EXECUTED/REFUSED outcomes at every public read-set mutator.
+- [x] Manager delegates `getGrowthInputRevision()`, `getGrowthInputToken(fieldId)`, `getGrowthTruthGrainMetres()`; grain reports the loaded carrier's real metres per pixel.
+- [x] Parcel-union geometry: `_getFarmlandPolygons` complete collection + pure helpers `pointInFarmlandUnion`, `polygonUnionFingerprint` (gaps never filled).
+- [x] Repaired `getCellGrowthInfo` point contract: terrain domain, farmland existence, point-in-union, revision stability; SF-14 laundering socket closed (credit/capturedEfficiency held nil, sibling readers uncalled).
+- [x] Ground-only plan + area-weighted summary + status getters: `getFieldGrowthSummary` additive shape, `getFieldGrowthSummaryStatus`, `getGrowthEligibleRegionPlan`.
+- [x] Parcel-union enumeration, global ownership partition, atomic commit with pinned revisions and polygon-union fingerprint.
+- [x] Establish/reload/teardown cadence; public `setEnabled` removed; Time Guard daily simulation accrual with host fallback (never `environment.currentDay`).
+- [x] SF-52 bar 137/0; SF-53 61/0, SF-78 24/0, viability_mask 70/0, zone_yield 53/0. Only the pre-existing om_213 pair is red.
+- [~] In-game (owed): SF52_RUNTIME_ACCEPTANCE harness (cannot run offline); per-frame cursor/time budget and execution-grain coarsening (3.5) and initial-generation timing (3.7) are runtime tuning deferred to the acceptance measurements.
+- [~] SAMPLE_STEP_M / MAX_SAMPLES retained while SF-53 and SF-78 still snap to them; they leave when those siblings conform.
+
+## SF-53 One Ground growth credit (2026-09-09, draft PR into development)
+- [x] Two server-only bank layers in the current SoilValueMaps carrier (`growthCreditDays` packed byte: low seven bits bank days 0..84 + high bit appliedThisCrop; `growthCreditFruit` fruit 1..63); the exact 0..254 encode round-trips losslessly. Pair ops write/clear/post-read both halves and clear both on any one-sided result.
+- [x] GrowthCredit rewritten off the SF-52 eligible-region plan: no more first-polygon 8 m / 600-point lattice or ephemeral per-field Lua bank. Daily walk iterates each farmland's complete current plan at the execution grain, reads SF-52 point bands fresh, binds fruit identity before the first increment, and a changed crop clears the old pair.
+- [x] Evidence-bounded catch-up: every crossed day only when stored farmland/unscoped revision, polygon fingerprint and settings fingerprint all match today; any change awards at most the observed day. Restored banks stay PENDING_VALIDATION; no retroactive multi-day award crosses reload. Time Guard registration literal-true only; host monotonic-day fallback.
+- [x] Shipped Option-Scaling threshold (dial agronomy, base/neutral 2, clamp 1..3) via vendored readProfile/resolve; absent or switched-off profile is neutral. Old `.value(dial)` stub retired.
+- [x] Manager-owned single family growth dispatch (one START + one FINISHED subscription routed to conformed members); GrowthCredit no longer self-subscribes. Ordered brackets with immutable target period; FINISHED closes on every path, only drained/stable/gate-live/unchanged-generation spends.
+- [x] Post-state-verified spend: target from the bracket's immutable mapping, bucket by (fruit, source, target), 4-connected rings at the plan grain, one filtered executeSet per bucket; after the call only cells re-read at exactly the target under the same fruit clear bank-day bits and set appliedThisCrop. Failures retain credit.
+- [x] Small metadata (schema, fruit-roster, resolution, truth grain, per-farmland geometry/last-day/settings) rides `soilData.growthCredit` XML + StateLedger mirror; no per-cell list, no second save service. Dense truth is the two GRLE files.
+- [x] `readCreditAt` / `getGrowthSurfaceWitness` return server credit + provenance witness; client/stale/partial/mismatched return nil. Delete unregisters the Time Guard accrual and drops accessors.
+- [x] SF-53 bar 139/0 (Groups A-I; Group A re-pointed to shipped surfaces); siblings green (SF-52 137/0, SF-78 24/0, viability 70/0, zone_yield 53/0); only om_213 red.
+- [~] In-game (owed): SF53_RUNTIME_ACCEPTANCE harness (cannot run offline); native fruit-plane filter/ring/multi-write and post-state behavior, paired-file interruption + GRLE recovery, dedicated-server START/FINISHED and client engine sync, real bank bytes/save duration/frame cost.
+
+## SF-78 One Ground growth hold (2026-09-10, draft PR #931 into development)
+
+- [x] `GrowthBlock.lua` conformance rewrite over the SF-52 plan; seven unsafe behaviors retired (8m/600 lattice, ephemeral Lua capture, arbitrary restore cap, `isLive` gate-close wedge, subscription leak, no-ring/no-postread write, cached resolver socket).
+- [x] Paired carrier layers `growthBlockState` + `growthBlockFruit` (ACTIVE bit6/HELD bit7) in SoilValueMaps; one logical pair, no fifth map.
+- [x] Manager family dispatch routes START/FINISHED to GrowthBlock; no independent subscription; no Time Guard (engine bracket is the clock).
+- [x] Write-once ACTIVE capture at first START; later START never recaptures, increments stable-receipt transition count; global change stales the batch.
+- [x] Drained FINISHED restores stable receipts (bucket by fruit/source/target, rings at plan grain, one filtered executeSet, post-state re-read), HELD only verified cells, then clears active authority unconditionally (cert assertion).
+- [x] Target `max(captured, current - steps*transitionCount)`, never below captured; steps via `OptionScalingResolver` (agronomy base1 clamp1..2), neutral 1.
+- [x] Metadata rides `soilData.growthBlock` XML + StateLedger mirror; dense truth in the two GRLE files. `getGrowthSurfaceWitness` + `isCapturedAtFirstStart` surfaces.
+- [x] SF-78 bar 109/0 (Groups A-I; Group A shipped-surface re-point); full suite 3505 passed, only om_213 red; syntax + lint clean.
+- [~] In-game (owed): SF78_RUNTIME_ACCEPTANCE harness (cannot run offline); native write + post-state, paired-file interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
+
+## SF-79 sprayed-area lime and chemical pH (2026-09-10, draft PR #933 into development)
+
+- [x] `src/PositionalPH.lua`: positional pH writer `_applyPHFootprint` (DELTA/SET/NORMALIZE x POINT/STRIP/POLYGON/FIELD); the pH map is the authority, the field number is a derived report; saturation cohorts before the interior add (240+10 -> 250).
+- [x] Derived `_phReport`/`_ensurePHReport` + preservation-first migration + domain-keyed sub-step remainders; metadata on `soilData` XML + StateLedger.
+- [x] Every pH writer routed (application, daily/meadow normalize, rain, burn, scorch, admin); pH removed from the scalar replay and the SpatialNutrients second paint.
+- [x] `getFieldInfo` pH read contract (pHStatus/pHGrainMetres/pHRevision/pHLastKnown; nil when unavailable) + ~20-consumer nil sweep; `needsFertilizationKnown`.
+- [x] `updatePHWorkAuto` pH-aware AUTO rate applied once before the multiplier.
+- [x] Network: `pHReportValid` beside the pH report on full/batch/update + NetworkSync SCALARS; FULL/PATCH chunk transport header + multi-part assembler.
+- [x] SF-79 bar 114/0 (Groups A-J; Group A shipped-surface re-point); full suite 3619 passed, only om_213 red; syntax + lint clean.
+- [~] In-game (owed): SF79_RUNTIME_ACCEPTANCE harness (cannot run offline); native executeGet sum/count, union masks, 8 KiB payload framing, save interruption + GRLE recovery, dedi/client sync.
+
+## SF-14 One Ground zone yield (2026-09-10, draft PR #932 into development)
+
+- [x] `ZoneYield.lua` conformance rewrite over the SF-52 plan; four source defects retired (first-field/one-fruit identity, private 8m/600 ruler, incomplete axis-aligned drag box, legacy scalar readiness/freeze).
+- [x] Plan consumption + polygon-fruit receipts `(farmlandId, sourcePolygonFingerprint, fruitTypeIndex)` with PENDING/READY/FROZEN_SPATIAL/FROZEN_FALLBACK; contract fallback map separate.
+- [x] Manager family dispatch routes START/FINISHED to ZoneYield; no independent subscription; bounded job pump from the manager update path.
+- [x] Capture reads N/P/K once, `clamp(baseline + (localRaw-baseline)*variationScale, 0.70, 1.15)`, writes the provider footprint and post-reads; a failed read/write/post-read fails the farmland job; drift cancels and leaves PENDING.
+- [x] Descriptor/route admission + two-part regrowth thaw + OptionScaling variation (agronomy base1 clamp0.5..1.5), neutral 1.
+- [x] Native fruit-filtered harvest read + rotated <=256 drag lattice; four Cutter surfaces retained; sowing door clears matching receipts.
+- [x] Metadata rides `soilData.zoneYield` XML + StateLedger mirror; dense truth in the yieldEfficiency GRLE. `getGrowthSurfaceWitness` surface.
+- [x] SF-14 bar 155/0 (Groups A-I; Group A shipped-surface re-point); full suite 3607 passed, only om_213 red; syntax + lint clean.
+- [~] In-game (owed): SF14_RUNTIME_ACCEPTANCE harness (cannot run offline); native writes + post-read, polygon clipping, save interruption + GRLE recovery, dedicated-server sequence + client sync, real bytes/duration/frame cost.
+
+## Big bag labels (2026-10-03, issue #1087, MAINTENANCE 212)
+
+- [x] DAP: back to its own print (`dap/bigBag_dap.i3d` loads `bigBag_dap_diffuse.png`).
+- [x] Polifoska: its own i3d, shapes copy and print in `objects/bigBag/polifoska/`; `polifoska/bigBag_polifoska.xml` loads that i3d.
+- [x] AN: `an/bigBag_an.i3d` loads `bigBag_an_diffuse.dds`; the urea copy `an/bigBag_an_diffuse.png` is deleted.
+- [x] Bar: `node tools/test/bigbag-labels-check.mjs` (16 rows; the same bar against development ebe20f77 fails 7 by assertion, naming the AN+UREA and DAP+POLIFOSKA shared labels).
+- [~] In game (owed): the shop preview and a placed bag for DAP, Polifoska and AN each show their own label; no texture or i3d warning for objects/bigBag in log.txt; the same on a dedicated-server client.
+
+## SF-73 section 7 target surface (2026-10-03: W1a #1084, W1b #1088, #1089, #1090)
+
+- [x] W1a: the rate panel's target block (`src/ui/SoilHUD.lua`), 46 keys in 27 locales; bar `SF-73-W1a-hud_target_block_spec_test.lua`.
+- [x] W1b: the PDA target card (`src/ui/RfPdaSoilPanel.lua`), the per-field last-pass memory (`src/target/TargetApplication.lua`), and the one reason order the HUD and the PDA share (`src/target/TargetNutrientCore.lua`); bar `SF-73-W1b-pda_target_card_spec_test.lua`.
+- [x] MAINTENANCE 211: the witness refusal names its field; bar `MAINT-211-refusal_fieldid_spec_test.lua`.
+- [x] The PDA last pause: the per-field pause memory and its guarded read; bar `SF-73-pda_last_pause_spec_test.lua`.
+- [~] In game (owed): TESTING rows 393, 405, 406 and 407, then Sasha's unlock of sf73_target.
+
+## RSF-F190 own-farm barn-warning privacy (2026-10-04, Unified A3)
+
+- [x] `src/DogEarlyWarning.lua`: the presentation context, the private barn bindings, the barn notifier and the pure getter; `src/main.lua` releases the dog at unload.
+- [x] Bars: `RSF-F190-barn_privacy_spec_test.lua` (two farms, main.lua's own dog statements); the F190 reader and F192 l10n benches given a farm-1 player and doghouse; battery `tools/test/mutate_f190_privacy.py`.
+- [~] In game (owed): two farms with a doghouse each and only farm 2's barn sick, on solo, listen host, pure client and dedicated; a spectator; a farm switch before a scan and during a toast; dog loss and regain; a barn transferred, removed and replaced; the provider absent; save and rejoin.
+
+## 2026-10-04 (Fred): the shared RF Esc door (Wizard, #1094)
+
+- [x] The four shared door files at the suite's STOCK page set, byte-same in all ten door mods; StockGuard's STOCK page chrome inert without StockGuard; the herd-advisory panel hidden.
+- [~] In game (owed): TESTING row 419.
+
+## 2026-10-05 (Fred): the Esc side panel's info box (Wizard, #1097)
+
+- [x] The side info boxes start clear of the selected tab; text bodies 352 and 348 px wide, so line length and the right edge are unchanged; byte-same in all ten door mods.
+- [~] In game (owed): TESTING row 447.
+
+## SG2-5e-soil: the partial round bale's pre-pad account (2026-10-05, SG-2 :475, Soil's half)
+
+- [x] `src/ground/BalerCollection.lua`: `BC.prePadAccount`, captured in `aroundUnloading` before the pad; `aroundFinish`'s pad branch prefers it. The `:665` comment no longer says only a square chamber's record holds an account.
+- [x] Bars: `SG2-5e-soil_round_pad_account_spec_test.lua` (a plain round baler from `BALER_MODEL.newRound`, unloaded through its own wrapped `setIsUnloadingBale`); battery `tools/test/mutate_sg25es.py`.
+- [ ] StockGuard 5e-b frames the round chamber (Part 1), then 5e-d keeps the forming stock pending until dropBale.
+- [~] In game (owed, once 5e-b is in): a partial round bale with StockGuard and Soil both installed carries a wetness, not "unknown".
+
+## CD-15 step 1b: the save participant (2026-10-05)
+
+- [x] `src/disease/CD15Save.lua` (new): header, payload, completion, restore decision; `src/disease/CD15Model.lua`: RESTORING, FIRST_ACTIVATION, QUARANTINED, import and export of the day work, `fail`; header seams in `src/SoilFertilityManager.lua` and `src/integrations/SoilStateLedgerBridge.lua`; install and teardown in `src/main.lua`; the two pcall seams in `src/SoilFertilitySystem.lua`.
+- [x] Bars: `CD15-1b-save_participant_spec_test.lua` (E entry point, B, Q, D, L, C, F, O, W, J); group M in `CD15-1a-local_grid_spec_test.lua` (the seams); battery `tools/test/mutate_cd15_1b.py`.
+- [x] Step 1c: discovery, classification, the whole-cell witness and admission (answering UNKNOWN_OCCURRENCE until a supported profile exists); it resumes the discovery cursor this payload already carries (2026-10-06, below).
+- [ ] Step 2's and 3's writers bring the re-entry invalidation of an open attempt (brief :91).
+- [~] In game (owed): a save and reload with Soil alone and with StockGuard; a save interrupted by quitting; a hand-deleted soilDisease.xml loads quarantined.
+
+## 2026-10-06 (Fred): modDesc.xml encoding repair (MAINTENANCE row 221)
+
+- [x] 43 garbled title and description lines decoded back to the text already decided; nothing else touched.
+- [~] In game (owed): TESTING row 483.
+
+## CD-15 step 1c: discovery and admission (2026-10-06)
+
+- [x] `src/disease/CD15Admission.lua` (new): candidates from the cultivated polygons and the kept rows, the vocabulary classification, the whole-cell witness over every plane and overlapping pixel, admission, membership, the profile table (empty: UNKNOWN_OCCURRENCE until a profile is recorded); `src/disease/CD15Model.lua`: discovery in the update behind the hold, sharing the 256 bound, the cell's wetness passed to the day; `src/disease/CD15Day.lua`: MINOR 2's onset wetness and MINOR 3's membership path for spread; `src/main.lua`: one source line.
+- [x] Bars: `CD15-1c-admission_spec_test.lua` (E entry point, H, C, P, R, A, B, G, M); battery `tools/test/mutate_cd15_1c.py`.
+- [ ] A supported native profile (TESTING rows 32 and 33's numbers) before any cell is admitted in play.
+- [ ] Step 2's native writers call `CD15Admission.invalidate` on a native transition.
+
+## MAINTENANCE row 229: switched-off sections do not stamp (2026-10-06)
+
+- [x] `HookManager:cellsToStamp` (new) filters the cell sweep at the four `markBoomCells` call sites; `_switchedOffGround` and `HookManager.sectionLateralGround` (new) give each section's lateral ground from #sectionIndex work areas or tips, off from the preserver's saved state; a spraying section whose ground is unknown stops the filter.
+- [x] Bar: `MAINT-229-section_stamp_spec_test.lua` on `MAINT-229-section_boom_world.lua` (A boom-wide work area and a centre section, X the same boom driving along world X both ways, B Soil's own suppression, W per-section work areas, S lime, M multi-tank); battery `tools/test/mutate_maint229_section_stamp.py`.
+- [~] In game (owed): TESTING row 490.
+- [ ] MAINTENANCE row 230: the dose line (getBoomLineEndpoints) has the same span holes; not queued.
+
+## MAINTENANCE row 232: each section reads the ground under itself (2026-10-06)
+
+- [x] `HookManager:sectionSamplePoints` (new, cached per tick): points across each section's own lateral ground on its boom line, from `HookManager.sectionLateralExtents` (split out of #1104's `sectionLateralGround`, which is unchanged). Smart Sensor and Variable Rate read the centre point; See & Spray reads every point (skip only when all readable points say skip, the highest graduated share).
+- [x] Bar: `MAINT-232-section_sample_spec_test.lua` on `MAINT-232-section_sample_world.lua` (W weeds, P pest cells and the graduated rate, S Smart Sensor, V Variable Rate, C the points following the sprayer); battery `tools/test/mutate_maint232_section_sample.py`.
+- [~] In game (owed): TESTING row 492.
+
+## MAINTENANCE row 234: overlap prevention's finer record (2026-10-06)
+
+- [x] `ZONE.OVERLAP_CELL_SIZE` (2 m); `HookManager.overlapCellKey`, `isOverlapCellSprayedEarlier`, `getBoomOverlapPositions` (the record's cells laid along the boom in the sprayer's own frame, at any heading), `_switchedOffGrounds` (shared with `cellsToStamp`) and `markOverlapRecord` (new); `SoilFertilitySystem:markOverlapCells` (new) beside every `markBoomCells` call; both readers on the record at the tip; the record cleared at the five session-cell resets.
+- [x] Bar: `MAINT-234-overlap_record_spec_test.lua` on `MAINT-234-overlap_record_world.lua` (N two rows with 2 m of overlap and the unchanged 10 m record, A two rows and a lane end at 45 degrees, W switched-off sections, O another vehicle's pass, R the clears); battery `tools/test/mutate_maint234_overlap_record.py`. `overlap_own_pass_grace_test.lua` and `SF-73-target_entry_point_test.lua` write their other-vehicle passes to the record too.
+- [~] In game (owed): TESTING row 493.
+
+## MAINTENANCE row 244: constants on the manager (2026-10-07)
+
+- [x] `src/main.lua` load: `sfm.SoilConstants = SoilConstants` beside `mission.soilFertilityManager`.
+- [x] Bar: `MAINT-244-constants_on_manager_spec_test.lua` (E main.lua's own site in Soil's mod environment, FarmTablet's reads verbatim in its own); battery `tools/test/mutate_maint244.py`, 2 of 2.
+- [~] In game (owed): TESTING row 506.
+
+## MAINTENANCE row 248: SF-55 reads SCS's mission handle (2026-10-08)
+
+- [x] `src/SoilFertilityManager.lua` `_blendedWetness01`: `g_currentMission.cropStressManager` first. Bar `MAINT-248-scs_moisture_handle_spec_test.lua` (E from `_checkVehicleCompaction`); battery `tools/test/mutate_maint248.py`, 1 of 1.
+- [~] In game (owed): TESTING row 509.
+
+## MAINTENANCE row 251: Time Guard skew guard (2026-10-08)
+
+- [x] `src/EstablishmentFailure.lua`, `src/GrowthCredit.lua`, `src/ViabilityMask.lua` `registerDailyAccrual`: the class list read through `tg.scheduler.FLOW_CLASSES`, nil-safe. SF-53's fixture models `scheduler`.
+- [x] Bar: `MAINT-251-timeguard_skew_guard_entry_spec_test.lua` (production's activateSoilSystem, Time Guard on the mission only, v1.0.0.0 and current shapes); battery `tools/test/mutate_maint251.py`, 9 of 9.
+- [~] In game (owed): TESTING row 516.
+
+## MAINTENANCE row 258: SettingsHub reader (2026-10-08)
+
+- [x] `src/integrations/SoilSettingsHubBridge.lua`: `readValue` (the settings object `applyChange` writes), passed as `read` in the registration.
+- [x] Bar: `MAINT-258-hub_reader_entry_spec_test.lua` (main.lua's registration site, Soil's own settings UI into NetworkEvents' request); battery `tools/test/mutate_maint258.py`, 2 of 2.
+- [~] In game (owed): TESTING row 521.
+
+## SG-3 Part 3: the operation echo (2026-10-08)
+
+- [x] `src/YardLadder.lua`: `YardLadder._openOperationId()` reads `g_currentMission.stockGuard.readOpenOperation` (a dot call, pcall'd; a non-empty string id, or nil); BIRTH, both REBIND sites and RETIRE pass it to `_notifyChange`; ADVANCE passes none.
+- [x] Bar: `SG3-3-operation_echo_spec_test.lua` (HookManager:installAll's Baler collection; the BIRTH through `BC.aroundCreate`, the production door); battery `tools/test/mutate_sg3_3_echo.py`, 7 of 7.
+- [~] In game (owed): TESTING row 527.
+
+## SG-2 non-stop framing, PR 1: the partial bale's buffer share (2026-10-12)
+
+- [x] `src/ground/BalerCollection.lua`: `BC.unitAccount` (the chamber read generalized to any fill unit; `BC.chamberAccount` calls it), `BC.preBufferAccount`, captured in `aroundUnloading` beside the chamber's; `bufferChange`'s pad branch takes the share from it when present. MAINTENANCE row 219's warning on a failed capture, chamber or buffer.
+- [x] Bars: `SG2-nonstop-soil_buffer_share_spec_test.lua` (E entry point, P, N, X, R); battery `tools/test/mutate_sg2_nonstop.py`, 8 of 8.
+- [ ] StockGuard frames the non-stop baler (PR 2), then 5e-d live, then 3b and 5e-d save.
+- [~] In game (owed): TESTING row 551.

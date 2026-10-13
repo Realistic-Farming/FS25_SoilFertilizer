@@ -14,7 +14,7 @@
 -- The batch duration is a NATURAL rate, not days-per-period normalized.
 -- =========================================================
 
-CompostManager = {}
+CompostManager = CompostManager or {}
 local CompostManager_mt = Class(CompostManager)
 
 CompostManager.LEDGER = "DairyCore_FeedProvenance_Compost"  -- namespaced under this mod's slot

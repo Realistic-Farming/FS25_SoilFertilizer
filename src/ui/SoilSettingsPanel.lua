@@ -9,22 +9,27 @@
 -- =========================================================
 
 ---@class SoilSettingsPanel
-SoilSettingsPanel = {}
+SoilSettingsPanel = SoilSettingsPanel or {}
 local SoilSettingsPanel_mt = Class(SoilSettingsPanel)
 
-local SF_MOD_NAME = g_currentModName
+local SF_MOD_NAME = (SoilFertilizerModName or g_currentModName)
 
 -- ── i18n helper ───────────────────────────────────────────
 local function tr(key, fallback)
-    local modEnv = g_modEnvironments and g_modEnvironments[SF_MOD_NAME]
-    local i18n   = (modEnv and modEnv.i18n) or g_i18n
-    if i18n then
-        local ok, text = pcall(function() return i18n:getText(key) end)
-        if ok and text and text ~= "" and text ~= ("$l10n_" .. key) then
-            return text
-        end
+    -- Gate on hasText, never on the returned string: getText never returns nil,
+    -- "" or ("$l10n_" .. key), and for an absent key I18N.lua:186 returns
+    -- "Missing '<key>' in l10n<suffix>.xml", which is what the old guard let
+    -- through to the player. Past hasText the return is opaque: check type and
+    -- non-empty, never inspect it.
+    local i18n = g_i18n
+    if i18n == nil or type(i18n.hasText) ~= "function" or type(i18n.getText) ~= "function" then
+        return fallback or key
     end
-    return fallback or key
+    local okHas, has = pcall(i18n.hasText, i18n, key)
+    if not okHas or has ~= true then return fallback or key end
+    local ok, text = pcall(i18n.getText, i18n, key)
+    if not ok or type(text) ~= "string" or text == "" then return fallback or key end
+    return text
 end
 
 -- Word-wrap a string into lines that fit maxWidth at the given size. Uses the
@@ -799,12 +804,34 @@ function SoilSettingsPanel:drawInfoBar()
             self:registerClick("reset_cat", rbX, rbY, rbW, bbH)
         end
     else
-        -- Close hint on landing
-        self:drawText(PX + PW - PAD, textY, TS_SMALL, tr("sf_panel_btn_close_hint"), C.hint, RenderText.ALIGN_RIGHT, false)
+        -- Close hint on landing.
+        -- The shipped string is "SHIFT+O to close" in every locale, and that
+        -- chord is SF_TOGGLE_HUD on development and nothing at all after this
+        -- PR. Route it through Soil's own live helper, and only when a LIVE
+        -- chord exists: there is no honest imperative to print otherwise, so
+        -- the row is suppressed rather than made to say "unassigned to close".
+        local closeHint = SoilSettingsPanel.closeHintText()
+        if closeHint ~= nil then
+            self:drawText(PX + PW - PAD, textY, TS_SMALL, closeHint, C.hint, RenderText.ALIGN_RIGHT, false)
+        end
     end
 end
 
 -- ── Landing page ──────────────────────────────────────────
+--- Text for the landing page's close hint, or nil to draw nothing.
+--- The shipped string is "SHIFT+O to close" in every locale, and that chord is
+--- SF_TOGGLE_HUD on development and nothing at all after this PR. Only a LIVE
+--- chord is substituted; with anything else there is no honest imperative to
+--- print, so the row is suppressed rather than made to say
+--- "unassigned to close".
+---@return string|nil
+function SoilSettingsPanel.closeHintText()
+    if SoilLiveHint == nil or SoilLiveHint.chordKind == nil then return nil end
+    local chord, kind = SoilLiveHint.chordKind("SF_OPEN_SETTINGS")
+    if kind ~= "live" or type(chord) ~= "string" or chord == "" then return nil end
+    return SoilLiveHint.swapChord(tr("sf_panel_btn_close_hint"), "O", chord)
+end
+
 function SoilSettingsPanel:drawLandingPage()
     -- Header above cards
     local headerY = CY_BOT + CH - 0.042
@@ -826,8 +853,10 @@ function SoilSettingsPanel:drawLandingPage()
         btnHov and {0.55, 0.08, 0.08, 0.95} or {0.22, 0.05, 0.05, 0.88})
     self:drawRect(btnX, btnY, 0.003, btnH, ADMIN_ACCENT)
     self:drawRect(btnX, btnY + btnH - 0.001, btnW, 0.001, ADMIN_ACCENT, 0.40)
+    -- Plain text: FS25's text font has no U+2699 (gear), so the game logged
+    -- "Character '9881' not found in texture font" and drew a blank (MAINTENANCE row 194).
     self:drawText(btnX + btnW * 0.5 + 0.002, btnY + btnH * 0.22, TS_SMALL,
-        "⚙ ADMIN",
+        "ADMIN",
         btnHov and {1.0, 0.55, 0.55, 1.0} or {0.85, 0.35, 0.35, 1.0},
         RenderText.ALIGN_CENTER, true)
     self:registerClick("open_admin", btnX, btnY, btnW, btnH)
@@ -1089,7 +1118,7 @@ function SoilSettingsPanel:drawSetStatePage()
 
     -- Title
     local titleY = CY_TOP - 0.040
-    local stateTitle = g_i18n and g_i18n:getText("sf_set_state_title") or "SET FIELD STATE"
+    local stateTitle = SoilL10n.tr("sf_set_state_title", "SET FIELD STATE")
     self:drawText(CX + CW * 0.5, titleY, TS_BODY,
         string.format("%s  -  Field #%s", stateTitle, tostring(fid or "?")),
         C.white, RenderText.ALIGN_CENTER, true)
@@ -1097,11 +1126,11 @@ function SoilSettingsPanel:drawSetStatePage()
 
     -- Each nutrient row
     local params = {
-        { k = "N",  label = g_i18n and g_i18n:getText("sf_map_layer_n") or "Nitrogen (N)",      min = 0,   max = 100, step = 1,   fmt = "%.0f" },
-        { k = "P",  label = g_i18n and g_i18n:getText("sf_map_layer_p") or "Phosphorus (P)",    min = 0,   max = 100, step = 1,   fmt = "%.0f" },
-        { k = "K",  label = g_i18n and g_i18n:getText("sf_map_layer_k") or "Potassium (K)",     min = 0,   max = 100, step = 1,   fmt = "%.0f" },
+        { k = "N",  label = SoilL10n.tr("sf_map_layer_n", "Nitrogen (N)"),      min = 0,   max = 100, step = 1,   fmt = "%.0f" },
+        { k = "P",  label = SoilL10n.tr("sf_map_layer_p", "Phosphorus (P)"),    min = 0,   max = 100, step = 1,   fmt = "%.0f" },
+        { k = "K",  label = SoilL10n.tr("sf_map_layer_k", "Potassium (K)"),     min = 0,   max = 100, step = 1,   fmt = "%.0f" },
         { k = "pH", label = "pH",                                                            min = 4.0, max = 9.0, step = 0.1, fmt = "%.1f" },
-        { k = "OM", label = g_i18n and g_i18n:getText("sf_map_layer_om") or "Organic Matter (%)", min = 0.5, max = 15,  step = 0.5, fmt = "%.1f" },
+        { k = "OM", label = SoilL10n.tr("sf_map_layer_om", "Organic Matter (%)"), min = 0.5, max = 15,  step = 0.5, fmt = "%.1f" },
     }
 
     local rowH   = 0.040
@@ -1177,7 +1206,7 @@ function SoilSettingsPanel:drawSetDiseasePage()
 
     -- Title
     local titleY = CY_TOP - 0.040
-    local diseaseTitle = g_i18n and g_i18n:getText("sf_set_disease_title") or "SET FIELD DISEASE"
+    local diseaseTitle = SoilL10n.tr("sf_set_disease_title", "SET FIELD DISEASE")
     self:drawText(CX + CW * 0.5, titleY, TS_BODY,
         string.format("%s  -  Field #%s", diseaseTitle, tostring(fid or "?")),
         C.white, RenderText.ALIGN_CENTER, true)
@@ -1193,7 +1222,7 @@ function SoilSettingsPanel:drawSetDiseasePage()
         self:drawRect(CX, curY, CW, rowH - 0.003, C.row_alt)
         self:drawRect(CX, curY, 0.003, rowH - 0.003, C.green_dim)
         self:drawText(CX + 0.012, curY + (rowH - 0.003) * 0.52, TS_BODY,
-            (g_i18n and g_i18n:getText("sf_map_disease_pressure") or "Disease"), C.white, RenderText.ALIGN_LEFT, false)
+            SoilL10n.tr("sf_map_disease_pressure", "Disease"), C.white, RenderText.ALIGN_LEFT, false)
 
         local list = self.setDiseaseList or { "" }
         local id   = list[self.setDiseaseIdx or 1] or ""
@@ -1735,6 +1764,11 @@ function SoilSettingsPanel:drawSettingRow(x, y, w, settingId, rowIdx, isAdmin)
     -- Description
     local descKey = SETTING_DESCS[settingId]
     local desc = (descKey and tr(descKey)) or ""
+    -- [SF-66] sf_desc_independentPanels quotes "Shift+H edit mode"; any other
+    -- description that grows a chord is covered by the same pass.
+    if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
+        desc = SoilLiveHint.rewrite(desc)
+    end
     self:drawText(labelX, y + rh * 0.15, TS_TINY, desc, descColor, RenderText.ALIGN_LEFT, false)
 
     -- Control (toggle or multi-select) on the right
@@ -2194,7 +2228,7 @@ function SoilSettingsPanel:handleClick(id, data)
                                 N = info.nitrogen or 50,
                                 P = info.phosphorus or 50,
                                 K = info.potassium or 50,
-                                pH = math.floor((info.pH or 6.5)*10)/10,
+                                pH = info.pH and (math.floor(info.pH*10)/10) or 6.5,
                                 OM = math.floor((info.organicMatter or 5.0)*10)/10
                             }
                         else

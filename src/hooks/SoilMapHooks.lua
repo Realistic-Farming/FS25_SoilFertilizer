@@ -11,7 +11,7 @@
 -- always call IngameMapElement.draw superFunc.
 -- =========================================================
 
-SoilMapHooks = {}
+SoilMapHooks = SoilMapHooks or {}
 
 local function logNilOnce(key, msg)
     if InGameMenuMapFrame == nil then
@@ -33,8 +33,28 @@ local function getSoilOverlay(frame)
     return g_SoilFertilityManager and g_SoilFertilityManager.soilMapOverlay
 end
 
+--- Is the map frame the page the player is actually looking at?
+--- The selector state below is the map frame's REMEMBERED sub-page and it survives
+--- leaving the map entirely, so on its own it says "the Soil layer is the one the map
+--- will show next time", not "the map is on screen now". FS25 has no GUI z-order, so a
+--- frame that is not displayed still receives mouse events, and the overlay's
+--- onSideBarClick matches its buttonRects on screen coordinates alone. That combination
+--- opened the Soil map help dialog on clicks made on other Esc pages.
+--- Same idiom as SoilPDAScreen.toggle and RfPdaMenuPage.toggle. Undeterminable stays
+--- permissive, so a build where the menu cannot be resolved behaves exactly as before.
+local function isMapFrameCurrentPage(frame)
+    if g_gui == nil or InGameMenu == nil then return true end
+    local inGameMenu = g_gui.screenControllers ~= nil and g_gui.screenControllers[InGameMenu] or g_inGameMenu
+    if inGameMenu == nil or inGameMenu.currentPage == nil then return true end
+    return inGameMenu.currentPage == frame
+end
+
 local function isSoilPageActive(frame)
     if frame == nil or frame.soilMapPageIndex == nil or frame.mapOverviewSelector == nil then
+        return false
+    end
+
+    if not isMapFrameCurrentPage(frame) then
         return false
     end
 
@@ -190,7 +210,7 @@ function SoilMapHooks:setupMapOverview()
         return
     end
 
-    local pageText = g_i18n:getText("sf_map_page_title") or "Soil Nutrients"
+    local pageText = SoilL10n.tr("sf_map_page_title", "Soil Nutrients")
 
     table.insert(self.mapSelectorTexts, pageText)
     self.soilMapPageIndex = #self.mapSelectorTexts
@@ -285,6 +305,13 @@ function SoilMapHooks.onDrawIngameMapElement(elementSelf, ...)
     if soilOverlay == nil then return end
 
     soilOverlay:onDraw(frame, elementSelf, elementSelf.ingameMap, frame.soilMapPageIndex)
+
+    -- Second hotspot pass so the vanilla field numbers sit on top of the Soil wash.
+    -- Soil map page only (gated above); IngameMap:drawHotspotsOnly is pure render
+    -- (drawPointsOfInterest + drawPersistentPointsOfInterest), same call vanilla makes.
+    if elementSelf.ingameMap and type(elementSelf.ingameMap.drawHotspotsOnly) == "function" then
+        elementSelf.ingameMap:drawHotspotsOnly()
+    end
 end
 
 function SoilMapHooks:onDrawOverlayHud()
@@ -673,4 +700,92 @@ if IngameMap ~= nil and IngameMap.drawFields ~= nil then
     SoilLogger.info("SoilMapHooks: IngameMap.drawFields hook installed for DMV minimap heatmap")
 else
     SoilLogger.warning("SoilMapHooks: IngameMap.drawFields not available - DMV minimap heatmap will not render")
+end
+
+-- =========================================================
+-- BUILD 09:19 (PB-12): keep the Growth-map field drawer inside the visible frame.
+-- =========================================================
+-- Brian opened field information at the LEFT edge of the map and the drawer masked the
+-- start of every label: "...ind", "...d by", "...ed", "...ds lime". The words were not
+-- truncated, the box was simply off-screen to the left and the visible fragment was its
+-- right-hand tail.
+--
+-- The cause is vanilla and it is a missing clamp, not a missing flip. In
+-- scripts/gui/InGameMenuMapUtil.lua the drawer is placed relative to the cursor, and when
+-- it goes left the placement is `posX = posX - fieldInfoBox.size[1]` with nothing holding
+-- posX at or above zero. getFieldInfoBoxOrientation only reconsiders the side for RIGHT and
+-- TOP overflow (outRight / outTop); there is no outLeft case, so at the left edge the box
+-- keeps its left placement and simply runs off the screen.
+--
+-- We do not reimplement the placement. Vanilla is left to choose its side and its anchor
+-- exactly as before, and this appended pass only pulls the finished box back inside the
+-- frame if it ended up outside it. That is the smallest correct patch: it cannot change
+-- where the drawer appears in the normal case (the clamp is a no-op away from the edges),
+-- it survives a vanilla change to the orientation rules, and it needs no knowledge of the
+-- internals it is correcting.
+--
+-- setAbsolutePosition is the same call vanilla uses and it walks the children with the
+-- parent (GuiElement.lua:1133-1150), so the labels move with the box rather than being
+-- re-laid out.
+--
+-- Installed under a flag on InGameMenuMapUtil itself because CsMapHooks carries the same
+-- patch: whichever of Soil / Crop Stress loads first installs it, the other stands down,
+-- and the drawer is fixed for the player either way.
+
+local function clampFieldInfoBoxInsideFrame(fieldInfoBox)
+    if fieldInfoBox == nil then
+        return
+    end
+    local ap = fieldInfoBox.absPosition
+    local as = fieldInfoBox.absSize
+    if type(ap) ~= "table" or type(as) ~= "table" then
+        return
+    end
+    local px, py = ap[1], ap[2]
+    local w, h = as[1], as[2]
+    if type(px) ~= "number" or type(py) ~= "number"
+        or type(w) ~= "number" or type(h) ~= "number" then
+        return
+    end
+
+    -- GUI space is 0..1 on both axes. The safe-frame offsets are the same margins the
+    -- vanilla HUD keeps off the screen edge (IngameMap:getMapPosition returns exactly
+    -- g_safeFrameOffsetX, g_safeFrameOffsetY), so the drawer lands on the same guide the
+    -- rest of the interface uses instead of a number invented here.
+    local marginX = (type(g_safeFrameOffsetX) == "number") and g_safeFrameOffsetX or 0
+    local marginY = (type(g_safeFrameOffsetY) == "number") and g_safeFrameOffsetY or 0
+
+    -- A box wider than the space between the margins cannot satisfy both edges. Left wins,
+    -- because the left edge is where the label text starts and an unreadable first character
+    -- is the defect being fixed.
+    local maxX = 1 - marginX - w
+    local newX = px
+    if newX > maxX then newX = maxX end
+    if newX < marginX then newX = marginX end
+
+    local maxY = 1 - marginY - h
+    local newY = py
+    if newY > maxY then newY = maxY end
+    if newY < marginY then newY = marginY end
+
+    if newX ~= px or newY ~= py then
+        if type(fieldInfoBox.setAbsolutePosition) == "function" then
+            fieldInfoBox:setAbsolutePosition(newX, newY)
+        end
+    end
+end
+
+if InGameMenuMapUtil ~= nil
+    and type(InGameMenuMapUtil.updateFieldInfoBoxPosition) == "function"
+    and InGameMenuMapUtil._rfFieldInfoBoxClampInstalled ~= true then
+
+    InGameMenuMapUtil._rfFieldInfoBoxClampInstalled = true
+    InGameMenuMapUtil.updateFieldInfoBoxPosition = Utils.appendedFunction(
+        InGameMenuMapUtil.updateFieldInfoBoxPosition,
+        function(fieldInfoBox)
+            clampFieldInfoBoxInsideFrame(fieldInfoBox)
+        end)
+    SoilLogger.info("SoilMapHooks: field info drawer clamped inside the safe frame (PB-12)")
+elseif InGameMenuMapUtil == nil then
+    SoilLogger.warning("SoilMapHooks: InGameMenuMapUtil not available - field info drawer clamp not installed")
 end

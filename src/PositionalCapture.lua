@@ -25,7 +25,7 @@
 -- Author: TisonK
 -- =========================================================
 
-PositionalCapture = {}
+PositionalCapture = PositionalCapture or {}
 
 PositionalCapture.ENABLED = true
 

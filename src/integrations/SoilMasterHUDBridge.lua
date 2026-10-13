@@ -21,10 +21,12 @@
 -- fallback hook so the two paths can never diverge.
 -- =========================================================
 
-SoilMasterHUDBridge = {}
+-- BUILD 19:38: reload-safe like the HUD classes - the table AND the active flag
+-- survive Ctrl+R, or the hot-reload delivery block at the end could never fire.
+SoilMasterHUDBridge = SoilMasterHUDBridge or {}
 
 SoilMasterHUDBridge.HUD_ID = "SoilFertilizer_HUD"
-SoilMasterHUDBridge.active = false   -- MasterHUD present and we registered
+SoilMasterHUDBridge.active = SoilMasterHUDBridge.active or false   -- survives reload; register() re-derives it
 
 --- Does SoilFertilizer currently own the whole screen?
 ---
@@ -52,6 +54,29 @@ function SoilMasterHUDBridge.isFullscreen()
         end
     end
     return false
+end
+
+--- Keep every independently positioned Soil vehicle panel in lockstep with the
+--- suite editor.  The standalone SF_HUD_DRAG callback already does this; the
+--- MasterHUD bridge previously toggled only the main Soil Monitor, leaving the
+--- sprayer/spreader/slurry and harvester panels invisible and therefore
+--- impossible to place from the suite-wide editor.
+---@param enabled boolean
+function SoilMasterHUDBridge.setEditMode(enabled)
+    local sfm = g_SoilFertilityManager
+        or (g_currentMission ~= nil and g_currentMission.soilFertilityManager or nil)
+    if sfm == nil then return end
+
+    local panels = { sfm.soilHUD, sfm.sprayerInfoPanel, sfm.harvesterPanel }
+    for _, panel in pairs(panels) do
+        if panel ~= nil then
+            if enabled then
+                if not panel.editMode and panel.enterEditMode ~= nil then panel:enterEditMode() end
+            elseif panel.exitEditMode ~= nil and panel.editMode then
+                panel:exitEditMode()
+            end
+        end
+    end
 end
 
 function SoilMasterHUDBridge.drawStack()
@@ -101,6 +126,33 @@ function SoilMasterHUDBridge.drawStack()
     end
 end
 
+SoilMasterHUDBridge.CAB_ID = "SoilFertilizer_CabTools"
+
+--- [SF-51] In-cab TOOL readouts, kept alive through suite hide-all
+--- (BUILD 22:36; shape banked on BUILD 22:20). Hiding "HUDs" means the
+--- monitor, trails and minimap chrome - not flying blind mid-spray. This
+--- second subscription carries visibleWhenHudsHidden = true and draws ONLY
+--- while huds are hidden: when they are visible, drawStack already draws the
+--- same panels, and drawing twice would double the alpha and fight the drag
+--- handles.
+function SoilMasterHUDBridge.drawCabTools()
+    local hud = SoilMasterHUDBridge._hud
+    if hud == nil or hud.hudsHidden ~= true then return end
+    local sfm = g_SoilFertilityManager
+    if sfm == nil then return end
+    if SoilMasterHUDBridge.isFullscreen() then return end
+
+    -- The application-rate strip alone, not the whole Soil Monitor: SoilHUD:draw
+    -- would bring the monitor back, which is exactly what hide-all removes.
+    if sfm.soilHUD and sfm.soilHUD.drawSprayerRatePanel then
+        sfm.soilHUD:drawSprayerRatePanel()
+    end
+    if sfm.variableRatePanel then sfm.variableRatePanel:draw() end
+    if sfm.smartSensorPanel then sfm.smartSensorPanel:draw() end
+    if sfm.sprayerInfoPanel then sfm.sprayerInfoPanel:draw() end
+    if sfm.harvesterPanel then sfm.harvesterPanel:draw() end
+end
+
 -- Register with MasterHUD if present. Called at loadMission00Finished, after the
 -- HUD has published its g_currentMission handle (Mission00.load).
 function SoilMasterHUDBridge.register(mgr)
@@ -127,8 +179,48 @@ function SoilMasterHUDBridge.register(mgr)
 
     if ok then
         SoilMasterHUDBridge.active = true
-        SoilLogger.info("Registered soil HUD with MasterHUD (single draw loop + menu-suspend)")
+        -- [SF-51] Keep the hud handle for drawCabTools' hudsHidden check, and
+        -- register the keep-alive cab-tools subscription. pcall'd separately:
+        -- an older MasterHUD without the flag simply draws it as a normal
+        -- self-draw, and the function's own hudsHidden guard then makes it a
+        -- no-op - graceful on every version pairing.
+        SoilMasterHUDBridge._hud = hud
+        pcall(function()
+            hud:subscribe(SoilMasterHUDBridge.CAB_ID, {
+                draw = SoilMasterHUDBridge.drawCabTools,
+                visibleWhenHudsHidden = true,
+            })
+        end)
+        SoilLogger.info("Registered soil HUD with MasterHUD (single draw loop + menu-suspend + cab-tools keep-alive)")
+        -- Suite layout edit reaches the Soil Monitor and every independent
+        -- in-vehicle panel, including placeholders when no matching implement is
+        -- currently controlled.
+        if hud.registerEditListener ~= nil then
+            hud:registerEditListener(SoilMasterHUDBridge.HUD_ID, {
+                enter = function()
+                    SoilMasterHUDBridge.setEditMode(true)
+                end,
+                exit = function()
+                    SoilMasterHUDBridge.setEditMode(false)
+                end,
+            })
+        end
     else
         SoilLogger.warning("MasterHUD registration failed: %s (using own draw hook)", tostring(err))
     end
+end
+
+-- =========================================================
+-- BUILD 19:38 hot-reload delivery: register() only runs at mission load, so a
+-- Ctrl+R push of this file alone would define the new edit listener without
+-- ever registering it. This top-level block re-runs the registration on reload.
+-- BUILD 20:40 (George 20:35, Brian 20:07): delivery is NOT gated on .active - the
+-- gated shape skips silently whenever the boot-time bridge predates the flag
+-- (exactly how Moisture lost its listener this session). register() is idempotent
+-- (subscribe and registerEditListener both replace by id), so firing on every
+-- live source pass is safe; on a cold source pass the mission handle does not
+-- exist yet and this stays a no-op.
+local __hud = (g_currentMission ~= nil and g_currentMission.masterHUD) or g_masterHUD
+if __hud ~= nil then
+    pcall(function() SoilMasterHUDBridge.register() end)
 end

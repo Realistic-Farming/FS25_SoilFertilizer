@@ -11,11 +11,18 @@
 -- or claiming this code as your own is strictly prohibited.
 -- =========================================================
 
-local modDirectory = g_currentModDirectory
-local modName = g_currentModName
+-- Hot-reload latch (FuelCosts reference): g_currentModDirectory and
+-- g_currentModName are nil on a live re-source, so they are latched into
+-- module globals on first load, with a g_modsDirectory loose-folder fallback.
+SoilFertilizerModDirectory = SoilFertilizerModDirectory
+    or g_currentModDirectory
+    or (g_modsDirectory ~= nil and (g_modsDirectory .. "FS25_SoilFertilizer/") or nil)
+SoilFertilizerModName = SoilFertilizerModName or g_currentModName or "FS25_SoilFertilizer"
+local modDirectory = SoilFertilizerModDirectory
+local modName = SoilFertilizerModName
 
 -- Menu icon global (resolved by XML imageFilename="g_SFIconMenu" via GuiOverlay hook below)
-g_SFIconMenu = Utils.getFilename("textures/ui/menuIcon.dds", g_currentModDirectory)
+g_SFIconMenu = Utils.getFilename("textures/ui/menuIcon.dds", (SoilFertilizerModDirectory or g_currentModDirectory))
 
 -- Resolve g_SFIconMenu in XML imageFilename attributes (EmployeeManager/MDM pattern)
 local SF_ICON_GLOBALS = { g_SFIconMenu = true }
@@ -28,9 +35,85 @@ local function sfResolveFilename(self, superFunc)
 end
 GuiOverlay.resolveFilename = Utils.overwrittenFunction(GuiOverlay.resolveFilename, sfResolveFilename)
 
+-- =========================================================
+-- FILL TYPE INDEX WIDTH FLOOR (absorbs FillType Extender)
+-- =========================================================
+-- Raise the engine's fill-type index width to 10 (a cap of 1023 fill types) so
+-- players on large maps do not need FillType Extender alongside this mod.
+--
+-- TWO CLAIMS THAT LOOK ALIKE AND ARE NOT THE SAME CLAIM. Only the second one
+-- justifies this block, and they were conflated for most of an evening.
+--   1. "Our fill type warnings are caused by the 255 cap, and FTE prevents them."
+--      FALSE. Those warnings fired with FTE loaded AND with FTE disabled, about 27
+--      seconds before gameplay started. They were the deferred-init defect, fixed
+--      in #970. This block does not touch them.
+--   2. "Some large maps genuinely exceed 255 fill types." TRUE, and it is the
+--      whole reason for this block. Known cases: Null Creek, Witcombe, No Creek.
+--      Measured case: a tester's River Bend session carried at least 513
+--      registered fill types, read from the live engine registry.
+--
+-- WHY 10 AND NOT FILLTYPE EXTENDER'S 9, deliberately. A 9-bit floor caps at 511,
+-- and the one heavy modset we have actually measured is at 513 or more, so 9 would
+-- not load it. Matching FTE's number would have shipped the shape of the
+-- capability without reaching the cases that motivated it. A player dropping FTE
+-- still sees no regression, because 10 is strictly above 9 and this never lowers.
+-- At 10 we match Realistic Livestock exactly.
+--
+-- THE GUARD IS MANDATORY, NOT STYLISTIC. Realistic Livestock raises this same
+-- constant to 10 at its own file load, and other mods in the ecosystem go higher.
+-- An unconditional assignment would LOWER the width whenever such a mod sourced
+-- first, silently truncating a width another mod had already established, and the
+-- symptom would be a multiplayer desync on someone else's server rather than
+-- anything visible here. Only ever raise.
+--
+-- TOP-LEVEL FILE SCOPE IS REQUIRED, not a load callback. Verified against the
+-- decompiled tree: extraSourceFiles are sourced at mods.lua:933-937, a mod's own
+-- fill types are only QUEUED at mods.lua:1070-1073 (addModWithFillTypes is
+-- table.insert into modsToLoad, FillTypeManager.lua:76-78) and are registered
+-- later from loadModFillTypes, called as an async task at mission00.lua:261. The
+-- cap is recomputed from this constant on EVERY addFillType call
+-- (FillTypeManager.lua:203-204, `2 ^ FillTypeManager.SEND_NUM_BITS - 1`) rather
+-- than cached, so a raise at source time is seen by every registration. The same
+-- raise inside a callback would land after registration and do nothing.
+--
+-- WHAT THIS DOES AND DOES NOT DO FOR BALES. Of the 81 engine sites reading this
+-- constant, exactly two use the SIGNED variant: Baler.lua:672 streamReadIntN and
+-- :712 streamWriteIntN. Signed N bits covers -2^(N-1)..2^(N-1)-1, so at the
+-- default 8 a bale whose fill type index exceeds 127 already wraps today. Raising
+-- does NOT "cover the whole index space", because the cap is derived from the same
+-- constant and moves with it: at 10 the ceiling becomes 1023 while the signed
+-- field reaches 511, so the wrap lands at 512..1023. No value of this constant
+-- fixes it, since a signed field cannot cover an unsigned index space derived from
+-- that same field; raising only moves which indices wrap.
+--
+-- Stated plainly rather than buried: the measured 513-fill-type setup sits inside
+-- that wrapped range. That figure is a TESTER REPORT, cited line by line in
+-- src/utils/SoilFillTypeWidth.lua rather than measured on a dev machine. It also
+-- sits inside that range TODAY, because Realistic Livestock already raises this
+-- constant to 10 on that machine, so nothing gets worse for anyone from this
+-- change.
+-- introduce or can repair here. Bale.lua's own sites (:81, :114, :150, :174) are
+-- unsigned, so standalone bales are unaffected.
+-- Read from the decompiled source, NOT observed in game by anyone.
+--
+-- Sourced and called here, before every other module, so the raise is in force for
+-- the whole of this mod's load and for every later fill type registration.
+source(modDirectory .. "src/utils/SoilFillTypeWidth.lua")
+-- Exactly one line prints when the width is readable: "raised to" when this mod
+-- did the raising, "already ... floor satisfied" when another mod got there first
+-- (Realistic Livestock, ProductionStorageControl). A log alone then shows the
+-- floor is in force. Plain print, not SoilLogger: Logger.lua is sourced below.
+local sfWidthRaised, sfWidthNow = SoilFillTypeWidth.applyFloor()
+local sfWidthLine = SoilFillTypeWidth.loadLine(sfWidthRaised, sfWidthNow)
+if sfWidthLine ~= nil then
+    print(sfWidthLine)
+end
+
 -- Source all required files (order matters: dependencies first)
 -- 1. Utilities and config (no dependencies)
 source(modDirectory .. "src/utils/Logger.lua")
+source(modDirectory .. "src/utils/SoilL10n.lua")
+source(modDirectory .. "src/utils/SoilContextInput.lua")
 source(modDirectory .. "src/utils/AsyncRetryHandler.lua")
 source(modDirectory .. "src/utils/SoilUtils.lua")
 source(modDirectory .. "src/config/Constants.lua")
@@ -41,6 +124,7 @@ source(modDirectory .. "src/config/SoilBlends.lua")
 source(modDirectory .. "src/utils/DurationScaling.lua")
 source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
+source(modDirectory .. "src/integrations/OptionScalingResolver.lua")
 -- Release gate: which systems are released (STABLE) vs experimental (LOCKED).
 -- Orthogonal to difficulty; the lock set comes from Arissani's certification
 -- (2026-08-02). Loaded before Settings and SoilSettingsGUI, which consult it.
@@ -58,6 +142,14 @@ SFNozzleEffects.init(modDirectory)
 
 -- 3. Core systems
 source(modDirectory .. "src/hooks/HookManager.lua")
+source(modDirectory .. "src/hooks/GroundTipGate.lua")
+-- SP01-187: the legacy ground type injection main.lua's loadedMission calls when
+-- the capacity load did not prepare the ground; bounded by the map's channels.
+source(modDirectory .. "src/hooks/SoilLegacyGroundTypes.lua")
+-- SG-6 (Soil half): the capacity-load join StockGuard's preflight resolves as
+-- getfenv(0)["FS25_SoilFertilizer"].SoilCapacityIntegration. Sourced right after
+-- the tip gate it drives.
+source(modDirectory .. "src/hooks/SoilCapacityIntegration.lua")
 source(modDirectory .. "src/ui/SoilLayerSystem.lua")
 source(modDirectory .. "src/maps/SoilBundledMaps.lua")
 source(modDirectory .. "src/maps/SoilValueMaps.lua")
@@ -67,7 +159,32 @@ source(modDirectory .. "src/SoilSensorManager.lua")
 -- daily loop can consult FieldSentry_API. Backend only - no UI, no equation changes.
 source(modDirectory .. "src/FieldSentry.lua")
 source(modDirectory .. "src/MaterialDown.lua")
+-- [RSF-F211] Pure planar geometry the standing reader clips field polygons with.
+source(modDirectory .. "src/utils/PolygonClip.lua")
 source(modDirectory .. "src/MaterialWetness.lua")
+-- [RSF-F208] Ground condition relocation. Loaded after both condition owners
+-- because arming asserts against their layer keys and their armed state.
+source(modDirectory .. "src/ground/GroundConditionCells.lua")
+source(modDirectory .. "src/ground/GroundConditionCoordinator.lua")
+source(modDirectory .. "src/ground/GroundConditionAdmission.lua")
+-- [GCC 6] The native save boundary Soil owns when StockGuard does not, and the ground-
+-- condition participant that pairs the condition layers with the height image.
+source(modDirectory .. "src/ground/SoilNativeSave.lua")
+source(modDirectory .. "src/ground/GroundConditionSave.lua")
+-- [RSF-F208 section 3] The native-cell observer and the Soil-alone movement carriers
+-- (the Tedder in this slice). HookManager's tedder wrapper calls into them.
+source(modDirectory .. "src/ground/GroundNativeObserver.lua")
+-- [SG2-4 S3] The one projector both observers share; before the carrier, which reads
+-- its constants at source time.
+source(modDirectory .. "src/ground/GroundMovementProjector.lua")
+source(modDirectory .. "src/ground/GroundMovementCarrier.lua")
+-- [SG2-4c-3] Soil's `soil.groundCondition` property for StockGuard. After the coordinator
+-- and the carrier, whose combine and off-ground ageing it reuses.
+source(modDirectory .. "src/ground/GroundConditionProperty.lua")
+-- [RSF-F211 part 2a] The Baler collection: the pickup frame's producer, the chamber and
+-- overflow accounts, the bale binding. After the carrier, whose handler it extends.
+source(modDirectory .. "src/ground/BalerCollection.lua")
+source(modDirectory .. "src/ground/ForageWagonCollection.lua")
 source(modDirectory .. "src/HayBet.lua")
 source(modDirectory .. "src/YardLadder.lua")
 -- SF-26 SPATIAL SCOUTING: the walked mask. Loaded with the other per-layer
@@ -132,7 +249,17 @@ source(modDirectory .. "src/ZoneYield.lua")
 -- Neutral until a consumer wires in; its own StateLedger + NetworkSync
 -- registration sits beside the soil bridges.
 source(modDirectory .. "src/TopographyCache.lua")
+-- [SF-73] target-accurate N/P/K: the pure core, the footprint witness and the
+-- controller, loaded before the soil system that constructs the controller.
+source(modDirectory .. "src/target/TargetNutrientCore.lua")
+source(modDirectory .. "src/target/TargetFootprint.lua")
+source(modDirectory .. "src/target/TargetApplication.lua")
 source(modDirectory .. "src/SoilFertilitySystem.lua")
+-- SF-79 POSITIONAL PH: the chemical-soil authority is the pH value map; the field
+-- number is a report derived from its written pixels. Hangs the private writer
+-- (`_applyPHFootprint`) and report/cache routines on SoilFertilitySystem, so it
+-- loads after it. No new grid, product, rate curve or clock; release LOCKED.
+source(modDirectory .. "src/PositionalPH.lua")
 -- Harvest contract underwrite (#741 / SF-29): tops base-game harvest contracts up to the
 -- vanilla-expected completion at delivery, so degraded neighbour fields can complete. Reads
 -- SoilFertilitySystem:computeYieldModifier at runtime; installed as a class hook by HookManager.
@@ -141,6 +268,27 @@ source(modDirectory .. "src/OrganicCertification.lua")
 source(modDirectory .. "src/ResistanceBands.lua")
 -- CD-10: after ResistanceBands, whose ceilingForMode it uses for the threshold arithmetic.
 source(modDirectory .. "src/HybridStrains.lua")
+-- RSF-F190: the dog's barn half asks this SoilFertilizer-owned reader for one
+-- resolved active-sickness answer per barn, the way its crop half asks
+-- getFieldInfo. Read-only bridge into the livestock provider; publishes nothing.
+source(modDirectory .. "src/LivestockWarningReader.lua")
+-- CD-13: dog early-warning. Passive, farm-wide crop disease alert when a doghouse
+-- is placed. Reads soilSystem:getFieldInfo; no write path. FarmTablet reads the
+-- published g_currentMission.dogEarlyWarning handle.
+source(modDirectory .. "src/DogEarlyWarning.lua")
+-- CD-15 native cell probe (chore, read-only logging behind the sfCd15Probe
+-- console command; no gameplay effect; remove this line and the file to retire).
+source(modDirectory .. "src/probe/CD15NativeCellProbe.lua")
+-- CD-15 local disease, step 1a: the sparse grid, the logical day and the server model
+-- beside the field model. Server only; nothing reads it until the later steps.
+source(modDirectory .. "src/disease/CD15Grid.lua")
+source(modDirectory .. "src/disease/CD15Day.lua")
+source(modDirectory .. "src/disease/CD15Model.lua")
+-- Step 1b: the save participant on Soil's native save boundary (server only).
+source(modDirectory .. "src/disease/CD15Save.lua")
+-- Step 1c: candidate discovery and admission; production has no supported native profile, so
+-- every witness answers UNKNOWN_OCCURRENCE and nothing is admitted (server only).
+source(modDirectory .. "src/disease/CD15Admission.lua")
 
 -- 3. Settings
 source(modDirectory .. "src/settings/SettingsManager.lua")
@@ -163,6 +311,7 @@ source(modDirectory .. "src/ui/SoilPDAScreen.lua")
 -- Legacy SoilPDAScreen Esc tab stands down when menuRealisticFarming is live.
 source(modDirectory .. "src/ui/RfEscModules.lua")
 source(modDirectory .. "src/ui/SoilTreatmentRates.lua")
+source(modDirectory .. "src/ui/RfPdaSoilMerge.lua")
 source(modDirectory .. "src/ui/RfPdaSoilPanel.lua")
 source(modDirectory .. "src/ui/RfPdaMenuPage.lua")
 source(modDirectory .. "src/ui/RfEscBootstrap.lua")
@@ -196,6 +345,7 @@ source(modDirectory .. "src/integrations/SectionControlIntegration.lua")
 source(modDirectory .. "src/integrations/PrecisionFarmingBridge.lua")
 source(modDirectory .. "src/integrations/SoilSettingsHubBridge.lua")
 source(modDirectory .. "src/integrations/SoilStateLedgerBridge.lua")
+source(modDirectory .. "src/integrations/MaterialDownCodec.lua")   -- [RSF-F215] before the bridge that writes with it
 source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
@@ -242,15 +392,15 @@ end
 
 -- Globals
 local sfm = nil
+local dogWarning = nil
 
 -- Declared before unload() so it captures these as upvalues (not globals).
 -- Previously these lived below unload(), so unload() resolved them as globals
 -- and the InputHelpDisplay.draw restore never ran.
 local _sprayerF1HookInstalled = false
 local _inputHelpDisplayOrigDraw = nil
--- getCanTipToGround is hooked once per game session (see loadedMission);
--- re-wrapping on every savegame load would chain stale closures.
-local _canTipHookInstalled = false
+-- getCanTipToGround is wrapped once per process and switched per mission; the
+-- install flag, the runtime flag and the wrapper live in GroundTipGate (RSF-F227).
 
 -- Helper: check if mod is initialized
 local function isEnabled()
@@ -262,6 +412,16 @@ local function missionStarted(mission)
     if sfm then
         sfm:onMissionStarted()
     end
+    -- [GCC 6] StockGuard may have published its boundary after Soil's install: Soil then
+    -- joins it and releases its own (GCC :112).
+    if SoilNativeSave ~= nil and SoilNativeSave.current ~= nil then
+        pcall(SoilNativeSave.current.reconsider, SoilNativeSave.current)
+    end
+end
+
+--- [GCC 6] The native save boundary for this mission (GroundConditionSave.installForMission).
+local function installNativeSave(mission)
+    if GroundConditionSave ~= nil then GroundConditionSave.installForMission(mission) end
 end
 
 -- Called after mission loaded
@@ -272,6 +432,23 @@ local function loadedMission(mission, node)
         return
     end
     sfm:onMissionLoaded()
+
+    -- [GCC 6] Here, before onMissionStarted: the install reads the loaded save's verdict
+    -- before the store decides, and seeds the attempt ids.
+    local okSave, errSave = pcall(installNativeSave, mission)
+    if not okSave then SoilLogger.warning("[NativeSave] install failed: %s", tostring(errSave)) end
+    -- [CD-15 1b] The local disease save participant, on the same boundary (server only):
+    -- it holds the model until the restore decides.
+    if CD15Save ~= nil then
+        local okCd, errCd = pcall(CD15Save.installForMission, mission)
+        if not okCd then SoilLogger.warning("[CD15] save install failed: %s", tostring(errCd)) end
+    end
+
+    -- CD-13: dog early-warning (passive crop disease alert when a doghouse is placed).
+    if DogEarlyWarning ~= nil and sfm.soilSystem ~= nil then
+        dogWarning = DogEarlyWarning.new(sfm.soilSystem)
+        mission.dogEarlyWarning = dogWarning
+    end
 
     -- FarmTablet System Settings app: mirror our settings into SettingsHub so the
     -- tablet can list them. No-ops when SettingsHub is not installed.
@@ -301,6 +478,9 @@ local function loadedMission(mission, node)
     if SoilMaterialDownBridge and groundLive then
         local md = sfm and sfm.soilSystem and sfm.soilSystem.materialDown
         if md then
+            -- [RSF-F215] The career marker and the new-career flag first: the deliveries
+            -- that follow are held until the load is decided against them.
+            SoilMaterialDownBridge.beginLoad(md)
             SoilMaterialDownBridge.registerLedger(md)
             SoilMaterialDownBridge.loadFallback(md)
             SoilMaterialDownBridge.registerAccruals(md)
@@ -334,7 +514,9 @@ local function loadedMission(mission, node)
             SoilScoutingBridge.registerLedger(scouting)
             SoilScoutingBridge.loadFallback(scouting)
             SoilScoutingBridge.registerAccruals(scouting)
-            SoilScoutingBridge.registerSync(scouting)
+            -- [SF-22] The walked mask no longer rides NetworkSync (it cannot scope
+            -- delivery to one farm). Its own host-owned event route handles sharing:
+            -- the pure-client subscriber is registered in the client full-sync block.
         end
     end
 
@@ -372,64 +554,23 @@ local function loadedMission(mission, node)
     -- from debug pass 2 (2026-05-13): allowsSmoothing, canBeTipped, collisionBaseOffset,
     -- collisionScale, fillToGroundScale, fillTypeIndex, fillTypeName, index,
     -- maxCollisionOffset, maxSurfaceAngle, minCollisionOffset.
-    do
+    -- SG-6: while this exact mission is joined to StockGuard's capacity load,
+    -- the whole legacy fallback below (late Lua insertion, the
+    -- constructTerrainFillLayers rebuild and the tip-hook activation) is
+    -- skipped in every phase. StockGuard called prepareGroundTypes before
+    -- native initialization, so the engine registered every row itself; a
+    -- failed prepare or fill load does not release this fence, and the tip
+    -- wrapper stays in pure delegation.
+    if SoilCapacityIntegration ~= nil and SoilCapacityIntegration.isJoined(mission) then
+        SoilLogger.info("[TIP FIX] joined StockGuard capacity load; legacy ground fallback skipped")
+    else
         local dmhm = g_densityMapHeightManager
         local ftm  = g_fillTypeManager
         if dmhm and ftm and dmhm.heightTypes and dmhm.fillTypeIndexToHeightType then
-            -- Two templates: FERTILIZER (light granular) for mineral types,
-            -- MANURE (dark organic) for compost/biosolids/chicken manure/pelletized manure.
-            -- Using the wrong template causes black/unlit pile rendering because the
-            -- C++ material reference from the shallow copy drives the visual output.
-            local tmplFert   = nil
-            local tmplManure = nil
-            local fertIdx    = ftm:getFillTypeIndexByName("FERTILIZER")
-            local manureIdx  = ftm:getFillTypeIndexByName("MANURE")
-            if fertIdx  then tmplFert   = dmhm.fillTypeIndexToHeightType[fertIdx]   end
-            if manureIdx then tmplManure = dmhm.fillTypeIndexToHeightType[manureIdx] end
-
-            -- Fall back to the other template if one is missing
-            local tmpl = tmplFert or tmplManure
-
-            -- Which types use the organic (MANURE) template
-            local organicSet = {
-                COMPOST = true, BIOSOLIDS = true,
-                CHICKEN_MANURE = true, PELLETIZED_MANURE = true,
-            }
-
-            if tmpl then
-                -- Our 11 solid fill types that need ground-tipping support.
-                local solidTypes = {
-                    "UREA", "AN", "AMS", "MAP", "DAP", "POTASH", "POLIFOSKA",
-                    "GYPSUM", "COMPOST", "BIOSOLIDS", "CHICKEN_MANURE", "PELLETIZED_MANURE",
-                }
-                local registered = 0
-                for _, typeName in ipairs(solidTypes) do
-                    local idx = ftm:getFillTypeIndexByName(typeName)
-                    if idx and not dmhm.fillTypeIndexToHeightType[idx] then
-                        local nextSlot = dmhm.numHeightTypes + 1
-                        -- Shallow-copy the appropriate template so C++ object references
-                        -- (density map channel pointer, material, physics layer handle) are
-                        -- preserved. Organic types use MANURE to get the correct dark pile
-                        -- visual; mineral types use FERTILIZER for the light granular look.
-                        local srcTmpl = (organicSet[typeName] and tmplManure) or tmplFert or tmpl
-                        local ht = {}
-                        for k, v in pairs(srcTmpl) do ht[k] = v end
-                        ht.allowsSmoothing  = false
-                        ht.canBeTipped      = true
-                        ht.fillTypeIndex    = idx
-                        ht.fillTypeName     = typeName
-                        ht.index            = nextSlot
-
-                        dmhm.fillTypeIndexToHeightType[idx]           = ht
-                        if dmhm.fillTypeNameToHeightType then
-                            dmhm.fillTypeNameToHeightType[typeName]   = ht
-                        end
-                        dmhm.heightTypeIndexToFillTypeIndex[nextSlot] = idx
-                        dmhm.heightTypes[nextSlot]                    = ht
-                        dmhm.numHeightTypes                           = nextSlot
-                        registered = registered + 1
-                    end
-                end
+            -- SP01-187: the injection lives in SoilLegacyGroundTypes, bounded by the
+            -- map's height-type channels the way the engine bounds its own types.
+            local registered = SoilLegacyGroundTypes.inject(dmhm, ftm)
+            if registered ~= nil then
                 -- Verify at least one registration worked by checking getMinValidLiterValue.
                 local testIdx = ftm:getFillTypeIndexByName("UREA")
                 local ok, val = pcall(function() return dmhm:getMinValidLiterValue(testIdx) end)
@@ -454,24 +595,20 @@ local function loadedMission(mission, node)
                     end
                 end
 
-                -- Belt-and-suspenders: also hook getCanTipToGround at Lua level so the
-                -- discharge eligibility check passes even if C++ hasn't read our table.
-                -- Installed once per game session and resolving the manager dynamically:
-                -- loadedMission re-runs on every savegame load, and re-wrapping here would
-                -- chain wrappers and capture the previous mission's (stale) manager.
-                if registered > 0 and not _canTipHookInstalled and DensityMapHeightUtil and
-                   type(DensityMapHeightUtil.getCanTipToGround) == "function" then
-                    local _origGetCan = DensityMapHeightUtil.getCanTipToGround
-                    DensityMapHeightUtil.getCanTipToGround = function(fillTypeIndex)
-                        local mgr = g_densityMapHeightManager
-                        if mgr and mgr.fillTypeIndexToHeightType and
-                           mgr.fillTypeIndexToHeightType[fillTypeIndex] then
-                            return true
-                        end
-                        return _origGetCan(fillTypeIndex)
+                -- Belt-and-suspenders: also wrap getCanTipToGround at Lua level so the
+                -- discharge eligibility check sees our injected height types even if C++
+                -- has not read our table. The wrapper answers exactly what the engine body
+                -- answers (manager validity, then the type's own canBeTipped), and it is
+                -- installed ONCE per process: loadedMission re-runs on every savegame load,
+                -- and re-wrapping would chain wrappers. The manager is resolved live on
+                -- every call, nothing about it is captured. What makes the guard correct
+                -- across missions is the runtime flag: enabled here, only when the Lua
+                -- injection ran, and disabled again in unload (RSF-F227).
+                if registered > 0 then
+                    if GroundTipGate.install() then
+                        SoilLogger.info("[TIP FIX] DensityMapHeightUtil.getCanTipToGround wrapped")
                     end
-                    _canTipHookInstalled = true
-                    SoilLogger.info("[TIP FIX] DensityMapHeightUtil.getCanTipToGround hooked")
+                    GroundTipGate.enable()
                 end
             else
                 SoilLogger.warning("[TIP FIX] FERTILIZER template not found in DMHM - tip injection skipped")
@@ -576,8 +713,17 @@ local function loadedMission(mission, node)
     -- SoilRequestFullSyncEvent asks the server for all settings + field data.
     -- The retry handler (AsyncRetryHandler) makes up to 3 attempts with delay
     -- in case the server-side soil system hasn't finished initializing yet.
-    if g_client ~= nil and g_server == nil and SoilNetworkEvents_RequestFullSync then
-        SoilNetworkEvents_RequestFullSync()
+    if g_client ~= nil and g_server == nil then
+        -- [SF-22] Pure client: arm the farm-switch subscriber BEFORE the first
+        -- full-sync request, so a switch that lands during the join handshake is
+        -- still classified (drop old farm, pull the new farm's private mask).
+        local scouting = sfm and sfm.soilSystem and sfm.soilSystem.spatialScouting
+        if scouting and SoilScoutingBridge and SoilScoutingBridge.registerFarmTransitionSubscriber then
+            SoilScoutingBridge.registerFarmTransitionSubscriber(scouting)
+        end
+        if SoilNetworkEvents_RequestFullSync then
+            SoilNetworkEvents_RequestFullSync()
+        end
     end
 end
 
@@ -613,10 +759,24 @@ local function load(mission)
         -- Cross-mod bridge: g_currentMission is a shared C++ object visible to all mods.
         -- getfenv(0) is per-mod scoped in FS25. Use mission property for reliable cross-mod detection.
         mission.soilFertilityManager = sfm
+        -- [MAINTENANCE row 244] Soil's constants ride the manager for consumers in other mods'
+        -- environments: SoilConstants is a global of this mod's environment only, so FarmTablet's
+        -- Soil app (SoilNutrientApp.lua:22-35, which probes mgr.SoilConstants first) never saw the
+        -- PPM_DISPLAY scale and painted N, P and K at factor 1.
+        sfm.SoilConstants = SoilConstants
+        -- BUILD 19:23 (George CLOSED DESIGN 19:12): the Soil list-row merge module rides the same
+        -- mission bridge for Crop Stress and Farm Tablet (getfenv(0) does not cross mods); they
+        -- call buildGroups / readGroups on it and Soil alone drives the outline walks.
+        if RfPdaSoilMerge ~= nil then
+            mission.RfPdaSoilMerge = RfPdaSoilMerge
+        end
         -- [SF organic-compost] The managed compost process. Standalone manager,
         -- server-authoritative; owns production only (SF owns the OM effect).
         if CompostManager ~= nil then
             g_CompostManager = CompostManager.new()
+            -- Cross-mod handle on the mission (getfenv(0) is per-mod scoped; the
+            -- FarmTablet organic app reads g_currentMission.compostManager).
+            mission.compostManager = g_CompostManager
             local ledger = (mission.stateLedger ~= nil) and mission.stateLedger or g_stateLedger
             if ledger ~= nil and ledger.registerModule ~= nil then
                 pcall(function()
@@ -652,16 +812,45 @@ local function load(mission)
     end
 end
 
--- Unload handler
-local function unload()
+-- Unload handler. Prepended to FSBaseMission.delete, so the argument is the
+-- mission being deleted (menu.lua deletes it before clearing g_currentMission).
+local function unload(mission)
+    -- RSF-F227: switch the ground-tip wrapper to pure delegation before anything
+    -- else, so the next mission never inherits this one's gates. Unconditional and
+    -- outside the sfm block: it must run even when the manager is already gone.
+    if GroundTipGate then GroundTipGate.disable() end
+    -- [GCC 6] Release Soil's native save boundary (its wrappers unlink or pass through)
+    -- and the participant, before the manager goes.
+    if SoilNativeSave ~= nil and SoilNativeSave.current ~= nil then pcall(SoilNativeSave.current.close, SoilNativeSave.current, "MISSION_END") end
+    if GroundConditionSave ~= nil and GroundConditionSave.current ~= nil then pcall(GroundConditionSave.current.close, GroundConditionSave.current) end
+    if CD15Save ~= nil and CD15Save.current ~= nil then pcall(CD15Save.current.close, CD15Save.current) end
+    -- SG-6: clear the joined-mission binding for exactly the mission being
+    -- deleted (the legacy override stays disabled); StockGuard's own teardown
+    -- may repeat this safely. The prepend's own argument is the exact object;
+    -- g_currentMission is only the fallback for a call without one.
+    if SoilCapacityIntegration ~= nil then
+        SoilCapacityIntegration.endCapacityLoad(mission ~= nil and mission or g_currentMission)
+    end
+    -- [SF-22] Drop the pure-client farm-switch subscriber and any in-flight FULL
+    -- buffer so a session reload never accumulates a stale subscription. Safe to
+    -- call unconditionally: it no-ops when nothing was registered.
+    if SoilScoutingBridge and SoilScoutingBridge.unregisterFarmTransitionSubscriber then
+        SoilScoutingBridge.unregisterFarmTransitionSubscriber()
+    end
+    -- RSF-F190: the dog releases its own farm-change subscriber and every barn binding
+    -- before its reference goes (its target is its own, never SoilScoutingBridge's).
+    if dogWarning ~= nil and dogWarning.delete ~= nil then pcall(dogWarning.delete, dogWarning) end
     if sfm ~= nil then
         sfm:delete()
         sfm = nil
+        dogWarning = nil
         getfenv(0)["g_SoilFertilityManager"] = nil
         if g_currentMission then
             g_currentMission.soilFertilityManager = nil
+            g_currentMission.RfPdaSoilMerge = nil     -- BUILD 19:23: drop the merge bridge with it
             g_currentMission.fieldSentry = nil   -- #83 drop the cross-mod bridge
             g_currentMission.soilHarvestBus = nil -- drop the harvest-event bridge
+            g_currentMission.dogEarlyWarning = nil
         end
     end
     -- Restore InputHelpDisplay.draw if we hooked it, so a session reload doesn't accumulate appends.
@@ -701,7 +890,7 @@ local function hookSaveLoadEvents()
                     if g_server == nil then return end
                 end
                 if g_SoilFertilityManager then
-                    g_SoilFertilityManager:saveSoilData()
+                    g_SoilFertilityManager:saveSoilData(missionInfo)
                     -- Persist settings here too, NOT only on-change (#637).
                     -- saveToXMLFile fires with savegameDirectory pointing at the tempsavegame
                     -- staging dir, whose contents FS25 then copies over the real savegame
@@ -731,6 +920,10 @@ local function hookSaveLoadEvents()
             end
         )
         SoilLogger.info("Save hook installed on FSCareerMissionInfo:saveToXMLFile")
+        -- [RSF-F215] One save invocation in front of the native save and every appended
+        -- hook (Soil's above, StateLedger's in whichever order the mods loaded), so the
+        -- MaterialDown envelope is frozen once and shared by both writers.
+        if SoilMaterialDownBridge ~= nil then SoilMaterialDownBridge.installSaveInvocation() end
     else
         SoilLogger.warning("FSCareerMissionInfo.saveToXMLFile not found - soil data will NOT be saved")
     end
@@ -745,6 +938,76 @@ end
 -- mission object is completely set up before our load() accesses it.
 Mission00.load = Utils.appendedFunction(Mission00.load, load)
 Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00Finished, loadedMission)
+
+-- ---------------------------------------------------------
+-- Realistic Farming Control Center: publish runnable delegates.
+--
+-- Feature actions only. The in-vehicle rate and sensor actions (SF_RATE_UP,
+-- SF_RATE_DOWN, SF_TOGGLE_AUTO, SF_VARIABLE_RATE, SF_MINIMAP_ZOOM) act on the
+-- machine the player is currently driving and mean nothing from a dialog, and
+-- SF_HUD_DRAG belongs to the suite HUD keys that MasterHUD owns and keeps its
+-- directory row and live key readout, just no button. SF_TOGGLE_HUD now grows a
+-- hide/show button below: the physical key stays gated to MasterHUD, but a per-mod
+-- hide is reachable from the Control Center so a player can disable just this HUD.
+--
+-- SF_HANDFUL is wired even though it is gated on crouching and the experimental
+-- opt-in, because onHandfulInput raises its own blinking warning explaining why
+-- when a gate blocks it. The player gets an answer either way, never silence.
+-- ---------------------------------------------------------
+local function registerControlCenterActions()
+    local registry = g_currentMission ~= nil and g_currentMission.rfActionRegistry or nil
+    if registry == nil then return end
+
+    local function run(method)
+        return function()
+            local mgr = g_SoilFertilityManager
+            if mgr ~= nil and mgr[method] ~= nil then
+                mgr[method](mgr)
+            end
+        end
+    end
+
+    registry.registerAction({
+        action = "SF_TREATMENT", button = "Open", order = 1,
+        closeFirst = true, run = run("onTreatmentInput"),
+    })
+
+    registry.registerAction({
+        action = "SF_SCOUT", button = "Open", order = 2,
+        closeFirst = true, run = run("onScoutInput"),
+    })
+
+    registry.registerAction({
+        action = "SF_HANDFUL", button = "Inspect", order = 3,
+        closeFirst = true, run = run("onHandfulInput"),
+    })
+
+    registry.registerAction({
+        action = "SF_OPEN_SETTINGS", button = "Open", order = 4,
+        closeFirst = true, run = run("onOpenSettingsInput"),
+    })
+
+    -- Per-mod HUD hide/show. Toggles soilHUD.visible directly (not onToggleHUDInput,
+    -- which stands down under MasterHUD); SoilHUD:draw honours .visible under both
+    -- the MasterHUD bridge and the standalone hook. Live "Hide"/"Show" caption.
+    registry.registerAction({
+        action = "SF_TOGGLE_HUD", order = 5,
+        button = function()
+            local hud = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilHUD or nil
+            return (hud ~= nil and hud.visible) and "Hide" or "Show"
+        end,
+        run = function()
+            local hud = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilHUD or nil
+            if hud ~= nil and hud.toggleVisibility ~= nil then
+                hud:toggleVisibility()
+                return hud.visible and "Soil HUD shown" or "Soil HUD hidden"
+            end
+        end,
+    })
+end
+
+Mission00.loadMission00Finished = Utils.appendedFunction(
+    Mission00.loadMission00Finished, registerControlCenterActions)
 Mission00.onStartMission = Utils.appendedFunction(Mission00.onStartMission, missionStarted)
 -- Prepend so our cleanup runs before FS25 tears down g_inputBinding/HUD (fixes black screen with AGS)
 FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
@@ -752,6 +1015,12 @@ FSBaseMission.delete = Utils.prependedFunction(FSBaseMission.delete, unload)
 FSBaseMission.update = Utils.appendedFunction(FSBaseMission.update, function(mission, dt)
         if sfm then
             sfm:update(dt)
+            -- BUILD 18:37 (George CLOSED DESIGN 18:25): the Soil list-row outline walks, one field
+            -- per frame, only while a list build has queued something (RfPdaSoilMerge.update).
+            if RfPdaSoilMerge ~= nil and type(RfPdaSoilMerge.update) == "function" then
+                pcall(RfPdaSoilMerge.update, dt, sfm.soilSystem)
+            end
+            if dogWarning ~= nil then dogWarning:update(dt) end
             -- [SF organic-compost] Day-tracking fallback when Time Guard is absent.
             if g_CompostManager ~= nil then
                 g_CompostManager:updateDayFallback()
@@ -833,12 +1102,18 @@ end
 --   patching working in the same callback).
 
 -- Route mouse events to SoilHUD (for drag/resize edit mode).
--- Edit mode is entered via Shift+H (SF_HUD_DRAG input action) - not via RMB.
+-- Edit mode is entered via the SF_HUD_DRAG input action (player-assigned key) - not via RMB.
 -- RMB only exits edit mode (and only when this mod is already in edit mode).
 -- This guarantees RMB is never consumed during normal play, preserving
 -- CoursePlay, AutoDrive, and other mods that rely on RMB.
 local soilMouseHandler = {}
 function soilMouseHandler:mouseEvent(posX, posY, isDown, isUp, button, eventUsed)
+    -- BUILD 20:40 (FcMouseHandler pattern): resolve the manager live per event.
+    -- The captured upvalue goes stale if this chunk is ever re-sourced; the
+    -- module-scope sfm stays the fallback for early events before the global.
+    local sfm = g_SoilFertilityManager
+        or (g_currentMission ~= nil and g_currentMission.soilFertilityManager or nil)
+        or sfm
     -- Tuning panel eats input when open (checked before settings panel - both can't be open simultaneously)
     if sfm and sfm.tuningPanel and sfm.tuningPanel:isOpen() then
         local consumed = sfm.tuningPanel:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
@@ -1049,3 +1324,199 @@ print("  Realistic soil management system      ")
 print("  Type 'soilfertility' for commands     ")
 
 print("========================================")
+
+
+
+-- =========================================================
+-- [SF-66] LIVE KEYBIND HINTS (BUILD 19:58)
+-- =========================================================
+-- Every on-screen surface that used to print a hard-coded default chord now
+-- runs its resolved text through here, so a player who rebound (or never
+-- bound) an action reads their OWN key instead of the shipped default.
+--
+-- Why a walker and not a gsub of known chords: the modifier is LOCALISED
+-- (Shift / Umschalt / Maj / Maiusc / Skift / Vaihto ...) across 26 files, and
+-- any enumerated vocabulary goes stale the first time a translator picks a
+-- different word. Instead we anchor on the invariant part - "+<KEY>" - and walk
+-- LEFT over letters to capture whatever this language calls the modifier.
+--
+-- Two guards keep that from eating real text, and both matter in a soil mod:
+--   * the captured word must be at least 3 letters, so the "N+K" and "P+K" that
+--     appear in nutrient copy are never touched (every real modifier name -
+--     Alt, Maj, Shift, Skift, Umschalt - clears 3);
+--   * it must start with a capital, which is true of every modifier name the
+--     game prints and false of ordinary prose.
+-- The trade is deliberate: a missed rewrite leaves today's stale hint, while a
+-- wrong rewrite corrupts a sentence, so the guards fail toward doing nothing.
+SoilLiveHint = SoilLiveHint or {}
+
+-- Stale default KEY per action, as actually printed by the shipped strings.
+-- A chord label can be TWO words. Only these qualifiers are ever consumed before a
+-- modifier: the word before a modifier is usually a sentence verb ("Press Alt+M"),
+-- and eating that would destroy the sentence. Harvested from the 280 chord
+-- instances already present in this suite's own human-authored translations, where
+-- the only two-word modifier phrase is "Right Shift", left in English in all 26.
+SoilLiveHint.QUALIFIER_WORDS = {
+    Right = true, Left = true, RIGHT = true, LEFT = true,
+}
+
+SoilLiveHint.ACTION_KEYS = {
+    SF_HUD_DRAG        = "H",
+    SF_VARIABLE_RATE   = "7",
+    SF_SCOUT           = "K",
+    SF_TREATMENT       = "T",
+    SF_TOGGLE_AUTO     = "L",
+    SF_CYCLE_MAP_LAYER = "M",
+    SF_OPEN_SETTINGS   = "O",
+    SF_HANDFUL         = "G",
+}
+
+--- Live chord for an action. Order per the packet: the suite's live binding,
+--- then the proven engine overlay call, then an honest "unassigned" - never a
+--- fabricated default, which is what put a confident wrong key on screen.
+---@param actionName string
+---@return string|nil chord, nil when the action is not loaded at all
+function SoilLiveHint.chord(actionName)
+    if actionName == nil then return nil end
+    if RfLiveBinding ~= nil and RfLiveBinding.getChord ~= nil then
+        local c = RfLiveBinding.getChord(actionName)
+        if c then return c end
+    end
+    if g_inputDisplayManager ~= nil and InputAction ~= nil and InputAction[actionName] ~= nil then
+        local ok, help = pcall(function()
+            return g_inputDisplayManager:getControllerSymbolOverlays(InputAction[actionName], "", "", false)
+        end)
+        if ok and help and help.keys and #help.keys > 0 then
+            local parts = {}
+            for _, k in ipairs(help.keys) do parts[#parts + 1] = tostring(k) end
+            return table.concat(parts, "+")
+        end
+    end
+    if InputAction ~= nil and InputAction[actionName] == nil then
+        -- Action not in this session at all: leave the text alone rather than
+        -- claim it is unassigned.
+        return nil
+    end
+    if RfLiveBinding ~= nil and RfLiveBinding.UNASSIGNED ~= nil then
+        return RfLiveBinding.UNASSIGNED
+    end
+    return "unassigned"
+end
+
+--- The live chord AND why, for a caller that must not print an imperative
+--- unless a real key exists. chord() above cannot say whether "unassigned" came
+--- from an unbound action or from a missing helper, and a hint that reads
+--- "unassigned to close" is the same defect as naming a factory key.
+---@param actionName string
+---@return string|nil chord
+---@return string kind  one of "live", "unassigned", "absent"
+function SoilLiveHint.chordKind(actionName)
+    local c = SoilLiveHint.chord(actionName)
+    if c == nil then return nil, "absent" end
+    local unassigned = (RfLiveBinding ~= nil and RfLiveBinding.UNASSIGNED) or "unassigned"
+    if c == unassigned or c == "unassigned" then return c, "unassigned" end
+    return c, "live"
+end
+
+--- Replace "<localised modifier>+<KEY>" with `chord`, wherever it appears.
+---@param text string
+---@param keyLetter string  the single stale key character, e.g. "H"
+---@param chord string
+---@return string
+function SoilLiveHint.swapChord(text, keyLetter, chord)
+    if type(text) ~= "string" or type(keyLetter) ~= "string" or keyLetter == "" then return text end
+    if type(chord) ~= "string" or chord == "" then return text end
+    local needle = "+" .. keyLetter
+    local out, i = {}, 1
+    while true do
+        local sPos, ePos = string.find(text, needle, i, true)
+        if sPos == nil then break end
+        -- Right edge: the key must end the token, not run into another word.
+        local after = (ePos < #text) and string.sub(text, ePos + 1, ePos + 1) or ""
+        local rightOk = (after == "") or (string.match(after, "%w") == nil)
+        -- Walk left over the localised modifier word.
+        local wStart = sPos
+        while wStart > 1 and string.match(string.sub(text, wStart - 1, wStart - 1), "%a") ~= nil do
+            wStart = wStart - 1
+        end
+        if wStart < i then wStart = i end
+        local word = string.sub(text, wStart, sPos - 1)
+        local wordOk = (#word >= 3) and (string.match(string.sub(word, 1, 1), "%u") ~= nil)
+        -- Two-word labels: extend left over a QUALIFIER ("Right Shift+M"), never over
+        -- an arbitrary word. Walking back one word only is what turned
+        -- "Right Shift+M" into "Right <chord>" and left the qualifier on screen.
+        if rightOk and wordOk then
+            local qEnd = wStart - 1
+            if qEnd >= 1 and string.sub(text, qEnd, qEnd) == " " then
+                local qStart = qEnd
+                while qStart > 1
+                    and string.match(string.sub(text, qStart - 1, qStart - 1), "%a") ~= nil do
+                    qStart = qStart - 1
+                end
+                local qword = string.sub(text, qStart, qEnd - 1)
+                if SoilLiveHint.QUALIFIER_WORDS[qword] and qStart >= i then
+                    local qBefore = (qStart > 1)
+                        and string.sub(text, qStart - 1, qStart - 1) or ""
+                    if (qBefore == "") or (string.match(qBefore, "%a") == nil) then
+                        wStart = qStart
+                    end
+                end
+            end
+        end
+        -- Left edge: nothing lettered may butt against the chord label.
+        local before = (wStart > 1) and string.sub(text, wStart - 1, wStart - 1) or ""
+        local leftOk = (before == "") or (string.match(before, "%a") == nil)
+        if rightOk and wordOk and leftOk then
+            out[#out + 1] = string.sub(text, i, wStart - 1)
+            out[#out + 1] = chord
+        else
+            out[#out + 1] = string.sub(text, i, ePos)
+        end
+        i = ePos + 1
+    end
+    out[#out + 1] = string.sub(text, i)
+    return table.concat(out)
+end
+
+--- Rewrite every stale Soil chord in one string to its live binding.
+--- Cheap enough for a draw call: eight plain finds, each a no-op unless that
+--- exact token is present.
+---@param text string
+---@param actions table|nil  optional list of action names; defaults to all
+---@return string
+function SoilLiveHint.rewrite(text, actions)
+    if type(text) ~= "string" or text == "" then return text end
+    if string.find(text, "+", 1, true) == nil then return text end
+
+    -- A live chord is itself of the form "<modifier>+<KEY>", so writing one
+    -- straight into the text puts a fresh target in front of the passes that
+    -- have not run yet: bind HUD drag to Right Shift+K and the scout pass would
+    -- find the "+K" this pass just inserted and overwrite it with scout's key.
+    -- So each pass writes a sentinel containing no "+", and the real chords go
+    -- in once at the end, after all scanning is finished.
+    local marks = {}
+    local function place(name)
+        local key = SoilLiveHint.ACTION_KEYS[name]
+        if key == nil then return end
+        local c = SoilLiveHint.chord(name)
+        if c == nil then return end
+        marks[#marks + 1] = c
+        text = SoilLiveHint.swapChord(text, key, string.char(1) .. tostring(#marks) .. string.char(1))
+    end
+
+    if actions ~= nil then
+        for _, name in ipairs(actions) do place(name) end
+    else
+        for name in pairs(SoilLiveHint.ACTION_KEYS) do place(name) end
+    end
+
+    for idx = 1, #marks do
+        local token = string.char(1) .. tostring(idx) .. string.char(1)
+        local at = string.find(text, token, 1, true)
+        while at ~= nil do
+            text = string.sub(text, 1, at - 1) .. marks[idx] .. string.sub(text, at + #token)
+            at = string.find(text, token, 1, true)
+        end
+    end
+    return text
+end

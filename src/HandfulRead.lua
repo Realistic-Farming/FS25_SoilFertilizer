@@ -24,7 +24,7 @@
 -- Author: TisonK
 -- =========================================================
 
-HandfulRead = {}
+HandfulRead = HandfulRead or {}
 
 -- The frozen clause list. The panel renders these; a new clause needs a new
 -- source verification and a contract re-open (rule 1: no phantom fields).
@@ -47,13 +47,16 @@ HandfulRead.CLAUSES = {
 -- =========================================================
 
 local function farmIdOf(ctx)
-    if ctx.farmId and ctx.farmId > 0 then return ctx.farmId end
-    if g_localPlayer and g_localPlayer.farmId and g_localPlayer.farmId > 0 then
+    -- [SF-22] Only an ordinary farm (1..8) may key knowledge. A spectator,
+    -- guided-tour, invalid or unresolved farm returns nil - never farm 1 - so a
+    -- non-farmer viewer composes nothing and the mask stays private.
+    if SpatialScouting.isOrdinaryFarmId(ctx.farmId) then return ctx.farmId end
+    if g_localPlayer and SpatialScouting.isOrdinaryFarmId(g_localPlayer.farmId) then
         return g_localPlayer.farmId
     end
     if g_currentMission and type(g_currentMission.getFarmId) == "function" then
         local ok, id = pcall(function() return g_currentMission:getFarmId() end)
-        if ok and id and id > 0 then return id end
+        if ok and SpatialScouting.isOrdinaryFarmId(id) then return id end
     end
     return nil
 end
@@ -82,7 +85,7 @@ end
 ---@return table result  { status, pct, band } or { status } on refusal/unavailable
 local function readWetnessAt(ctx, soilSystem)
     local mw = soilSystem and soilSystem.materialWetness
-    if mw == nil or type(mw.readCondition) ~= "function" then
+    if mw == nil or type(mw.probeCondition) ~= "function" then
         return { status = "unavailable" }
     end
     local cs = SoilConstants.ZONE.CELL_SIZE
@@ -94,10 +97,9 @@ local function readWetnessAt(ctx, soilSystem)
         { x = x + half, z = z + half },
         { x = x - half, z = z + half },
     }
-    -- Litres is NON OPTIONAL on readCondition; a handful is a handful. The
-    -- value only gates nil/zero refusal; it does not bias the mass-weighted
-    -- mean, so 1.0 stands in for "some material under the hand".
-    return mw:readCondition(verts, 1.0)
+    -- A PROBE (RSF-F211, AREA_SAMPLE_V1): the hand asks what is under it. No
+    -- quantity enters it, and none is claimed.
+    return mw:probeCondition(verts)
 end
 
 --- Point read of the material age layer (days down) at (x, z).
@@ -148,11 +150,16 @@ local function readDiseaseKnown(ctx, soilSystem, field)
     return false, "field"
 end
 
---- testKitActive: neutral-false until the test-kit member ships its flag
---- (silent bridge, per the brief). The panel reads a number only when the kit
---- exists; until then the honest answer is "no test kit in hand".
 ---@return boolean
 local function readTestKit(ctx)
+    local mgr = g_currentMission and g_currentMission.proStaffManager
+    if mgr and type(mgr.hasSoilTestKit) == "function" then
+        local fid = farmIdOf(ctx)
+        if fid then
+            local ok, val = pcall(mgr.hasSoilTestKit, mgr, fid)
+            if ok then return val == true end
+        end
+    end
     return false
 end
 
@@ -206,6 +213,12 @@ function HandfulRead.assemble(ctx)
         P = info and info.phosphorus or nil,
         K = info and info.potassium or nil,
         pH = info and info.pH or nil,
+        -- [RSF-F219] pH carries its own status beside the value: the shared
+        -- fromZoneCell flag below describes N/P/K/OM, not whether pH was read
+        -- here. Grain and last-known ride along for the tile's own word.
+        pHStatus = info and info.pHStatus or nil,
+        pHGrainMetres = info and info.pHGrainMetres or nil,
+        pHLastKnown = info and info.pHLastKnown or nil,
         OM = info and info.organicMatter or nil,
         fromZoneCell = info and info.fromZoneCell or false,
         -- spot grain, qualitative always

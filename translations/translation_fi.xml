@@ -72,7 +72,7 @@
     <e k="sf_diff_short" v="Vaikeusaste" eh="7b29ca96" />
     <e k="sf_diff_long" v="Maaperänhallinnan vaikeustaso" eh="d6f4560c" />
     <e k="sf_rr_short" v="Täyttymisnopeus" eh="b363b336" />
-    <e k="sf_rr_long" v="Kuinka nopeasti lannoite palauttaa pellon ravinteet (0,25x erittäin hidas – 2,0x erittäin nopea)" eh="afe78a6d" />
+    <e k="sf_rr_long" v="Kuinka nopeasti lannoite palauttaa pellon ravinteet (0,25x erittäin hidas - 2,0x erittäin nopea)" eh="afe78a6d" />
     <e k="sf_dm_short" v="[EN] Disease Climate" />
     <e k="sf_dm_long" v="[EN] Climate moisture level - controls how quickly fungal diseases build up and how long fungicide protection lasts" />
     <e k="sf_dm_1" v="[EN] Arid" />
@@ -211,7 +211,7 @@
     <e k="sf_hud_yield" v="Sato" eh="97345487" />
     <e k="sf_hud_estYield" v="Satoarvio" eh="32a4135e" />
     <e k="sf_hud_optimal" v="Optimaalinen" eh="cb61fef1" />
-    <e k="sf_hud_post_harvest" v="[EN] Post-harvest ├é┬À Fertilize" eh="61d2d595" />
+    <e k="sf_hud_post_harvest" v="[EN] Post-harvest · Fertilize" eh="634de6fe" />
     <e k="sf_hud_hint_edit" v="Veto: siirrä   Kulma: koko   RMB/Shift+H: valmis" eh="c3f1820c" />
     <e k="sf_hud_hint_normal" v="Shift+H: siirrä/muuta kokoa" eh="f1d565b1" />
     <e k="sf_incompatibility_pf_title" v="[EN] Incompatibility Detected" eh="89dbfc90" />
@@ -256,19 +256,19 @@
     <e k="helpLine_sf_gs_p3_access_text" v="Asetukset löytyvät kohdasta ESC &gt; Asetukset &gt; Maaperä ja lannoitus. Moninpelissä vain ylläpitäjä voi muuttaa simulaatiota." eh="4ba9d860" />
 
     <e k="helpLine_sf_nu_p1_title" v="Typpi ja fosfori" eh="27d37372" />
-    <e k="helpLine_sf_nu_p1_n_title" v="Typpi (N) - Asteikko 0–100" eh="10a358f4" />
-    <e k="helpLine_sf_nu_p1_n_text" v="Liikkuvin ravinne – kuluu nopeasti ja huuhtoutuu sateella. Huono: alle 30. Hyvä: yli 50. Nosta: nestelannoite, UAN, ammoniakki, urea tai lanta." eh="58d62253" />
-    <e k="helpLine_sf_nu_p1_p_title" v="Fosfori (P) - Asteikko 0–100" eh="979bba64" />
+    <e k="helpLine_sf_nu_p1_n_title" v="Typpi (N) - Asteikko 0-100" eh="10a358f4" />
+    <e k="helpLine_sf_nu_p1_n_text" v="Liikkuvin ravinne - kuluu nopeasti ja huuhtoutuu sateella. Huono: alle 30. Hyvä: yli 50. Nosta: nestelannoite, UAN, ammoniakki, urea tai lanta." eh="58d62253" />
+    <e k="helpLine_sf_nu_p1_p_title" v="Fosfori (P) - Asteikko 0-100" eh="979bba64" />
     <e k="helpLine_sf_nu_p1_p_text" v="Sitoutuu tiukasti maahan, huuhtoutuu hitaasti. Kuluu lähinnä sadon mukana. Rapsi on vaativin. Huono: alle 25. Hyvä: yli 45. Nosta: MAP, DAP tai startteri." eh="92c5ac66" />
 
     <e k="helpLine_sf_nu_p2_title" v="Kalium ja pH" eh="6bd92f25" />
-    <e k="helpLine_sf_nu_p2_k_title" v="Kalium (K) - Asteikko 0–100" eh="2a16e8bc" />
+    <e k="helpLine_sf_nu_p2_k_title" v="Kalium (K) - Asteikko 0-100" eh="2a16e8bc" />
     <e k="helpLine_sf_nu_p2_k_text" v="Tärkeä juuri- ja mukulakasveille. Peruna ja juurikas kuluttavat paljon K. Huuhtoutuu jonkin verran. Huono: alle 20. Hyvä: yli 40. Nosta: kaliumsuola, lanta tai nestelannoite." eh="7230fee4" />
-    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Asteikko 5.0–7.5" eh="944beca2" />
-    <e k="helpLine_sf_nu_p2_ph_text" v="Kasvit viihtyvät pH-arvossa 6.5–7.0. Sade happamoittaa maata. pH ei palaudu itsestään – vain kalkitus auttaa. Huono: alle 5.5. Kalkitse ennen seuraavaa kylvöä." eh="08e0aefd" />
+    <e k="helpLine_sf_nu_p2_ph_title" v="pH - Asteikko 5.0-7.5" eh="944beca2" />
+    <e k="helpLine_sf_nu_p2_ph_text" v="Kasvit viihtyvät pH-arvossa 6.5-7.0. Sade happamoittaa maata. pH ei palaudu itsestään - vain kalkitus auttaa. Huono: alle 5.5. Kalkitse ennen seuraavaa kylvöä." eh="08e0aefd" />
 
     <e k="helpLine_sf_nu_p3_title" v="Orgaaninen aines" eh="6305f4bb" />
-    <e k="helpLine_sf_nu_p3_om_title" v="Orgaaninen aines (OM) - Asteikko 0–10" eh="58f490f3" />
+    <e k="helpLine_sf_nu_p3_om_title" v="Orgaaninen aines (OM) - Asteikko 0-10" eh="58f490f3" />
     <e k="helpLine_sf_nu_p3_om_text" v="Kertyy hitaasti, ei kulu sadon mukana. Huono: alle 2.5. Hyvä: yli 4.0. Nosta: lanta, komposti, biojäte tai silppuamalla olki takaisin peltoon." eh="f9a02359" />
     <e k="helpLine_sf_nu_p3_fallow_title" v="Kesannon vaikutus" eh="14133b0b" />
     <e k="helpLine_sf_nu_p3_fallow_text" v="Viljelemätön pelto palautuu hitaasti (7+ vrk jälkeen). Päivittäin: N +0,07, P +0,03, K +0,05, OM +0,01. Viljelykierrolla ja levolla on merkitystä." eh="81fa82b3" />
@@ -300,7 +300,7 @@
 
     <e k="helpLine_sf_hu_p2_title" v="Pellon terveyspaineet" eh="b4d35b30" />
     <e k="helpLine_sf_hu_p2_press_title" v="Rikkakasvit, tuholaiset ja taudit" eh="0a3fae00" />
-    <e k="helpLine_sf_hu_p2_press_text" v="Kolme pisteytystä (0–100) seuraa biologisia uhkia. Hoitamattomina ne laskevat satoa: rikkakasvit -30%, tuholaiset -20%, taudit -25%. HUD näyttää vakavuuden värein." eh="3fc3c400" />
+    <e k="helpLine_sf_hu_p2_press_text" v="Kolme pisteytystä (0-100) seuraa biologisia uhkia. Hoitamattomina ne laskevat satoa: rikkakasvit -30%, tuholaiset -20%, taudit -25%. HUD näyttää vakavuuden värein." eh="3fc3c400" />
     <e k="helpLine_sf_hu_p2_treat_title" v="Paineiden hoito" eh="cb24bf50" />
     <e k="helpLine_sf_hu_p2_treat_text" v="Rikkakasvimyrkky poistaa rikkakasvit (samoin muokkaus). Hyönteismyrkky laskee painetta 25 pistettä. Sienimyrkky laskee 20 pistettä. Kaikki voi kytkeä pois päältä." eh="4d65bdec" />
 
@@ -320,7 +320,7 @@
     <e k="helpLine_sf_se_p2_hud_title" v="Pelaajakohtainen HUD" eh="0df76500" />
     <e k="helpLine_sf_se_p2_hud_text" v="Jokainen pelaaja säätää oman HUD-näyttönsä. Valinnat: näyttö päällä, sijainti, väriteema, koko, läpinäkyvyys ja yksiköt." eh="f3934884" />
     <e k="helpLine_sf_se_p2_rate_title" v="Ruiskun annostelun hallinta" eh="5ecdfa23" />
-    <e k="helpLine_sf_se_p2_rate_text" v="Käytä levittimessä näppäimiä ] ja [ säätääksesi määrää välillä 0.10x–2.00x. Shift+L vaihtaa automaattitilan päälle, jolloin modi tähtää optimaaliseen tasoon." eh="dd385e39" />
+    <e k="helpLine_sf_se_p2_rate_text" v="Käytä levittimessä näppäimiä ] ja [ säätääksesi määrää välillä 0.10x-2.00x. Vaihda automaattitila päälle, jolloin modi tähtää optimaaliseen tasoon." eh="62c35b45" />
 
     <e k="helpLine_sf_mp_p1_title" v="Miten moninpeli toimii" eh="8a4ce30e" />
     <e k="helpLine_sf_mp_p1_auth_title" v="Palvelinkeskeinen simulaatio" eh="8d324792" />
@@ -406,7 +406,7 @@
     <e k="sf_pda_map_layer_n_desc" v="Typen määrä pelloilla. Vihreä = hyvä, punainen = kulunut." eh="60484ead" />
     <e k="sf_pda_map_layer_p_desc" v="Fosforin määrä pelloilla. Vihreä = hyvä, punainen = kulunut." eh="9fa2e72d" />
     <e k="sf_pda_map_layer_k_desc" v="Kaliumin määrä pelloilla. Vihreä = hyvä, punainen = kulunut." eh="a61d25b7" />
-    <e k="sf_pda_map_layer_ph_desc" v="Maaperän pH. Optimaalinen alue on 6.5–7.0 (vihreä)." eh="ce7009e7" />
+    <e k="sf_pda_map_layer_ph_desc" v="Maaperän pH. Optimaalinen alue on 6.5-7.0 (vihreä)." eh="ce7009e7" />
     <e k="sf_pda_map_layer_om_desc" v="Orgaanisen aineen määrä. Korkeampi on parempi pitkällä aikavälillä." eh="f64c5706" />
     <e k="sf_pda_map_layer_urgency_desc" v="Yhdistetty hoidon kiireellisyys. Punainen = vaatii pikaista huoltoa." eh="f29ddc2b" />
     <e k="sf_pda_map_layer_weed_desc" v="Rikkakasvipaine. Punainen = paljon rikkakasveja, käytä myrkkyä." eh="24009598" />
@@ -520,9 +520,10 @@
     <e k="sf_treat_section_fert" v="Ravinteiden lisäys" eh="76521e8e" />
     <e k="sf_treat_section_prot" v="Kasvinsuojelu" eh="bd3fe9cd" />
     <e k="sf_treat_hint" v="Katso kaupan 'Tuotteet'-osio erikoislannoitteita varten." eh="540bff4d" />
-    <e k="sf_treat_action_optimal" v="Optimaalinen – ei toimia." eh="4501a96b" />
+    <e k="sf_treat_action_optimal" v="Optimaalinen - ei toimia." eh="4501a96b" />
     <e k="sf_treat_action_lime" v="Lisää KALKKIA tai NESTEKALKKIA nostaaksesi pH-arvoa." eh="d1420b97" />
     <e k="sf_treat_action_gypsum" v="Lisää KIPSIÄ laskeaksesi pH-arvoa / parantaaksesi rakennetta." eh="4cb3f0dc" />
+    <e k="sf_treat_action_ph_unknown" v="[EN] pH unknown - no lime advice until a current reading exists." eh="4d6ba41b" />
     <e k="sf_treat_action_om_low" v="Kynnä LANTAA, KOMPOSTIA tai silppua olki." eh="33ec544c" />
     <e k="sf_treat_action_om_fair" v="Seuraa. Jatka orgaanisia lisäyksiä." eh="ae3af748" />
     <e k="sf_treat_action_n_poor" v="Käytä UAN32:ta, UREAA tai AMMONIAKKIA." eh="ebc225b0" />
@@ -559,7 +560,6 @@
     <e k="sf_sprayer_burn_guaranteed" v="POLTTOVAURIO: VARMA" eh="422601c4" />
     <e k="sf_sprayer_burn_possible" v="POLTTOVAURIO: MAHDOLLINEN" eh="25b251b6" />
 
-    <e k="sf_notify_welcome" v="Maaperämodi aktiivinen | Shift+O asetuksiin | 'soilfertility' komentoja varten" eh="d97e4139" />
     <e k="sf_startup_dialog_version" v="Uutta tässä versiossa:" eh="0b25f5c2" />
     <e k="sf_startup_dialog_footer" v="Kiitos kun käytät modiani, se merkitsee paljon &lt;3" eh="0f08d735" />
     <e k="sf_startup_dialog_footer2" v="Löysitkö virheen? Ilmoita siitä GitHubissa!" eh="728e2cf3" />
@@ -777,7 +777,7 @@
         <!-- HUD LAYOUT DRAG BUTTON -->
     <e k="sf_independent_panels_short" v="[EN] Free Panel Layout" eh="704a20a4" />
     <e k="sf_independent_panels_long" v="[EN] Allow smart system panels to be positioned independently in edit mode" eh="de43cebd" />
-    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the − button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
+    <e k="sf_desc_independentPanels" v="[EN] Drag each panel freely using Shift+H edit mode. Collapse panels with the - button in their title bar." eh="7c60edfc" />        <e k="sf_guide_sub_1" v="[EN] Overview - What this mod tracks and why it matters" eh="83e88693" />
     <e k="sf_guide_sub_2" v="[EN] HUD Guide - Reading the nutrient bars and on-screen indicators" eh="ffbe123f" />
     <e k="sf_guide_sub_3" v="[EN] Workflow - Your daily and seasonal soil management routine" eh="75d263dd" />
     <e k="sf_guide_sub_4" v="[EN] Products - What each fertilizer affects and when to use it" eh="2a127c60" />
@@ -792,7 +792,7 @@
     <e k="sf_guide_p1_08" v="[EN] P   Phosphorus     Slow depletion. Root crops." eh="651919e6" />
     <e k="sf_guide_p1_09" v="[EN] K   Potassium      Root crops deplete this heavily." eh="e23e2d33" />
     <e k="sf_guide_p1_10" v="[EN] OM  Organic Matter Builds slowly over many seasons." eh="b235300c" />
-    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 – 7.0." eh="e8145861" />
+    <e k="sf_guide_p1_11" v="[EN] pH  Soil acidity.  Target range: 6.5 - 7.0." eh="e8145861" />
     <e k="sf_guide_p1_12" v="[EN] STATUS LEVELS" eh="b081c2c6" />
     <e k="sf_guide_p1_13" v="[EN] GOOD (green)  At or above crop's optimal target." eh="a081208f" />
     <e k="sf_guide_p1_14" v="No action needed this season." eh="58b36ac2" />
@@ -940,13 +940,13 @@
 		<e k="sf_guide_p4_46" v="[EN] Treatment (Shift+T) lists what each field" eh="ccc651dc" />
 		<e k="sf_guide_p4_47" v="[EN]   needs right now, product by product." eh="2a63f8c5" />
     <e k="sf_guide_p4_17" v="[EN] pH CORRECTION" eh="dfe729d7" />
-    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 – 7.0 for most crops." eh="3fd904c3" />
+    <e k="sf_guide_p4_18" v="[EN] Target range: 6.5 - 7.0 for most crops." eh="3fd904c3" />
     <e k="sf_guide_p4_19" v="[EN] " eh="d41d8cd9" />
     <e k="sf_guide_p4_20" v="[EN] pH too LOW (acidic, below 6.5):" eh="0ec6357e" />
     <e k="sf_guide_p4_21" v="[EN]   Apply LIME - raises pH toward neutral." eh="6595685a" />
     <e k="sf_guide_p4_22" v="[EN] pH too HIGH (alkaline, above 7.5):" eh="4204b7df" />
     <e k="sf_guide_p4_23" v="[EN]   Apply GYPSUM - lowers pH toward neutral." eh="319aa724" />
-    <e k="sf_guide_p4_24" v="[EN] Allow 1–2 seasons for full normalization." eh="1f31526d" />
+    <e k="sf_guide_p4_24" v="[EN] Allow 1-2 seasons for full normalization." eh="1f31526d" />
     <e k="sf_guide_p4_25" v="[EN] ORGANIC MATTER (OM)" eh="4b06f65b" />
     <e k="sf_guide_p4_26" v="[EN] Manure         Best OM builder. Also adds N." eh="99834812" />
     <e k="sf_guide_p4_27" v="[EN] Compost        Moderate OM, well-balanced." eh="d9b0e2f9" />
@@ -986,9 +986,9 @@
     <e k="sf_guide_p5_22" v="[EN] DO I NEED TO FERTILIZE EVERY SEASON?" eh="778fc0ad" />
     <e k="sf_guide_p5_23" v="[EN] Nitrogen: Yes, every season if possible." eh="5232d8d2" />
     <e k="sf_guide_p5_24" v="It depletes heavily on every harvest." eh="696ed55e" />
-    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2–3 seasons is usually enough." eh="0757cb47" />
+    <e k="sf_guide_p5_25" v="[EN] P and K: Every 2-3 seasons is usually enough." eh="0757cb47" />
     <e k="sf_guide_p5_26" v="[EN] Organic OM: Long-term. Add manure once a year." eh="78827593" />
-    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5–7.0 range." eh="373553dc" />
+    <e k="sf_guide_p5_27" v="[EN] pH: Only when outside the 6.5-7.0 range." eh="373553dc" />
     <e k="sf_guide_p5_28" v="[EN] HOW DO THE SMART SENSOR SYSTEMS WORK?" eh="3b9aa5b3" />
     <e k="sf_guide_p5_29" v="[EN] Smart Sensor blocks individual boom sections when" eh="ec681a8d" />
     <e k="sf_guide_p5_30" v="[EN] no need is detected (no pest, disease, or nutrient" eh="22de015a" />
@@ -1077,29 +1077,29 @@
 		<e k="sf_dis_late_leaf_spot" v="[EN] Late Leaf Spot" eh="a012753f" />
 		<e k="sf_dis_peanut_rust" v="[EN] Peanut Rust" eh="5e46fad0" />
 		<e k="sf_dis_pod_rot" v="[EN] Sclerotinia Pod Rot" eh="244ed19f" />
-		<e k="sf_chem_PROPICONAZOLE" v="[EN] Propiconazole" eh="920d7ec6" />
-		<e k="sf_chem_TEBUCONAZOLE" v="[EN] Tebuconazole" eh="3755d13c" />
-		<e k="sf_chem_PROTHIOCONAZOLE" v="[EN] Prothioconazole" eh="98cddda9" />
-		<e k="sf_chem_FLUSILAZOLE" v="[EN] Flusilazole" eh="f79343a9" />
-		<e k="sf_chem_CYPROCONAZOLE" v="[EN] Cyproconazole" eh="220d4dca" />
-		<e k="sf_chem_DIFENOCONAZOLE" v="[EN] Difenoconazole" eh="6f2dce44" />
-		<e k="sf_chem_AZOXYSTROBIN" v="[EN] Azoxystrobin" eh="34160dda" />
-		<e k="sf_chem_PYRACLOSTROBIN" v="[EN] Pyraclostrobin" eh="b5f07095" />
-		<e k="sf_chem_TRIFLOXYSTROBIN" v="[EN] Trifloxystrobin" eh="9d00f6d7" />
-		<e k="sf_chem_BOSCALID" v="[EN] Boscalid" eh="5c0a4c40" />
-		<e k="sf_chem_PENTHIOPYRAD" v="[EN] Penthiopyrad" eh="f790ed1a" />
-		<e k="sf_chem_CHLOROTHALONIL" v="[EN] Chlorothalonil" eh="67688d75" />
-		<e k="sf_chem_MANCOZEB" v="[EN] Mancozeb" eh="5117fb39" />
-		<e k="sf_chem_MANEB" v="[EN] Maneb" eh="879fac4d" />
-		<e k="sf_chem_METALAXYL" v="[EN] Metalaxyl" eh="2c4598e3" />
-		<e k="sf_chem_FOSETYL_AL" v="[EN] Fosetyl-Al" eh="d292d7c7" />
-		<e k="sf_chem_THIOPHANATE_METHYL" v="[EN] Thiophanate-methyl" eh="46dd6b58" />
+		<e k="sf_chem_PROPICONAZOLE" v="Propiconazole" eh="920d7ec6" />
+		<e k="sf_chem_TEBUCONAZOLE" v="Tebuconazole" eh="3755d13c" />
+		<e k="sf_chem_PROTHIOCONAZOLE" v="Prothioconazole" eh="98cddda9" />
+		<e k="sf_chem_FLUSILAZOLE" v="Flusilazole" eh="f79343a9" />
+		<e k="sf_chem_CYPROCONAZOLE" v="Cyproconazole" eh="220d4dca" />
+		<e k="sf_chem_DIFENOCONAZOLE" v="Difenoconazole" eh="6f2dce44" />
+		<e k="sf_chem_AZOXYSTROBIN" v="Azoxystrobin" eh="34160dda" />
+		<e k="sf_chem_PYRACLOSTROBIN" v="Pyraclostrobin" eh="b5f07095" />
+		<e k="sf_chem_TRIFLOXYSTROBIN" v="Trifloxystrobin" eh="9d00f6d7" />
+		<e k="sf_chem_BOSCALID" v="Boscalid" eh="5c0a4c40" />
+		<e k="sf_chem_PENTHIOPYRAD" v="Penthiopyrad" eh="f790ed1a" />
+		<e k="sf_chem_CHLOROTHALONIL" v="Chlorothalonil" eh="67688d75" />
+		<e k="sf_chem_MANCOZEB" v="Mancozeb" eh="5117fb39" />
+		<e k="sf_chem_MANEB" v="Maneb" eh="879fac4d" />
+		<e k="sf_chem_METALAXYL" v="Metalaxyl" eh="2c4598e3" />
+		<e k="sf_chem_FOSETYL_AL" v="Fosetyl-Al" eh="d292d7c7" />
+		<e k="sf_chem_THIOPHANATE_METHYL" v="Thiophanate-methyl" eh="46dd6b58" />
 		<e k="sf_chem_SULFUR" v="[EN] Sulfur" eh="529df3e8" />
 		<e k="sf_chem_COPPER_HYDROXIDE" v="[EN] Copper Hydroxide" eh="6b294851" />
-		<e k="sf_chem_FLUDIOXONIL" v="[EN] Fludioxonil" eh="d6448fdb" />
-		<e k="sf_chem_METALAXYL_M" v="[EN] Metalaxyl-M" eh="706a0ca9" />
-		<e k="sf_chem_THIRAM" v="[EN] Thiram" eh="63e2540c" />
-		<e k="sf_chem_CAPTAN" v="[EN] Captan" eh="dc89f49c" />
+		<e k="sf_chem_FLUDIOXONIL" v="Fludioxonil" eh="d6448fdb" />
+		<e k="sf_chem_METALAXYL_M" v="Metalaxyl-M" eh="706a0ca9" />
+		<e k="sf_chem_THIRAM" v="Thiram" eh="63e2540c" />
+		<e k="sf_chem_CAPTAN" v="Captan" eh="dc89f49c" />
     <e k="sf_treat_cycle" v="[EN] Next Fungicide" eh="50e1cf57" />
     <e k="sf_treat_apply" v="[EN] Apply Fungicide" eh="66b90889" />
 		<e k="sf_treat_vs" v="[EN] vs" eh="f4842dcb" />
@@ -1117,6 +1117,8 @@
 		<e k="sf_scout_clean_title" v="[EN] No active disease" eh="6bc14095" />
 		<e k="sf_scout_clean_hint" v="[EN] Field looks healthy. You can still apply a preventative." eh="b81cdbda" />
 		<e k="sf_scout_disabled" v="[EN] Disease system disabled" eh="a2ffd328" />
+		<e k="sf_scout_no_standing" v="[EN] Your farm neither owns nor contracts this land. Nothing was scouted." eh="79c48f91" />
+		<e k="sf_treat_no_standing" v="Tilasi ei omista tätä maata eikä sillä ole siihen sopimusta. Mitään ei käsitelty." eh="27d54bdd" />
     <e k="sf_admin_field_set_disease_label" v="[EN] Set Field Disease" eh="faa773f5" />
 		<e k="sf_admin_field_set_disease_desc" v="[EN] Manually set the disease pressure (and disease type) for the current field" eh="d86eb3e1" />
         <e k="sf_propiconazole_title" v="[EN] Propiconazole" eh="920d7ec6" />
@@ -1379,8 +1381,13 @@
     <e k="sf_handful_grain_cell" v="this cell" />
     <e k="sf_handful_grain_field" v="field average" />
     <e k="sf_handful_unscouted" v="Unscouted" />
+    <e k="sf_handful_ph_unavailable" v="ei saatavilla tässä" />
+    <e k="sf_handful_ph_last_known" v="tallennettu lohkoarvo" />
+    <e k="sf_handful_ph_approx" v="likimääräinen" />
     <e k="sf_handful_kit_yes" v="Soil test kit in hand: exact figures" />
     <e k="sf_handful_kit_no" v="No soil test kit: readings are by hand, so they are qualitative" />
+    <e k="sf_handful_ppm" v="%d ppm" eh="62981443" />
+    <e k="sf_handful_kit_tile" v="%s %s" eh="29bf226e" />
     <e k="sf_handful_band_good" v="Good" />
     <e k="sf_handful_band_fair" v="Fair" />
     <e k="sf_handful_band_poor" v="Poor" />
@@ -1402,7 +1409,136 @@
     <e k="sf_notify_cover_winterkill" v="Cover crop winter-killed" />    <e k="sf_fieldinfo_drilling" v="Drilling" />
     <e k="sf_notify_drill_good" v="Drilling: good window ahead" />
     <e k="sf_notify_drill_risky" v="Drilling: risky, rain likely before emergence" />
-    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" /></elements>
+    <e k="sf_notify_drill_forecast_only" v="Drilling: forecast only, soil moisture unknown" />
+    <e k="sf_growth_label" v="[EN] Growth" eh="699aed86" />
+    <e k="sf_growth_blocked" v="[EN] Blocked" eh="4ecc0d90" />
+    <e k="sf_growth_excellent" v="[EN] Excellent" eh="fcc2d28a" />
+    <e k="sf_growth_normal" v="[EN] Normal" eh="960b44c5" />
+    <e k="sf_growth_unknown" v="[EN] Unknown, unscouted" eh="25f30088" />
+    <e k="sf_growth_cause" v="[EN] Cause" eh="50fc9b91" />
+    <e k="sf_growth_cause_unreported" v="[EN] Not yet reported" eh="84fb9c37" />
+    <e k="sf_growth_credit" v="[EN] Growth credit" eh="30ce7482" />
+    <e k="sf_growth_credit_days" v="[EN] %d days" eh="cdca48ec" />
+    <e k="sf_growth_credit_none" v="[EN] None" eh="6adf97f8" />
+    <e k="sf_growth_settled" v="[EN] Settled" eh="30533c6b" />
+    <e k="sf_growth_settled_today" v="[EN] Today" eh="1dd1c5fb" />
+    <e k="sf_growth_settled_day_ago" v="[EN] 1 day ago" eh="44ba1391" />
+    <e k="sf_growth_settled_days_ago" v="[EN] %d days ago" eh="2ed6918e" />
+    <e k="sf_pda_growth_blocked" v="[EN] Blocked %d%%" eh="acc5c966" />
+    <e k="sf_pda_growth_ahead" v="[EN] Ahead %d%%" eh="e19aed44" />
+    <e k="sf_res_title" v="Resistenssi" eh="9db444f7" />
+    <e k="sf_res_state_unknown" v="Lohko %d: resistenssiä ei vielä tunneta. Tutki lohko oppiaksesi sen historian." eh="ab16e14a" />
+    <e k="sf_res_state_waiting" v="Lohko %d: odotetaan palvelimen resistenssitietoja." eh="b3c62e5b" />
+    <e k="sf_res_state_known" v="Lohko %d: resistenssihistoria tunnetaan." eh="8717924c" />
+    <e k="sf_res_mode" v="Tila %s" eh="fdbc9304" />
+    <e k="sf_res_band_unknown" v="Ei vielä tiedossa" eh="8f4a0706" />
+    <e k="sf_res_band_working" v="Hyvä teho" eh="75eb95bf" />
+    <e k="sf_res_band_slipping" v="Heikentynyt teho" eh="cc4d1243" />
+    <e k="sf_res_band_finished" v="Ei tehoa" eh="dd802b99" />
+    <e k="sf_res_note" v="Säiliöllä levitetyt sienitautiaineet kasvattavat resistenssiä tällä lohkolla. Valikosta tehdyt käsittelyt eivät käytä tätä resistenssimallia ja veloitetaan lohkon pinta-alan mukaan." eh="effb087f" />
+    <e k="sf_res_pairs_btn" v="Säiliöparit" eh="fb0e4920" />
+    <e k="sf_res_pairs_title" v="Säiliöparit lohkolle %d" eh="d2e9272f" />
+    <e k="sf_res_pairs_intro" v="Tehoa kuvaavat sanat ovat tämän lohkon nykyiset tasot. Luomuksi merkitty pari on hyväksytyllä luomulistalla. Mikään tässä ei arvota, osta tai sekoita." eh="efb73722" />
+    <e k="sf_res_pairs_line" v="%s (tila %s): %s. Sopii yhteen tämän kanssa: %s." eh="2a537b39" />
+    <e k="sf_res_pairs_all" v="mikä tahansa muu sienitautiaine" eh="2eee400b" />
+    <e k="sf_res_pairs_organic" v="luomupari" eh="49f08add" />
+    <e k="sf_res_pairs_none" v="parien taulukkoa ei ole ladattu" eh="abbe2edb" />
+    <e k="sf_res_pairs_nothing" v="ei lueteltua paria" eh="06752d51" />
+    <e k="sf_res_pairs_no_field" v="Valitse ensin jokin lohkoistasi." eh="dfc6d58d" />
+    <e k="sf_dog_field_warning" v="Koirasi vaistoaa, että pellolla %s on jotain vialla." eh="405d8e87" />
+    <e k="sf_dog_barn_warning" v="Koirasi vaistoaa, että navetassa %s on jotain vialla." eh="15ea2c1a" />
+    <e k="sf_hud_status_good" v="Good" eh="0c6ad70b" />
+    <e k="sf_hud_status_fair" v="Fair" eh="f7f20cf0" />
+    <e k="sf_hud_status_poor" v="Poor" eh="0e94d017" />
+    <e k="sf_hud_status_unknown" v="Unknown" eh="88183b94" />
+    <e k="sf_map_gap_needed" v="%d %s needed" eh="1539402a" />
+    <e k="sf_notify_density_refused" v="[EN] %s has no usable density and was skipped. Use Drain Vehicle before refilling." />
+    <e k="sf_set_state_title" v="ASETA PELLON TILA" eh="cd58f354" />
+    <e k="sf_set_disease_title" v="ASETA PELLON TAUTI" eh="951d1bfa" />
+    <e k="rf_pda_rotation_last" v="Viimeksi:" eh="6ff58f41" />
+    <e k="rf_pda_rotation_tip_bonus" v="Viljelykiertobonus aktiivinen. Jatka samaa järjestystä." eh="f1e367ab" />
+    <e k="rf_pda_rotation_tip_fatigue" v="Sama kasviheimo liian kauan. Vaihda kasvia ensi kaudella." eh="eda07c13" />
+    <e k="rf_pda_rotation_tip_generic" v="Kierrätä kasveja, jotta maa ei väsy." eh="385a0008" />
+    <e k="rf_pda_treat_rotation" v="VILJELYKIERTO" eh="a2793909" />
+    <e k="sf_merge_label_list" v="Pellot %s" eh="2fb9ff7e" />
+    <e k="sf_merge_label_range" v="Pelto %s-%s" eh="d6ea6f4b" />
+    <e k="sf_pda_status_unknown" v="Tuntematon" eh="88183b94" />
+    <e k="sf_rp_col_crop" v="Kasvi" eh="d388632d" />
+    <e k="sf_rp_col_effect" v="Vaikutus" eh="a62d2291" />
+    <e k="sf_rp_col_status" v="Tila" eh="ec53a8c4" />
+    <e k="sf_rp_field_header_block" v="Pelto %s  (%d / %d)" eh="c6e1d8e4" />
+    <e k="sf_report_rotation_na" v="Ei tietoa" eh="382b0f51" />
+    <e k="sf_target_ai_boundary" v="%s pysähtyi: kohdelannoitus tauolla sekoitetulla, kielletyllä tai tuntemattomalla maalla. Manuaalinen levitys on yhä mahdollista." eh="c410a13f" />
+    <e k="sf_target_ai_boundary_host" v="Apulainen pysähtyi: kohdelannoitus tauolla sekoitetulla, kielletyllä tai tuntemattomalla maalla. Manuaalinen levitys on yhä mahdollista." eh="abf38208" />
+    <e k="sf_target_failed_title" v="Kohdelannoitus" eh="45fbf3bf" />
+    <e k="sf_target_failed_body" v="Pelto %d: tuotetta kului, mutta paikallista N/P/K-tulosta ei ole vahvistettu. Kohdeautomatiikka on pysäytetty; manuaalinen levitys on yhä mahdollista." eh="29d18403" />
+    <e k="sf_tgt_title_last" v="Viimeisin AUTO-ajo" eh="831631b1" />
+    <e k="sf_tgt_state_reached" v="AUTO: tavoite saavutettu" eh="06ec6210" />
+    <e k="sf_tgt_state_short" v="AUTO: tavoitteen alla" eh="793afbe2" />
+    <e k="sf_tgt_state_failed" v="AUTO pysähtyi: tuote kulutettu" eh="c96d4469" />
+    <e k="sf_tgt_state_pending" v="AUTO: annos odottaa" eh="424eae4e" />
+    <e k="sf_tgt_state_idle" v="AUTO: ei levitä" eh="71e5fc91" />
+    <e k="sf_tgt_state_ready" v="AUTO: tavoiteannos alkaa levitettäessä" eh="0848c68f" />
+    <e k="sf_tgt_state_waiting" v="AUTO: odottaa palvelinta" eh="d0dee32a" />
+    <e k="sf_tgt_state_unavailable" v="AUTO: tavoite ei saatavilla" eh="7bd3b0aa" />
+    <e k="sf_tgt_r_unsupported_crop" v="AUTO tauolla: ei kasvavaa viljelykasvia" eh="823303a6" />
+    <e k="sf_tgt_r_unavailable" v="AUTO tauolla: tavoite ei saatavilla" eh="cbffec00" />
+    <e k="sf_tgt_r_mixed_crop" v="AUTO tauolla: kasvien raja" eh="e6c986c2" />
+    <e k="sf_tgt_r_mixed_field" v="AUTO tauolla: pellon raja" eh="60f069bc" />
+    <e k="sf_tgt_r_farm_access" v="AUTO tauolla: ei pääsyä tälle maalle" eh="6a4b5c09" />
+    <e k="sf_tgt_r_unknown_product" v="AUTO tauolla: virheellinen tuote" eh="078ce000" />
+    <e k="sf_tgt_r_sowability" v="AUTO tauolla: kylvö ilman kohdelannoitusta" eh="0dc09cf8" />
+    <e k="sf_tgt_r_nozzle_partial" v="AUTO tauolla: kaikki lohkot eivät ole päällä" eh="3547061f" />
+    <e k="sf_tgt_r_cell_overlap" v="AUTO tauolla: työalueet menevät päällekkäin" eh="3358050e" />
+    <e k="sf_tgt_r_cultivation" v="AUTO tauolla: kultivaattorilla ei tavoitetta" eh="5aeeefac" />
+    <e k="sf_tgt_r_source_contract" v="AUTO tauolla: syöttöreittiä ei tueta" eh="0655193b" />
+    <e k="sf_tgt_r_doubled" v="AUTO tauolla: kaksinkertainen annos päällä" eh="b5c9c45a" />
+    <e k="sf_tgt_r_priming" v="AUTO: työalaa valmistellaan" eh="bfe46686" />
+    <e k="sf_tgt_n_manual" v="Kytke AUTO pois käsilevitystä varten." eh="2c00e211" />
+    <e k="sf_tgt_n_unknown_ground" v="Puomin alla ei ole maaperälukemaa." eh="9d8939c7" />
+    <e k="sf_tgt_n_outside_map" v="Puomi ulottuu kartan reunan yli." eh="f31aa300" />
+    <e k="sf_tgt_n_priming" v="Ensimmäinen puomilinja, ei veloitusta." eh="3624faad" />
+    <e k="sf_tgt_n_reached" v="Vahvistettu tälle työalalle, ei koko pellolle." eh="7ca6da96" />
+    <e k="sf_tgt_n_short_binding" v="Lisää tätä seosta ylittäisi ravinteen %s." eh="4bc5e7bf" />
+    <e k="sf_tgt_n_short_hardware" v="Kone ei voi levittää enempää tällä nopeudella." eh="6e3452e9" />
+    <e k="sf_tgt_n_short_supply" v="Tuotetta ei ole tarpeeksi säiliössä tai syötössä." eh="d22c0fd0" />
+    <e k="sf_tgt_n_short_quantized" v="Annos on alle yhden maaperäkartan askeleen." eh="cbd37057" />
+    <e k="sf_tgt_n_failed" v="Paikallista N/P/K:ta ei ole vahvistettu." eh="70435d5f" />
+    <e k="sf_tgt_n_pending" v="Veloitetaan, kun puomi sulkee maaperäsolun." eh="6f4e29b9" />
+    <e k="sf_tgt_n_expired" v="Ei ajantasaista tulosta palvelimelta." eh="a296b134" />
+    <e k="sf_tgt_rel_below" v="alle" eh="6cede1cf" />
+    <e k="sf_tgt_rel_approaching" v="lähellä" eh="36d79513" />
+    <e k="sf_tgt_rel_ideal" v="ikkunassa" eh="71fe3184" />
+    <e k="sf_tgt_rel_above" v="yli" eh="55a9d6aa" />
+    <e k="sf_tgt_rel_unknown" v="tuntematon" eh="ad921d60" />
+    <e k="sf_tgt_d_pass" v="%s, kasvi %s, pelto %s" eh="b18f55ea" />
+    <e k="sf_tgt_d_footprint" v="Puomin työala, %s m maaperäsolut" eh="09e43d0c" />
+    <e k="sf_tgt_d_nutrient" v="%s %s, ikkuna %s - %s, %s" eh="5386e56e" />
+    <e k="sf_tgt_d_binding" v="Rajoittava ravinne: %s" eh="1c1dc809" />
+    <e k="sf_tgt_d_litres" v="Suunniteltu %s L, levitetty %s L" eh="409fbe14" />
+    <e k="sf_tgt_d_useful" v="Hyödyllinen %s L" eh="38ea2cc0" />
+    <e k="sf_tgt_notify" v="%s. %s" eh="9467817b" />
+    <e k="sf_tgt_pda_title" v="AUTO-tavoite" eh="015a43f5" />
+    <e k="sf_tgt_pda_window" v="Peltoraportti: N %s, P %s, K %s" eh="0fb4140e" />
+    <e k="sf_tgt_pda_window_none" v="Peltoraportti: ei kasvi-ikkunaa" eh="a5363bde" />
+    <e k="sf_tgt_pda_rel_below" v="alhainen" eh="53cced8d" />
+    <e k="sf_tgt_pda_rel_near" v="lähellä" eh="85f06cc8" />
+    <e k="sf_tgt_pda_rel_ok" v="hyvä" eh="444bcb3a" />
+    <e k="sf_tgt_pda_rel_high" v="korkea" eh="8d966b22" />
+    <e k="sf_tgt_pda_rel_unknown" v="?" eh="d1457b72" />
+    <e k="sf_tgt_pda_state_reached" v="Viimeisin ajo: tavoite saavutettu" eh="e1958a65" />
+    <e k="sf_tgt_pda_state_binding" v="Viimeisin ajo: vajaa, seos" eh="8c2318f6" />
+    <e k="sf_tgt_pda_state_hardware" v="Viimeisin ajo: vajaa, kone" eh="7ccf8639" />
+    <e k="sf_tgt_pda_state_supply" v="Viimeisin ajo: vajaa, loppui" eh="718f2cb2" />
+    <e k="sf_tgt_pda_state_quantized" v="Viimeisin ajo: alle karttaportaan" eh="03b4dc16" />
+    <e k="sf_tgt_pda_state_failed" v="Viimeisin ajo: tuote kulutettu" eh="15afe7ea" />
+    <e k="sf_tgt_pda_state_none" v="Viimeisin ajo: ei tälle kasville" eh="b90d76c3" />
+    <e k="sf_tgt_pda_state_paused" v="Viimeisin tauko: ei kasvavaa kasvustoa" eh="b294e56d" />
+    <e k="sf_tgt_pda_pause_hint" v="Kytke AUTO pois käsilevitystä varten" eh="05c625d3" />
+    <e k="sf_tgt_pda_scope" v="Yksi työala, ei koko peltoa" eh="d96e3c9b" />
+    <e k="sf_tgt_pda_binding" v="Enemmän ylittäisi ravinteen %s" eh="53a1a1fe" />
+    <e k="sf_tgt_pda_manual_targets" v="Käsisuunnitelman tavoitteet" eh="e44e77d3" />
+</elements>
 
 
 </l10n>

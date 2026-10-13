@@ -9,7 +9,7 @@
 -- =========================================================
 
 ---@class SoilConstants
-SoilConstants = {}
+SoilConstants = SoilConstants or {}
 
 -- ========================================
 -- TIMING
@@ -18,6 +18,14 @@ SoilConstants.TIMING = {
     UPDATE_INTERVAL = 30000,     -- ms between periodic checks
     FALLOW_THRESHOLD = 7,        -- days before fallow recovery kicks in (already season-scaled at its read site by daysPerMonth; do NOT season-scale again, see DURATION)
     MAX_DAILY_CATCHUP = 10,      -- cap on skipped days simulated in one catch-up pass
+    -- Ceiling on the deferred fill-type re-patch, measured in MISSION time (ms elapsed
+    -- after isMissionStarted), never in frames and never during load. It is a safety
+    -- stop for a genuinely broken setup, NOT the mechanism that decides success: the
+    -- loop finishes the moment spray types are complete and the fill unit re-patch
+    -- reports true. 30s is deliberately far above the 3.45s the dependency took to
+    -- arrive after Entered Gameplay in the 2026-09-21 reference log, so a slow or
+    -- heavily modded load ends by completing rather than by timing out.
+    DEFERRED_INIT_TIMEOUT = 30000,
 }
 
 -- ========================================
@@ -44,6 +52,13 @@ SoilConstants.DRILLING = {
     ESTABLISHMENT_HORIZON_DAYS = 7,
     RISKY_LIKELIHOOD           = 0.4,
     WET_GROUND_MOISTURE        = 0.5,
+}
+
+-- SF-75: seed-rate-by-soil-type (ships LOCKED; neutral 1.0 until the balance pass)
+SoilConstants.SEED_RATE_BY_SOIL = {
+    sandy = 1.0,
+    loamy = 1.0,
+    clay  = 1.0,
 }
 
 SoilConstants.DURATION = {
@@ -340,6 +355,12 @@ SoilConstants.OM_DYNAMICS = {
     -- loses a little OM day to day but far less than a tilled one, and skips the
     -- per-pass oxidation hit entirely - the season-long reason no-till builds carbon.
     NO_TILL_DAILY_CREDIT = 0.004,
+
+    TILLAGE_DECOMPOSITION = {
+        PLOWED   = 1.0,
+        STUBBLE  = 0.8,
+        UNTILLED = 0.6,
+    },
 }
 
 -- ========================================
@@ -495,6 +516,17 @@ SoilConstants.PERENNIAL_FORAGE_NAMES = {
     alfalfa    = true,
     luzerne    = true,
     clover     = true,
+}
+
+-- [SF-73] Shipped-fruit aliases onto the owning crop-target table below. Only a
+-- name the target table actually keys under another spelling: FS25 ships PEA and
+-- GREENBEAN, which the table carries as peas and beans (green beans are the field
+-- bean profile, as CROP_EXTRACTION already treats them). Perennial forage stays
+-- excluded (PERENNIAL_FORAGE_NAMES) and "default" is never a supported crop.
+SoilConstants.SF73_CROP_ALIASES = {
+    pea         = "peas",
+    greenbean   = "beans",
+    green_beans = "beans",
 }
 
 -- Default extraction for unknown crops (average cereal)
@@ -902,7 +934,16 @@ SoilConstants.HUD = {
 
     -- Position presets (matched to hudPosition setting values 1-5)
     POSITIONS = {
-        [1] = { x = 0.850, y = 0.70 },  -- Top Right
+        -- BUILD 14:39 (Sam DESIGN 14:20, Vera SUBMIT 14:12): factory default preset
+        -- [1] moves into the mid-right lane at (0.580, 0.480), computed from the
+        -- panel's LIVE dimensions - SoilHUD.BASE_W is now 0.180 (the PANEL_WIDTH 0.15
+        -- above is a stale constant this math must not use): right edge 0.760, and
+        -- with BASE_H 0.228 the top edge is 0.708, inside Sam's <=0.760 / <=0.709
+        -- bounds and AABB-clear of Tax and World Events. y is the overlay BOTTOM.
+        -- Presets 2-5 are player choices and stay untouched.
+        -- Wizard 2026-08-22: preset [1] updated to the suite layout Wizard
+        -- arranged in-game (right column, above Tax).
+        [1] = { x = 0.798902, y = 0.534630 },  -- Suite home (factory default)
         [2] = { x = 0.010, y = 0.70 },  -- Top Left
         [3] = { x = 0.850, y = 0.20 },  -- Bottom Right
         [4] = { x = 0.010, y = 0.20 },  -- Bottom Left
@@ -959,9 +1000,17 @@ SoilConstants.HUD = {
 SoilConstants.ZONE = {
     CELL_SIZE        = 10,    -- meters per cell side
     CELL_AREA_HA     = 0.01,  -- hectares per cell (10×10 m = 0.01 ha)
-    -- A cell stamped less than this many ms ago won't trigger overlap suppression.
-    -- At 6 km/h a sprayer crosses a 10m cell in ~6 s; 10 s gives safe headroom.
-    OVERLAP_GRACE_MS = 10000,
+    -- Overlap prevention: a cell this sprayer stamped itself only counts as
+    -- "sprayed earlier" once the sprayer has DRIVEN this many metres past the stamp,
+    -- plus the boom's half-width and its offset behind the root (measured at runtime,
+    -- see HookManager.computeOverlapBoomGeometry). 15 m > the 14.1 m diagonal of a
+    -- 10 m cell. Distance, not time: standing still or crawling never ages a stamp.
+    OVERLAP_GRACE_M = 15,
+    -- MAINTENANCE row 234: overlap prevention reads its own finer record, a grid of this
+    -- many metres a side, so a section is switched off only over ground an earlier pass
+    -- really sprayed, not over a whole 10 m cell it grazed. Session only, server only,
+    -- never saved; the 10 m cells above keep the green square, pass % and the grants.
+    OVERLAP_CELL_SIZE = 2,
 }
 
 -- ========================================
@@ -1137,9 +1186,10 @@ SoilConstants.SPRAYER_RATE = {
 SoilConstants.WEED_PRESSURE = {
     -- Herbicide fill type names → effectiveness multiplier (0.0-1.0)
     -- Any fill type not listed here is NOT treated as herbicide
-    -- NOTE: PESTICIDE is the vanilla FS25 / PF insecticide fill type ("Rovarló szer" in HU).
-    -- It belongs in INSECTICIDE_TYPES, NOT here. Listing it here caused PESTICIDE sprays to
-    -- reduce weed pressure instead of pest pressure (bug: 0% pest protection after full tank).
+    -- NOTE: PESTICIDE is not a herbicide. It sits in INSECTICIDE_TYPES below as a compatibility
+    -- slot for a mod that registers a fill type named PESTICIDE; no base-game, PF or known mod
+    -- does (checked 2026-09-29). It was listed here until 9e135d90 moved it, on a report of 0%
+    -- pest protection whose product was almost certainly Soil's own INSECTICIDE.
     HERBICIDE_TYPES = {
         HERBICIDE = 1.0,
     },
@@ -1173,6 +1223,9 @@ SoilConstants.WEED_PRESSURE = {
     -- 0 = no weeds, 1-6 = living stages, 7-9 = withered (dying/brown visual)
     WEED_STATE_CLEAR     = 0,
     WEED_STATE_WITHERED  = 7,   -- small withered - visible brown weeds
+    -- All herbicide-withered states (vanilla maps_weed.xml herbicide targets). Fallback only:
+    -- the daily weed read prefers the map's own replacement table (#1030).
+    WITHERED_STATES      = { 7, 8, 9 },
 
     -- Maximum weed pressure increase per daily update.
     -- Prevents the snap-to-game-weedFactor spike on reload/time-skip (issue #536).
@@ -1222,7 +1275,7 @@ SoilConstants.PEST_PRESSURE = {
     -- Insecticide fill type names → effectiveness multiplier (0.0-1.0)
     INSECTICIDE_TYPES = {
         INSECTICIDE = 1.0,  -- SF custom fill type
-        PESTICIDE   = 1.0,  -- vanilla FS25 / PF fill type ("Rovarló szer" / bug spray)
+        PESTICIDE   = 1.0,  -- compatibility slot for a mod fill type named PESTICIDE; none in the base game, PF or any known mod
     },
     -- Pressure points removed on a single full-field insecticide application.
     -- 100 = one full pass at reference rate fully clears any pressure tier.

@@ -74,16 +74,19 @@ T.eq("6 points is 15 raw steps",  MaterialWetness.pointsToRawDelta(6),  15)
 -- ── 3. The guard is INTERSECTED, never replaced ───────────
 local vm, calls = makeStore()
 vm:applyRawDeltaToPolygonBand("materialWetness", POLY, 30, 100, 254)
-T.eq("the caller's LOW bound is preserved exactly", calls[1].low, 100)
+-- The edge pass runs before the add (MAINTENANCE row 106), so the add is found by op.
+local guardAdd
+for _, c in ipairs(calls) do if c.op == "add" then guardAdd = c end end
+T.eq("the caller's LOW bound is preserved exactly", guardAdd.low, 100)
 -- Silently widening the band back to the safe window would touch pixels the phase
 -- table deliberately excluded.
-T.eq("the HIGH bound shrinks to the safe bound", calls[1].high, 225)
+T.eq("the HIGH bound shrinks to the safe bound", guardAdd.high, 225)
 
 -- ── 4. The edge pass never writes outside the caller band ──
 vm, calls = makeStore()
 vm:applyRawDeltaToPolygonBand("materialWetness", POLY, 30, 100, 240)
-local edge = calls[2]
-T.eq("edge pass exists for an overflowing top", edge.op, "set")
+local edge = calls[1]
+T.eq("edge pass exists for an overflowing top, and runs first", edge.op, "set")
 T.ok("edge low is inside the caller band", edge.low >= 100)
 T.ok("edge high never exceeds the caller band", edge.high <= 240)
 
@@ -201,6 +204,22 @@ T.eq("any refusing cell makes the whole answer a refusal",
 local empty = makeSystem({ present = false })
 T.eq("no material is its own answer, not a refusal",
      empty:readCondition(POLY, 1200).status, R.NO_MATERIAL)
+
+-- ── 13b. RSF-F211: the probe says what it measured; the alias serves only it ──
+-- A probe samples the layer over an area with no quantity (AREA_SAMPLE_V1). The old
+-- read survives as a deprecated alias: it still refuses a missing quantity, and a
+-- positive one weights nothing, so its answer is the probe's, basis and all.
+local probe = makeSystem({ avgRaw = 180 })
+local p1 = probe:probeCondition(POLY)
+T.eq("the probe reads the area with no quantity and says it is an AREA sample",
+     p1.status .. "/" .. p1.band .. "/" .. p1.basis, R.OK .. "/soaked/AREA_SAMPLE_V1")
+local a1 = probe:readCondition(POLY, 1200)
+T.eq("the alias gives the probe's answer with the probe's basis; the litres weight nothing",
+     a1.status .. "/" .. tostring(a1.pct == p1.pct) .. "/" .. a1.basis, R.OK .. "/true/AREA_SAMPLE_V1")
+T.eq("the alias still refuses a missing quantity, on the probe's basis",
+     probe:readCondition(POLY, nil).status .. "/" .. probe:readCondition(POLY, nil).basis, R.REFUSAL .. "/AREA_SAMPLE_V1")
+T.eq("a refusing cell refuses the probe too", makeSystem({ sentinel = true }):probeCondition(POLY).status, R.REFUSAL)
+T.eq("no material is the probe's own answer", makeSystem({ present = false }):probeCondition(POLY).status, R.NO_MATERIAL)
 
 -- ── 14. The Water Record freezes verdicts and stays bounded ─
 mw = makeSystem()
