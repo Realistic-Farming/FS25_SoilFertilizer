@@ -24,7 +24,7 @@
 -- record per farmland id; the walks run one field per frame from the main.lua
 -- update hook (RfPdaSoilMerge.update), a few ms each, only for farmlands a list
 -- build has asked for. Later opens read the cache. A farmland goes dirty on the
--- FieldManager plow / cultivate updates (appended read-only; the only updates
+-- FieldManager plow / cultivate updates (wrapped read-only, engine result returned; the only updates
 -- that change the field-ground extent) and the whole cache drops on a save load
 -- (SoilFertilitySystem:loadFromXMLFile, appended). Never a FieldManager,
 -- farmland, density-map or FieldUpdateTask write.
@@ -569,26 +569,38 @@ end
 -- touch the extent.
 local FIELD_UPDATE_METHODS = { "plowField", "cultivateField" }
 
+--- Marks the farmland a plow / cultivate update worked dirty, then hands back the
+--- engine's own results (the varargs) unchanged.
+local function markWorked(field, ...)
+    local id = field ~= nil and field.farmland ~= nil and field.farmland.id or nil
+    if id ~= nil then
+        local fn = RfPdaSoilMerge.markDirty
+        if type(fn) == "function" then
+            fn(id)
+        end
+    end
+    return ...
+end
+
 --- Read-only subscriptions, once per session (the flag lives on the module table, which
 --- a hot reload keeps): the FieldManager plow / cultivate updates mark the worked
 --- farmland's block dirty; FARMLAND_OWNER_CHANGED drops the grouping; a save load drops
---- the whole cache. Appended functions only: nothing here writes the engine.
+--- the whole cache. Nothing here writes the engine: the plow / cultivate wrappers run
+--- the engine's function first and return its results unchanged, the rest are appended.
 local function ensureSubscribed()
     if RfPdaSoilMerge._subscribed then
         return
     end
     local okAll = true
-    if FieldManager ~= nil and Utils ~= nil and type(Utils.appendedFunction) == "function" then
+    if FieldManager ~= nil and Utils ~= nil and type(Utils.overwrittenFunction) == "function" then
         for _, name in ipairs(FIELD_UPDATE_METHODS) do
             if type(FieldManager[name]) == "function" then
-                FieldManager[name] = Utils.appendedFunction(FieldManager[name], function(_, field)
-                    local id = field ~= nil and field.farmland ~= nil and field.farmland.id or nil
-                    if id ~= nil then
-                        local fn = RfPdaSoilMerge.markDirty
-                        if type(fn) == "function" then
-                            fn(id)
-                        end
-                    end
+                -- MAINTENANCE row 302: the engine's NPC field update uses the task these
+                -- return (FieldManager:updateField: `local task = self:cultivateField(field)`,
+                -- then `task:setSprayType(...)`). An appended function returns nothing, which
+                -- raised "attempt to index nil with 'setSprayType'" at the end of a sleep.
+                FieldManager[name] = Utils.overwrittenFunction(FieldManager[name], function(fieldManager, superFunc, field, ...)
+                    return markWorked(field, superFunc(fieldManager, field, ...))
                 end)
             end
         end

@@ -334,3 +334,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] Inert until StockGuard frames a non-stop buffer: with StockGuard absent, an unframed buffer or a read that fails, the share comes from Soil's own buffer account exactly as before. Server only, no event.
 - [x] MAINTENANCE row 219: a raise in the pre-pad chamber read, and now in the buffer read, logs one warning naming the error instead of falling back silently.
 - The in-game check is TESTING row 551. Design origin RSF-F211 :112 with :153, and SG-2 v2.3 :475's Soil half for the buffer, CARRIES (DESIGN-CHECK row 261, extending row 227). Bob's intake `BOB-INTAKE-SG2-NONSTOP-BALER-FRAMING-2026-10-09.md`, PR 1.
+
+## 2026-10-13 (Fred (via Desk)): sleeping no longer raises a field error from Soil's field-list hook (MAINTENANCE row 302)
+
+- [x] At the end of a sleep the game moves the fields nobody owns forward. For an empty NPC field it sometimes cultivates and then marks that pass as lime or manure, using the task `FieldManager.cultivateField` returns. Soil's hook on `cultivateField` and `plowField` (the field outlines behind the Soil list's merged rows, `RfPdaSoilMerge`) returned nothing, so the game logged "attempt to index nil with 'setSprayType'" and the NPC field lost that mark. The hook now returns the engine's own result unchanged and still marks the worked field's outline for a fresh walk.
+- The in-game check is TESTING row 555. Design origin none. Found in Tyson's game log of 2026-10-13.
