@@ -348,3 +348,10 @@
 - [x] `build.py`: keeps the `.git` file out of the zip. In a git worktree `.git` is a file, not a directory, so EXCLUDE_DIRS alone let it into the zip (the 2.6.0.1 release zip had it stripped by hand).
 - [x] Built from a worktree before and after this change: development's zip had 404 entries, one of them the worktree `.git` file; this branch's has 403, with exactly that file removed, every other entry byte-identical (CRC), nothing added.
 - Build tooling only, no in-game check (TESTING row 570).
+
+## #1098: one pass of pH per pixel (2026-10-14)
+
+- [x] `src/PositionalPH.lua`: `SCOPE_CELLS` (each cell written through a square half a pixel wide inside it); `pointInPolygon` and `centresInQuad` (half-open, so quads that tile a pass never both claim a centre); `_phPassStrip`, pH's own pass anchor (the first tick of a pass and a jump drop their dose, held ticks carry it, a closing quad writes it once per crossed pixel; a pause over 1 s or a product change ends the pass). `src/SoilFertilitySystem.lua` `paintBoomStrip`: pH goes to `_phPassStrip` and is consumed there; the strip writes pH only when the positional writer is not loaded.
+- [x] Bar `SF-1098-ph_whole_pixel_dose_entry_test.lua` from onFertilizerApplied and paintBoomStrip on a pixel raster under both fill rules; `SF-79-is_true_lime_test.lua` follows the boom write to the closing tick and checks the CELLS scope for writer blindness.
+- [ ] #1098 items 2 and 3 (Bob's intake of 2026-10-11): products not used up, and the pass counter not resetting from digestate to lime. Not traced.
+- [~] In game (owed): TESTING row 580.

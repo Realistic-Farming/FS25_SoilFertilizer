@@ -41,6 +41,16 @@ PositionalPH.SCOPE_POINT   = 'POINT'
 PositionalPH.SCOPE_STRIP   = 'STRIP'
 PositionalPH.SCOPE_POLYGON = 'POLYGON'
 PositionalPH.SCOPE_FIELD   = 'FIELD'
+PositionalPH.SCOPE_CELLS   = 'CELLS'   -- whole value-map pixels, each written through a square inside it
+
+-- [SF-1098] One pass's pH dose per pixel. A value-map pixel is about 2 m and a
+-- sprayer tick moves the boom a few centimetres, so a per-tick quad written as a
+-- polygon added the pass's full per-hectare dose to every pixel it touched, dozens
+-- of times per pixel, and one lime pass saturated at PH_MAX. The pass now doses a
+-- pixel once: when its centre falls inside the quad swept since the last write.
+PositionalPH.PASS_MIN_TRAVEL = 0.05    -- metres; less travel holds the anchor and carries the dose
+PositionalPH.PASS_GAP_MS     = 1000    -- no pH write for this long ends the pass
+PositionalPH.CELL_HALF       = 0.25    -- written square's half size, in pixels: well inside the pixel
 
 -- Derived-report statuses (brief 3.B).
 PositionalPH.REPORT_CURRENT     = 'CURRENT'
@@ -166,6 +176,56 @@ end
 -- RAW / DOMAIN HELPERS
 -- ============================================================
 
+--- [SF-1098] Point in polygon by the crossing rule. Its half-open edges put a
+--- point lying on an edge two polygons share inside exactly one of them, so
+--- quads that tile a pass never both claim a pixel centre.
+function PositionalPH.pointInPolygon(poly, x, z)
+    local inside = false
+    local n = #poly
+    local j = n
+    for i = 1, n do
+        local pi, pj = poly[i], poly[j]
+        if (pi.z > z) ~= (pj.z > z)
+            and x < (pj.x - pi.x) * (z - pi.z) / (pj.z - pi.z) + pi.x then
+            inside = not inside
+        end
+        j = i
+    end
+    return inside
+end
+
+--- [SF-1098] The centres of the value-map pixels that lie inside `quad`. Pixel
+--- (i, j) spans [-T/2 + i*g, -T/2 + (i+1)*g] on each axis, the grid worldToPixel
+--- reads (SoilValueMaps.lua). Returns an array of { x =, z = }.
+function PositionalPH.centresInQuad(quad, grain, terrainSize)
+    local out = {}
+    if type(quad) ~= 'table' or #quad < 3 or type(grain) ~= 'number' or grain <= 0
+        or type(terrainSize) ~= 'number' or terrainSize <= 0 then
+        return out
+    end
+    local half = terrainSize * 0.5
+    local n = math.floor(terrainSize / grain + 0.5)
+    local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+    for _, v in ipairs(quad) do
+        if v.x < minX then minX = v.x end
+        if v.x > maxX then maxX = v.x end
+        if v.z < minZ then minZ = v.z end
+        if v.z > maxZ then maxZ = v.z end
+    end
+    local i0 = math.max(0, math.floor((minX + half) / grain))
+    local i1 = math.min(n - 1, math.floor((maxX + half) / grain))
+    local j0 = math.max(0, math.floor((minZ + half) / grain))
+    local j1 = math.min(n - 1, math.floor((maxZ + half) / grain))
+    for j = j0, j1 do
+        local cz = -half + (j + 0.5) * grain
+        for i = i0, i1 do
+            local cx = -half + (i + 0.5) * grain
+            if PositionalPH.pointInPolygon(quad, cx, cz) then out[#out + 1] = { x = cx, z = cz } end
+        end
+    end
+    return out
+end
+
 --- The pH layer definition from SoilValueMaps, or nil.
 function PositionalPH.phDef()
     for _, def in ipairs(SoilValueMaps.LAYER_DEFS or {}) do
@@ -276,6 +336,18 @@ local function resolveGeometry(self, fieldId, request)
             { x = wx + hx - sx, z = wz + hz - sz },
         }
         return { verts }, polygonBounds({ verts })
+    elseif scope == PositionalPH.SCOPE_CELLS then
+        local cells, r = request.cells, request.halfSize
+        if type(cells) ~= 'table' or #cells == 0 or type(r) ~= 'number' or r <= 0 then return nil end
+        local polys = {}
+        for _, c in ipairs(cells) do
+            if type(c) ~= 'table' or type(c.x) ~= 'number' or type(c.z) ~= 'number' then return nil end
+            polys[#polys + 1] = {
+                { x = c.x - r, z = c.z - r }, { x = c.x + r, z = c.z - r },
+                { x = c.x + r, z = c.z + r }, { x = c.x - r, z = c.z + r },
+            }
+        end
+        return polys, polygonBounds(polys)
     elseif scope == PositionalPH.SCOPE_POINT then
         local x, z, r = request.x, request.z, request.radius
         if type(x) ~= 'number' or type(z) ~= 'number' then return nil end
@@ -428,6 +500,88 @@ function SoilFertilitySystem:_applyPHFootprint(fieldId, request)
         result.reportDirty = true
     end
     return result
+end
+
+-- ============================================================
+-- [SF-1098] THE SPRAYER PASS: ONE DOSE PER PIXEL
+-- ============================================================
+
+--- Write one sprayer tick's pH for the boom line (ax, az)-(bx, bz). paintBoomStrip
+--- calls this with the tick's field-average dose sd.dPH over the field area sd.area
+--- (ha), the share onFertilizerApplied stashed.
+---
+--- The pass keeps its own anchor (field._phPass), apart from the N/P/K strip's. The
+--- tick that starts a pass, or follows a jump, sets the anchor and drops its dose:
+--- its spray fell behind the line, on ground no quad will cover. A tick that moves
+--- the boom less than PASS_MIN_TRAVEL holds the anchor and carries its dose. A tick
+--- that moves it further closes the quad from the anchor line to its own line and
+--- writes the carried dose's density over that quad, once, to every pixel whose
+--- centre lies inside it. Successive quads share edges, so each pixel centre of a
+--- pass is in exactly one of them and gets one pass's dose.
+---@return string 'seeded' | 'reset' | 'held' | 'written' | 'empty'
+function SoilFertilitySystem:_phPassStrip(fieldId, field, sd, ax, az, bx, bz, boomLen, nowMs)
+    local pass = field._phPass
+    if pass == nil or pass.product ~= sd.product or pass.time == nil
+        or nowMs < pass.time or (nowMs - pass.time) > PositionalPH.PASS_GAP_MS then
+        pass = { product = sd.product, carry = 0 }
+        field._phPass = pass
+    end
+    pass.time = nowMs
+
+    local anchor = pass.anchor
+    if anchor == nil then
+        pass.anchor = { ax = ax, az = az, bx = bx, bz = bz }
+        pass.carry = 0
+        return 'seeded'
+    end
+
+    -- Tip pairing, as paintBoomStrip pairs them (RSF-836): the endpoints arrive in
+    -- either order, so take whichever pairing moved less.
+    local dxS = (ax - anchor.ax) + (bx - anchor.bx)
+    local dzS = (az - anchor.az) + (bz - anchor.bz)
+    local dxW = (ax - anchor.bx) + (bx - anchor.ax)
+    local dzW = (az - anchor.bz) + (bz - anchor.az)
+    if dxW * dxW + dzW * dzW < dxS * dxS + dzS * dzS then
+        ax, az, bx, bz = bx, bz, ax, az
+        dxS, dzS = dxW, dzW
+    end
+    local travel = math.sqrt(dxS * dxS + dzS * dzS) * 0.5
+    if travel > boomLen * 3 then
+        pass.anchor = { ax = ax, az = az, bx = bx, bz = bz }
+        pass.carry = 0
+        return 'reset'
+    end
+
+    pass.carry = pass.carry + sd.dPH
+    if travel < PositionalPH.PASS_MIN_TRAVEL then return 'held' end
+
+    local quad = {
+        { x = anchor.ax, z = anchor.az }, { x = anchor.bx, z = anchor.bz },
+        { x = bx, z = bz }, { x = ax, z = az },
+    }
+    local twice = 0
+    for i = 1, 4 do
+        local p, q = quad[i], quad[i % 4 + 1]
+        twice = twice + (p.x * q.z - q.x * p.z)
+    end
+    local areaM2 = math.abs(twice) * 0.5
+    if areaM2 <= boomLen * 0.02 then return 'held' end
+
+    local value = pass.carry * sd.area / (areaM2 / 10000)
+    pass.carry = 0
+    pass.anchor = { ax = ax, az = az, bx = bx, bz = bz }
+
+    local vm = self.valueMaps
+    local grain = vm ~= nil and type(vm.getGrainMetres) == 'function' and vm:getGrainMetres() or nil
+    local cells = PositionalPH.centresInQuad(quad, grain, vm ~= nil and vm.terrainSize or nil)
+    if #cells == 0 then return 'empty' end
+    self:_applyPHFootprint(fieldId, {
+        operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_CELLS,
+        cells = cells, halfSize = grain * PositionalPH.CELL_HALF,
+        value = value, source = 'application', isTrueLime = sd.isTrueLime == true,
+    })
+    self:_phRefreshScalar(fieldId)
+    return 'written'
 end
 
 -- ============================================================

@@ -349,3 +349,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] `build.py` keeps the `.git` file out of the zip. In a git worktree `.git` is a file, not a directory, so EXCLUDE_DIRS alone let it into the zip (the 2.6.0.1 release zip had it stripped by hand).
 - Build tooling only, no in-game check (TESTING row 570). Found by a fleet sweep that built every mod once from development in a throwaway worktree, on Tyson's word of 2026-10-14.
+
+## 2026-10-14 (Fred (via Desk)): one lime pass gives each pixel one pass of pH (#1098)
+
+- [x] One lime pass took covered ground to pH 7.5 at any rate, AUTO on or off, solid or liquid (#1098, #911). A sprayer tick moves the boom a few centimetres and a pH pixel is about 2 m, and every tick wrote the pass's full per-hectare pH onto every pixel its thin strip touched, so each pixel took dozens of doses and saturated. pH now keeps its own pass anchor: a tick with too little travel carries its dose, and a tick that closes a strip writes the carried dose once, to each pixel whose centre lies inside it, through a small square inside that pixel. A pass now gives each pixel one pass of pH (about +0.4 to +0.5 at 1.0x), whichever way the engine fills a polygon. Nitrogen, phosphorus, potassium and organic matter keep their path.
+- The in-game check is TESTING row 580. Design origin SF-79 (DESIGN-CHECK row 262, CARRIES). Not traced yet: the other two points of #1098 (products not used up; the pass counter not resetting from digestate to lime).
