@@ -4670,6 +4670,14 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
     local boomLen = math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az))
     if boomLen < 0.01 then return end
 
+    -- [SF-1098] pH goes on its own pass anchor, one pass's dose per pixel
+    -- (PositionalPH _phPassStrip). It is consumed here every tick, so the strip
+    -- below writes no pH while the positional writer is loaded.
+    if sd.dPH ~= 0 and type(self._phPassStrip) == "function" then
+        self:_phPassStrip(fieldId, field, sd, ax, az, bx, bz, boomLen, nowMs)
+        sd.dPH = 0
+    end
+
     local anchor = field._vmLastBoomLine
     local sx, sz, wx, wz, hx, hz
     local areaM2
@@ -4726,18 +4734,9 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         if sd.dN  ~= 0 then vm:addPaintStrip("nitrogen",      sx, sz, wx, wz, hx, hz, sd.dN  * scale) end
         if sd.dP  ~= 0 then vm:addPaintStrip("phosphorus",    sx, sz, wx, wz, hx, hz, sd.dP  * scale) end
         if sd.dK  ~= 0 then vm:addPaintStrip("potassium",     sx, sz, wx, wz, hx, hz, sd.dK  * scale) end
-        -- [SF-79] pH is written through the positional writer (cohort-correct:
-        -- the saturation cohort is established before the interior add), not the
-        -- add-then-saturate strip primitive.
-        if sd.dPH ~= 0 and type(self._applyPHFootprint) == "function" then
-            self:_applyPHFootprint(fieldId, {
-                operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_STRIP,
-                sx = sx, sz = sz, wx = wx, wz = wz, hx = hx, hz = hz,
-                value = sd.dPH * scale, source = 'application',
-                isTrueLime = sd.isTrueLime == true,
-            })
-            self:_phRefreshScalar(fieldId)
-        elseif sd.dPH ~= 0 then
+        -- [SF-79, SF-1098] pH normally went to _phPassStrip above and is 0 here; this
+        -- strip write is reached only when the positional writer is not loaded.
+        if sd.dPH ~= 0 then
             vm:addPaintStrip("pH", sx, sz, wx, wz, hx, hz, sd.dPH * scale)
         end
         if sd.dOM ~= 0 then vm:addPaintStrip("organicMatter", sx, sz, wx, wz, hx, hz, sd.dOM * scale) end

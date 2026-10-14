@@ -128,7 +128,7 @@ local function vertsKey(verts)
   return table.concat(parts, ";")
 end
 local function newVM()
-  local vm = { available = true, ops = {} }
+  local vm = { available = true, ops = {}, terrainSize = 2048 }   -- the pass write needs the grid (SF-1098)
   local def = PositionalPH.phDef()
   function vm:getLayerEntry(layer) if layer == PositionalPH.PH_LAYER then return { def = def } end return nil end
   function vm:getGrainMetres() return 2 end
@@ -175,12 +175,19 @@ local function sprayTick(product, liters)
     s:onFertilizerApplied(FID, FT[product].index, liters, nil)
     s:paintBoomStrip(FID, { { x = 14, z = 20 }, { x = 26, z = 20 } }, product,
                      { ax = 14, az = 20, bx = 26, bz = 20 })
+    -- [SF-1098] The first tick of a pass only sets the pH pass anchor; the boom's pH
+    -- write comes with the tick that closes a quad. A second tick 2.5 m on, 10 L (no
+    -- new 1000 L milestone), closes it over the pixel centres at z = 21.
+    g_currentMission.time = 5016
+    s:onFertilizerApplied(FID, FT[product].index, 10, nil)
+    s:paintBoomStrip(FID, { { x = 14, z = 22.5 }, { x = 26, z = 22.5 } }, product,
+                     { ax = 14, az = 22.5, bx = 26, bz = 22.5 })
   end)
   print = saved.print
   local dot, strip
   for _, r in ipairs(reqs) do
     if r.scope == PositionalPH.SCOPE_POINT then dot = r end
-    if r.scope == PositionalPH.SCOPE_STRIP then strip = r end
+    if r.scope == PositionalPH.SCOPE_CELLS then strip = r end   -- the boom write (SF-1098)
   end
   return { ok = ok, err = err, dot = dot, strip = strip, reqs = reqs, lines = lines, sys = s }
 end
@@ -194,9 +201,9 @@ for _, product in ipairs({ "LIME", "LIQUIDLIME", "GYPSUM" }) do
   local r = sprayTick(product, 1000)
   T.ok("TL A0 " .. product .. ": the tick ran (" .. tostring(r.err) .. ")", r.ok)
   T.ok("TL A1 " .. product .. ": the narrow-tool dot reached the writer", r.dot ~= nil)
-  T.ok("TL A2 " .. product .. ": the boom strip reached the writer", r.strip ~= nil)
+  T.ok("TL A2 " .. product .. ": the boom write (CELLS) reached the writer", r.strip ~= nil)
   T.eq("TL A3 " .. product .. ": the dot request carries isTrueLime=" .. tostring(want), r.dot and r.dot.isTrueLime, want)
-  T.eq("TL A4 " .. product .. ": the strip request carries isTrueLime=" .. tostring(want), r.strip and r.strip.isTrueLime, want)
+  T.eq("TL A4 " .. product .. ": the boom write carries isTrueLime=" .. tostring(want), r.strip and r.strip.isTrueLime, want)
   -- GROUP D rides the same tick: the existing 1000 L milestone line names the class.
   local milestone = {}
   for _, line in ipairs(r.lines) do
@@ -225,13 +232,13 @@ do
   T.ok("TL B0: SYNTHETIC raiser tick ran (" .. tostring(r.err) .. ")", r.ok)
   T.ok("TL B1: SYNTHETIC raiser: its pH is positive, so the sign axis would call it lime", PF.SF79_SYNTH_RAISER.pH > 0)
   T.eq("TL B2: SYNTHETIC raiser registered as FERTILIZER: dot says isTrueLime=false", r.dot and r.dot.isTrueLime, false)
-  T.eq("TL B3: SYNTHETIC raiser registered as FERTILIZER: strip says isTrueLime=false", r.strip and r.strip.isTrueLime, false)
+  T.eq("TL B3: SYNTHETIC raiser registered as FERTILIZER: the boom write says isTrueLime=false", r.strip and r.strip.isTrueLime, false)
 end
 do
   local r = sprayTick("SF79_SYNTH_NOSPRAY", 1000)
   T.ok("TL B4: SYNTHETIC product with no spray type: tick ran (" .. tostring(r.err) .. ")", r.ok)
   T.eq("TL B5: SYNTHETIC product with no spray type: a nil spray type is false (dot)", r.dot and r.dot.isTrueLime, false)
-  T.eq("TL B6: SYNTHETIC product with no spray type: a nil spray type is false (strip)", r.strip and r.strip.isTrueLime, false)
+  T.eq("TL B6: SYNTHETIC product with no spray type: a nil spray type is false (boom write)", r.strip and r.strip.isTrueLime, false)
 end
 
 -- =====================================================================
@@ -240,6 +247,9 @@ end
 -- result. A writer that branched on it would be turning a diagnostic into permission.
 -- =====================================================================
 local SHAPES = {
+  { name = "CELLS DELTA up",      req = { operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_CELLS,
+                                          cells = { { x = 21, z = 21 }, { x = 23, z = 21 } }, halfSize = 0.5,
+                                          value = 0.30, source = 'application' } },
   { name = "STRIP DELTA up",      req = { operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_STRIP,
                                           sx = 0, sz = 0, wx = 12, wz = 0, hx = 0, hz = 1, value = 0.30, source = 'application' } },
   { name = "POINT DELTA down",    req = { operation = PositionalPH.OP_DELTA, scope = PositionalPH.SCOPE_POINT,
