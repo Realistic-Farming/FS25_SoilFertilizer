@@ -342,3 +342,9 @@
 
 - [x] `modDesc.xml`: SF_TOGGLE_HUD on Right Ctrl + Z; `src/main.lua` (SoilLiveHint.swapChord), `src/settings/SoilSettingsUI.lua` (live header key, refreshed on a binding change), `src/ui/SoilSettingsPanel.lua` (live close hint); the translation files.
 - [~] In game (owed): TESTING row 540.
+
+## 2026-10-14 (Fred (via Desk)): build packaging (MAINTENANCE row 308)
+
+- [x] `build.py`: keeps the `.git` file out of the zip. In a git worktree `.git` is a file, not a directory, so EXCLUDE_DIRS alone let it into the zip (the 2.6.0.1 release zip had it stripped by hand).
+- [x] Built from a worktree before and after this change: development's zip had 404 entries, one of them the worktree `.git` file; this branch's has 403, with exactly that file removed, every other entry byte-identical (CRC), nothing added.
+- Build tooling only, no in-game check (TESTING row 570).
