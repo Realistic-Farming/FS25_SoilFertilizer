@@ -339,3 +339,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] At the end of a sleep the game moves the fields nobody owns forward. For an empty NPC field it sometimes cultivates and then marks that pass as lime or manure, using the task `FieldManager.cultivateField` returns. Soil's hook on `cultivateField` and `plowField` (the field outlines behind the Soil list's merged rows, `RfPdaSoilMerge`) returned nothing, so the game logged "attempt to index nil with 'setSprayType'" and the NPC field lost that mark. The hook now returns the engine's own result unchanged and still marks the worked field's outline for a fresh walk.
 - The in-game check is TESTING row 555. Design origin none. Found in Tyson's game log of 2026-10-13.
+
+## 2026-10-14 (Fred (via Desk)): keyboard defaults (Wizard, #1108)
+
+- [x] Toggle Soil HUD moves from Right Shift + O to Right Ctrl + Z; Variable Rate stays on Right Shift + V. SoilLiveHint.swapChord replaces a two-word key label ('Right Shift+M') whole, where it used to leave 'Right' stranded on screen. The Esc settings header stops printing 'SHIFT+O' and reads the live Open Soil Settings key, refreshed on a binding change; the settings panel's close hint shows the live key and is not drawn when none is bound; the unused 'Shift+O' welcome text is retired. (Wizard's #1108, merged at dd314e0b on 2026-10-11, one PR of his keyboard-defaults wave.)
+- The in-game check is TESTING row 540. Docs by Fred's catch-up (R-51), on Tyson's word of 2026-10-14.
