@@ -22,7 +22,9 @@ EXCLUDE_DIRS = {".git", ".claude", ".github", "__MACOSX", "tools", ".vscode"}
 EXCLUDE_EXTS = {".sh", ".py", ".md", ".DS_Store", ".zip"}
 # menuIcon_sprout.dds is the pre-RF suite badge, kept in the repo so it can be
 # restored without digging through history. Nothing loads it, so it never ships.
-EXCLUDE_FILES = {".gitignore", "icon_source.png", "menuIcon_sprout.dds"}
+# ".git" is a FILE, not a directory, in a git worktree (it points at the main
+# clone's git dir), so EXCLUDE_DIRS alone does not keep it out of the zip.
+EXCLUDE_FILES = {".git", ".gitignore", "icon_source.png", "menuIcon_sprout.dds"}
 
 def build_zip():
     print(f"============================================")
