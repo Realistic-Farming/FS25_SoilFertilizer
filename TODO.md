@@ -375,3 +375,9 @@
 - [x] Bar `SF-2m-compaction_entry_test.lua` (61 rows; development fails 29); `compaction_decay_test.lua` and `stateledger_roundtrip_test.lua` moved to the 2 m store.
 - [ ] Step 2b: N, P, K and organic matter one dose per pixel (the stripes). Then step 3, the pressures, and step 4, retiring zone data.
 - [~] In game (owed): TESTING row 584.
+
+## CD-15 store walk (#1128, 2026-10-15)
+
+- [x] `src/disease/CD15Grid.lua`: `newWalk` / `walkNext` / `walkDone`, a walk in `orderedCells` order that copies a tile's keys on entry and allocates nothing per cell. `src/disease/CD15Model.lua`: SETTLE walks. `src/disease/CD15Day.lua`: `snapshotSources` walks and makes a table only for a source. `src/disease/CD15Admission.lua`: discovery walks the rows (`d.rowWalk`, skip-ahead to a saved cursor) and skips cells admitted as new rows earlier in the same call.
+- [x] Bar `SF-1128-cd15_store_walk_entry_test.lua` (32 rows; over 300 updates development calls `orderedCells` 264 times, the fix 0).
+- [~] In game (owed): TESTING row 585.

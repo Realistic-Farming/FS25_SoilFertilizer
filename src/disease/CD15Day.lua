@@ -291,15 +291,19 @@ function D.cropCompatible(diseaseName, cropName)
 end
 
 --- The day's source snapshot: every active, unprotected cell, in (tz, tx, localKey)
---- order, with a detached copy of its identity and resistance.
+--- order, with a detached copy of its identity and resistance. Walks the store (#1128):
+--- a table is made only for a source, never for every cell.
 function D.snapshotSources(store, day)
     local out = {}
-    for _, e in ipairs(store:orderedCells()) do
-        local c = store:get(e.gx, e.gz)
+    local walk = G.newWalk(store)
+    while true do
+        local gx, gz, tx, tz, k = G.walkNext(walk)
+        if gx == nil then break end
+        local c = store:get(gx, gz)
         if c ~= nil and c.diseaseName ~= nil and not D.isProtected(c, day) then
             local res = {}
-            for k, v in pairs(c.resistance) do res[k] = v end
-            out[#out + 1] = { gx = e.gx, gz = e.gz, tx = e.tx, tz = e.tz, localKey = e.localKey, diseaseName = c.diseaseName, resistance = res }
+            for rk, v in pairs(c.resistance) do res[rk] = v end
+            out[#out + 1] = { gx = gx, gz = gz, tx = tx, tz = tz, localKey = k, diseaseName = c.diseaseName, resistance = res }
         end
     end
     return out
