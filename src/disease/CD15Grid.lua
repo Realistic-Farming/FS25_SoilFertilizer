@@ -202,6 +202,49 @@ function Store:orderedCells()
     return out
 end
 
+--- A walk over every populated cell in orderedCells' order (tiles by tz then tx, keys
+--- ascending) that allocates nothing per cell (#1128: orderedCells builds a table per
+--- cell, hundreds of megabytes on a full store). The tile list is fixed when the walk
+--- starts; each tile's keys are copied when the walk enters it, so a put or remove in
+--- that tile does not move the walk. A tile created after the walk started is not
+--- visited. Records are read live with get.
+function G.newWalk(store)
+    local tiles = {}
+    for _, tile in pairs(store.tiles) do tiles[#tiles + 1] = tile end
+    table.sort(tiles, function(a, b) if a.tz ~= b.tz then return a.tz < b.tz end return a.tx < b.tx end)
+    return { tiles = tiles, ti = 0, tile = nil, keys = nil, ki = 0 }
+end
+
+-- Move the walk onto a tile with keys left. Returns true when the walk is finished.
+local function advanceWalk(walk)
+    while walk.keys == nil or walk.ki >= #walk.keys do
+        walk.ti = walk.ti + 1
+        local tile = walk.tiles[walk.ti]
+        if tile == nil then
+            walk.tile, walk.keys = nil, nil
+            return true
+        end
+        local keys = {}
+        for i, k in ipairs(tile.keys) do keys[i] = k end
+        walk.tile, walk.keys, walk.ki = tile, keys, 0
+    end
+    return false
+end
+
+--- True when the walk has no cell left.
+function G.walkDone(walk)
+    return advanceWalk(walk)
+end
+
+--- The next cell of the walk: gx, gz, tx, tz, localKey; nil when the walk is finished.
+function G.walkNext(walk)
+    if advanceWalk(walk) then return nil end
+    walk.ki = walk.ki + 1
+    local k = walk.keys[walk.ki]
+    local gx, gz = G.cellOf(walk.tile.tx, walk.tile.tz, k)
+    return gx, gz, walk.tile.tx, walk.tile.tz, k
+end
+
 --- Source order for spread (:122): ascending (tz, tx, localKey).
 function G.sourceOrderLess(a, b)
     if a.tz ~= b.tz then return a.tz < b.tz end

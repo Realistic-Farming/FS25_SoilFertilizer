@@ -345,6 +345,7 @@ local function stateOf(model, passStart)
         return freshState(model, planes, planeFp)
     end
     if passStart then
+        d.rowWalk = nil
         local planes, planeFp = A.resolvePlanes()
         local planeKey = planes ~= nil and planeFp or ("UNAVAILABLE:" .. tostring(planeFp))
         if planeKey ~= d.planeKey then return freshState(model, planes, planeFp) end
@@ -356,25 +357,18 @@ end
 
 local function key(gx, gz) return tostring(gx) .. ":" .. tostring(gz) end
 
---- The ordinal-th candidate (0-based): each field's cell box in field-id order, then the store's
---- rows in store order. Returns gx, gz and the field (nil for a row; gx nil past the end). The field
---- is found by binary search over the cumulative counts, not by walking the field list.
-local function candidateAt(model, d, ordinal, rows)
-    if ordinal < d.fieldCells then
-        local lo, hi = 1, #d.fields
-        while lo < hi do
-            local mid = math.floor((lo + hi + 1) / 2)
-            if d.prefix[mid] <= ordinal then lo = mid else hi = mid - 1 end
-        end
-        local f, o = d.fields[lo], ordinal - d.prefix[lo]
-        return f.gx0 + (o % f.w), f.gz0 + math.floor(o / f.w), f
+--- The ordinal-th field candidate (0-based, below d.fieldCells): each field's cell box in
+--- field-id order. Returns gx, gz and the field. The field is found by binary search over
+--- the cumulative counts, not by walking the field list. The store's rows, which follow the
+--- field boxes in the candidate order, are walked by discover itself (#1128).
+local function candidateAt(model, d, ordinal)
+    local lo, hi = 1, #d.fields
+    while lo < hi do
+        local mid = math.floor((lo + hi + 1) / 2)
+        if d.prefix[mid] <= ordinal then lo = mid else hi = mid - 1 end
     end
-    local o = ordinal - d.fieldCells
-    if o < #rows then return rows[o + 1].gx, rows[o + 1].gz, nil end
-    return nil
-end
-local function candidateTotal(d, rows)
-    return d.fieldCells + #rows
+    local f, o = d.fields[lo], ordinal - d.prefix[lo]
+    return f.gx0 + (o % f.w), f.gz0 + math.floor(o / f.w), f
 end
 
 --- Classify one candidate cell, record its membership, and admit a living one at today.
@@ -410,23 +404,55 @@ function A.discover(model, budget)
     if profile == nil then return 0 end
     local d = stateOf(model, model.discoveryCursor == 0)
     if d.fields == nil then d.lastReason = d.fieldsReason return 0 end
-    local rows = model.store:orderedCells()
-    local total = candidateTotal(d, rows)
+    -- #1128: the candidates are the field boxes, then the store's rows. The rows are walked
+    -- (d.rowWalk, made when the cursor first reaches them in a pass), never copied: this ran
+    -- every update and orderedCells made a table per stored cell. The walk sees the live store,
+    -- so a cell this call admitted as a new row in the field part is skipped in the rows part:
+    -- development took the rows once at the top of each call, so such a cell was not yet a row.
+    local total = d.fieldCells + model.store.count
     if total == 0 then return 0 end
     local day = CD15Day.readDay(model.lastDay)
     local work = 0
+    local admitted = nil
     while work < budget do
         if model.discoveryCursor >= total then
             -- The pass is complete: the next update starts the next one (re-reading the planes and
             -- the fields there), so no cell is examined twice in one update.
             model.discoveryCursor = 0
+            d.rowWalk = nil
             break
         end
-        local gx, gz, f = candidateAt(model, d, model.discoveryCursor, rows)
+        local gx, gz, f
+        if model.discoveryCursor < d.fieldCells then
+            gx, gz, f = candidateAt(model, d, model.discoveryCursor)
+        else
+            if d.rowWalk == nil then
+                d.rowWalk = G.newWalk(model.store)
+                -- A pass restored part-way through the rows (discoveryCursor is saved) resumes
+                -- at its row, as the old ordinal lookup did.
+                for _ = 1, model.discoveryCursor - d.fieldCells do
+                    if G.walkNext(d.rowWalk) == nil then break end
+                end
+            end
+            repeat
+                gx, gz = G.walkNext(d.rowWalk)
+            until gx == nil or admitted == nil or not admitted[key(gx, gz)]
+            if gx == nil then
+                -- The rows ran out before the count (a row was removed): the pass is complete.
+                model.discoveryCursor = 0
+                d.rowWalk = nil
+                break
+            end
+        end
         model.discoveryCursor = model.discoveryCursor + 1
         work = work + 1
         if gx ~= nil and (f == nil or A.cellOverlaps(model.geometry, f.points, gx, gz)) then
+            local isNew = f ~= nil and model.store:get(gx, gz) == nil
             discoverCell(model, d, gx, gz, profile, day)
+            if isNew and model.store:get(gx, gz) ~= nil then
+                admitted = admitted or {}
+                admitted[key(gx, gz)] = true
+            end
         end
     end
     return work
