@@ -355,3 +355,29 @@
 - [x] Bar `SF-1098-ph_whole_pixel_dose_entry_test.lua` from onFertilizerApplied and paintBoomStrip on a pixel raster under both fill rules; `SF-79-is_true_lime_test.lua` follows the boom write to the closing tick and checks the CELLS scope for writer blindness.
 - [ ] #1098 items 2 and 3 (Bob's intake of 2026-10-11): products not used up, and the pass counter not resetting from digestate to lime. Not traced.
 - [~] In game (owed): TESTING row 580.
+
+## #1098 items 2 and 3: coverage on 2 m (2026-10-15)
+
+- [x] `src/SoilFertilitySystem.lua`: `markBoomCells` adds no area; `markOverlapCells(..., countArea)` adds `ZONE.OVERLAP_CELL_AREA_HA` per new 2 m cell to the session and daily area (`dailyOverlapCells`, reset in `_processOneDailyField`) and recomputes both fractions. `src/hooks/HookManager.lua`: `markOverlapRecord` passes countArea (sectioned, true, false at the three call sites); `getBoomOverlapPositions` falls back to `_implWorkingWidth`. `src/config/Constants.lua`: `OVERLAP_CELL_AREA_HA`.
+- [x] Bar `SF-1098-coverage_2m_entry_test.lua` (46 rows; development fails 11); eight coverage benches moved to the 2 m figures.
+- [ ] The rest of the 2 m move: compaction, the nutrient paint, the pressures, then retiring zone data.
+- [~] In game (owed): TESTING row 582.
+
+## #1098 log flood: deferred-init lines print once (2026-10-15)
+
+- [x] `src/hooks/HookManager.lua`: `patchExistingSilos` logs only when the patched count differs from the last one logged (`_loggedSiloPatchCount`); `registerCustomSprayTypes` one-shot flags on the three early-skip warnings, the per-product density REFUSED warning (`_loggedRefusedDensity`), the LIQUIDLIME override warning and the two retry warnings.
+- [x] Bar `SF-1098-deferred_init_log_once_test.lua` (32 rows from `_updateDeferredInit`; development fails 13).
+- [~] In game (owed): TESTING row 583.
+
+## Compaction on 2 m (step 2, 2026-10-15)
+
+- [x] `src/SoilFertilitySystem.lua`: `compactStrip` and `_compactPixel` replace `onCompaction`; `relieveCompactionInQuad` replaces `onSubsoilerPass`; `_applyCompactionDecay` fades the map through `_compactionMapFade` (held at `MAP_DECAY_STEP`); load reads the saved average (`compactionSaved`) and rebuilds the sum on the 2 m pixel total (`_compactionTotalPixels`); `compactionMeanInSquare` for the 10 m readers. `src/SoilFertilityManager.lua`: the strip per driven segment, and the anchor keeps its position until the vehicle has moved 2 m. `src/hooks/HookManager.lua`: relief over `_activeWorkAreaQuads`; the harvest-hook compaction call removed. `src/SpatialPressures.lua`, `src/EstablishmentFailure.lua`: the map mean. `src/config/Constants.lua`: relief constants removed; `VEHICLE_WIDTH_FALLBACK_M`, `MAP_DECAY_STEP`.
+- [x] Bar `SF-2m-compaction_entry_test.lua` (61 rows; development fails 29); `compaction_decay_test.lua` and `stateledger_roundtrip_test.lua` moved to the 2 m store.
+- [ ] Step 2b: N, P, K and organic matter one dose per pixel (the stripes). Then step 3, the pressures, and step 4, retiring zone data.
+- [~] In game (owed): TESTING row 584.
+
+## CD-15 store walk (#1128, 2026-10-15)
+
+- [x] `src/disease/CD15Grid.lua`: `newWalk` / `walkNext` / `walkDone`, a walk in `orderedCells` order that copies a tile's keys on entry and allocates nothing per cell. `src/disease/CD15Model.lua`: SETTLE walks. `src/disease/CD15Day.lua`: `snapshotSources` walks and makes a table only for a source. `src/disease/CD15Admission.lua`: discovery walks the rows (`d.rowWalk`, skip-ahead to a saved cursor) and skips cells admitted as new rows earlier in the same call.
+- [x] Bar `SF-1128-cd15_store_walk_entry_test.lua` (32 rows; over 300 updates development calls `orderedCells` 264 times, the fix 0).
+- [~] In game (owed): TESTING row 585.

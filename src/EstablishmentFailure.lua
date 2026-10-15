@@ -438,7 +438,11 @@ function EstablishmentFailure:_checkEstablishingField(fieldId, field)
             local z = cell.gz * cellSize + cellSize * 0.5
             local ok, moisture = pcall(function() return cs:getMoisture(fieldId, x, z) end)
             if ok and moisture ~= nil then
-                local threshold = self:effectiveThreshold(field, cell.compaction)
+                local ss = self.manager and self.manager.soilSystem
+                local comp = ss and type(ss.compactionMeanInSquare) == "function"
+                    and ss:compactionMeanInSquare(x, z, cellSize * 0.5) or nil
+                if comp == nil then comp = cell.compaction end
+                local threshold = self:effectiveThreshold(field, comp)
                 if moisture * self:severity() >= threshold then
                     newly[#newly + 1] = cell
                 end

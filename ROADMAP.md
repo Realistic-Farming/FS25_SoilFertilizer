@@ -354,3 +354,23 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] One lime pass took covered ground to pH 7.5 at any rate, AUTO on or off, solid or liquid (#1098, #911). A sprayer tick moves the boom a few centimetres and a pH pixel is about 2 m, and every tick wrote the pass's full per-hectare pH onto every pixel its thin strip touched, so each pixel took dozens of doses and saturated. pH now keeps its own pass anchor: a tick with too little travel carries its dose, and a tick that closes a strip writes the carried dose once, to each pixel whose centre lies inside it, through a small square inside that pixel. A pass now gives each pixel one pass of pH (about +0.4 to +0.5 at 1.0x), whichever way the engine fills a polygon. Nitrogen, phosphorus, potassium and organic matter keep their path.
 - The in-game check is TESTING row 580. Design origin SF-79 (DESIGN-CHECK row 262, CARRIES). Not traced yet: the other two points of #1098 (products not used up; the pass counter not resetting from digestate to lime).
+
+## 2026-10-15 (Fred (via Desk)): Pass % counts the ground really sprayed (#1098 items 2 and 3)
+
+- [x] Pass % counted a whole 10 m cell for every 10 m cell a boom touched, so a 12 m boom was counted 20 to 30 m wide and Pass % read 99% at about 40-60% real coverage. At 99% Overlap Prevention switched every section off, so products stopped being used and lime stopped (#1098). Pass % and daily coverage now count the 2 m cells of the overlap record (MAINTENANCE row 234) the boom really covered; the 99% block, the 80% protection grants and the panel read the same fraction. Broadcast spreaders keep their litre count. A sprayer with fewer than two boom nodes spans its implement width, as the 10 m sweep did. Step 1 of moving Soil onto one 2 m grid.
+- The in-game check is TESTING row 582. Design origin none.
+
+## 2026-10-15 (Fred (via Desk)): the deferred-init log lines print once (#1098)
+
+- [x] While a save loads, Soil retries its fill-type setup every tick until it completes, and eight log lines on that path printed on every retry: a player's log held "Retroactively injected SF fill types into 5 existing silo(s)" 7,000 times. The silo line now prints when its count changes, and the three early-skip warnings, the per-product density refusal, the LIQUIDLIME override warning and the two retry warnings print once. Nothing else changes.
+- The check is TESTING row 583 (log only). Design origin none.
+
+## 2026-10-15 (Fred (via Desk)): compaction on the 2 m map (step 2 of one 2 m grid)
+
+- [x] Compaction lived in 10 m cells and was painted onto the map as 10 m squares. On Tyson's rulings of 2026-10-14 and 2026-10-15 it now lives on the 2 m map. Traffic compacts a strip as wide as the vehicle along its path, each 2 m pixel once a game day, with the per-pass points scaled to the strip so one pass moves the field average as a 10 m cell row did; every track counts. Slow vehicles, combines at work included, now lay their strip once they have moved 2 m; before, anything under 7.2 km/h laid nothing through the traffic check and combines relied on a separate harvest call, which is gone. One pass of a subsoiler, plow-action tool or grassland weeder clears every pixel under its active work areas, as a pass already cleared its 10 m cells. Decay fades each pixel by the field's ratio. The saved field average is now read back on load. Disease origin weighting and the seedbed waterlogging threshold read the 2 m cells under each 10 m cell.
+- The in-game check is TESTING row 584. Design origin SF-55, SF-19, SF-57 (DESIGN-CHECK rows 263 to 265).
+
+## 2026-10-15 (Fred (via Desk)): CD-15 walks its store instead of copying it (#1128)
+
+- [x] A player's game stalled at the second midnight on a new save (#1128: emergency garbage collection, Lua memory 443 MB to 1855 MB in one frame). CD-15 discovery admits a row for every 2 m cell of living crop, and three paths copied the whole store into a new table per cell: discovery on every update, the daily settlement and the daily spread snapshot. They now walk the store in the same order without copying it, which restores CD-15's own bound of 256 cells a call. Discovery also skips cells it admitted earlier in the same call, as the old once-a-call row list did. Nothing a player sees changes except the stall.
+- The in-game check is TESTING row 585. Design origin CD-15 v1.14 (certificate 08-CD15), step 1c (DESIGN-CHECK row 266).

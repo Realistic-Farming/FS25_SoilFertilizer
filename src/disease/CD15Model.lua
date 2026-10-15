@@ -235,14 +235,15 @@ function M:update(dt)
     while budget > 0 and #self.queue > 0 do
         local w = self.queue[1]
         if w.phase == "SETTLE" then
-            if w.cells == nil then w.cells, w.cursor = self.store:orderedCells(), 1 end
-            while budget > 0 and w.cursor <= #w.cells do
-                local e = w.cells[w.cursor]
-                w.cursor = w.cursor + 1
+            -- #1128: walk the store, never copy it (orderedCells made a table per cell).
+            if w.walk == nil then w.walk = CD15Grid.newWalk(self.store) end
+            while budget > 0 and not CD15Grid.walkDone(w.walk) do
+                local gx, gz = CD15Grid.walkNext(w.walk)
                 budget, work = budget - 1, work + 1
-                self:settleEntry(e, w.input)
+                self:settleEntry({ gx = gx, gz = gz }, w.input)
             end
-            if w.cursor > #w.cells then
+            if CD15Grid.walkDone(w.walk) then
+                w.walk = nil
                 w.phase, w.sources, w.scursor = "SPREAD", CD15Day.snapshotSources(self.store, w.input.day), 1
             end
         else

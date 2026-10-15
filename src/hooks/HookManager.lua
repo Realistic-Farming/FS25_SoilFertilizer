@@ -990,11 +990,17 @@ end
 ---@return nil
 function HookManager:registerCustomSprayTypes()
     if not g_sprayTypeManager then
-        SoilLogger.warning("registerCustomSprayTypes: g_sprayTypeManager not available - skipping")
+        if not self._loggedSprayNoSprayTypeManager then
+            self._loggedSprayNoSprayTypeManager = true
+            SoilLogger.warning("registerCustomSprayTypes: g_sprayTypeManager not available - skipping")
+        end
         return
     end
     if not g_fillTypeManager then
-        SoilLogger.warning("registerCustomSprayTypes: g_fillTypeManager not available - skipping")
+        if not self._loggedSprayNoFillTypeManager then
+            self._loggedSprayNoFillTypeManager = true
+            SoilLogger.warning("registerCustomSprayTypes: g_fillTypeManager not available - skipping")
+        end
         return
     end
 
@@ -1005,7 +1011,10 @@ function HookManager:registerCustomSprayTypes()
     local limeType = g_sprayTypeManager:getSprayTypeByName("LIME")
 
     if not liqType and not dryType then
-        SoilLogger.warning("registerCustomSprayTypes: vanilla spray types not found - skipping")
+        if not self._loggedSprayNoVanillaTypes then
+            self._loggedSprayNoVanillaTypes = true
+            SoilLogger.warning("registerCustomSprayTypes: vanilla spray types not found - skipping")
+        end
         return
     end
 
@@ -1117,9 +1126,13 @@ function HookManager:registerCustomSprayTypes()
             local invalid = type(declared) == "number" and HookManager.densityOf(ft) == nil
             if invalid then
                 self.refusedProducts[ft.index or -1] = "density"
-                SoilLogger.warning(
-                    "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
-                    name, tostring(ft.massPerLiter))
+                if not self._loggedRefusedDensity then self._loggedRefusedDensity = {} end
+                if not self._loggedRefusedDensity[name] then
+                    self._loggedRefusedDensity[name] = true
+                    SoilLogger.warning(
+                        "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
+                        name, tostring(ft.massPerLiter))
+                end
                 skipped = skipped + 1
             else
                 -- R1a/R6: a retry that finds a previously refused product now valid
@@ -1162,7 +1175,10 @@ function HookManager:registerCustomSprayTypes()
         SoilLogger.debug("LIQUIDLIME: overrode sprayTypeIndex → %d (LPS=%.5f, ~%.0f L/ha)",
             llST.index, llST.litersPerSecond or 0, (llST.litersPerSecond or 0) * 36000)
     else
-        SoilLogger.warning("LIQUIDLIME spray type override failed: ft=%s st=%s", tostring(llFT), tostring(llST))
+        if not self._loggedLiquidLimeOverrideFailed then
+            self._loggedLiquidLimeOverrideFailed = true
+            SoilLogger.warning("LIQUIDLIME spray type override failed: ft=%s st=%s", tostring(llFT), tostring(llST))
+        end
     end
 
     if not self._loggedSprayTypeSummary then
@@ -1191,13 +1207,20 @@ function HookManager:registerCustomSprayTypes()
     -- (#970), which warns once, keeps refusals and leaves this false; no flag.
     local priceComplete = self:rebuildCustomPriceMap()
 
+    -- One-shot: the deferred loop calls this every tick until complete (see reapplyFillUnitPatch).
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
     self._sprayTypesComplete = (skipped == 0) and priceComplete
     if not self._sprayTypesComplete then
         if skipped > 0 then
-            SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+            if not self._loggedSprayRetryNilTypes then
+                self._loggedSprayRetryNilTypes = true
+                SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+            end
         else
-            SoilLogger.warning("[DeferredInit] every fill type resolved but a priced product carries an unusable price - scheduling retry")
+            if not self._loggedSprayRetryPrice then
+                self._loggedSprayRetryPrice = true
+                SoilLogger.warning("[DeferredInit] every fill type resolved but a priced product carries an unusable price - scheduling retry")
+            end
         end
     end
 end
@@ -2496,8 +2519,9 @@ end
 --- when its centre lies across the boom's span (between the outer nodes) and within half
 --- a cell of the boom line (the mean of the nodes along the travel), so a cell the boom
 --- only grazes, past its end or ahead of it, is not; at any heading. A cell whose centre
---- only switched-off sections cover is left out. Returns the cells' centres; nil with
---- fewer than two nodes or no frame.
+--- only switched-off sections cover is left out. Returns the cells' centres. With fewer
+--- than two nodes it spans the implement's working width across the frame's origin (as
+--- getBoomCellPositions does); nil with neither, or no frame.
 function HookManager:getBoomOverlapPositions(vehicle)
     local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
     local frame = vehicle.components and vehicle.components[1] and vehicle.components[1].node or vehicle.rootNode
@@ -2512,7 +2536,14 @@ function HookManager:getBoomOverlapPositions(vehicle)
             fwdSum = fwdSum + z
         end
     end
-    if n < 2 or hi <= lo then return nil end
+    if n < 2 or hi <= lo then
+        -- #1098: no usable boom nodes. Span the implement's working width across the
+        -- frame's origin, as getBoomCellPositions falls back for the 10 m sweep, so the
+        -- coverage this record now carries never stops counting.
+        local implWW = self:_implWorkingWidth(vehicle)
+        if type(implWW) ~= "number" or implWW <= 0 then return nil end
+        lo, hi, fwdSum, n = -implWW * 0.5, implWW * 0.5, 0, 1
+    end
     local fwd = fwdSum / n
     -- The frame's origin and axes in world space; everything below is arithmetic.
     local okO, ox, _, oz = pcall(localToWorld, frame, 0, 0, 0)
@@ -2566,11 +2597,12 @@ function HookManager._onlySwitchedOffAt(grounds, x, z)
 end
 
 --- Stamp this tick's overlap record beside a markBoomCells call.
-function HookManager:markOverlapRecord(soilSys, fieldId, vehicle)
+---@param countArea boolean|nil  true when this call owns the coverage area (#1098)
+function HookManager:markOverlapRecord(soilSys, fieldId, vehicle, countArea)
     if soilSys == nil or type(soilSys.markOverlapCells) ~= "function" then return end
     local pts = self:getBoomOverlapPositions(vehicle)
     if pts == nil then return end
-    soilSys:markOverlapCells(fieldId, pts, vehicle)
+    soilSys:markOverlapCells(fieldId, pts, vehicle, countArea)
 end
 
 -- =========================================================
@@ -3639,30 +3671,10 @@ function HookManager:installHarvestHook()
                 end)
             end
 
-            -- Compaction: harvesters pack soil by ground pressure, not raw mass. A combine
-            -- on wide flotation tyres in dry soil adds little; a heavy one on narrow tyres
-            -- in wet soil adds a lot. Same model as the driving check, incl. VTP/moisture.
-            if detectedFieldId and detectedX and
-               g_SoilFertilityManager.settings.compactionEnabled and
-               SoilConstants.COMPACTION and SoilCompactionModel then
-                local cp = SoilConstants.COMPACTION
-                local rootVeh = combineSelf.rootVehicle or combineSelf
-                local okM, totalMass = pcall(function()
-                    return rootVeh:getTotalMass(false)
-                end)
-                if okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T then
-                    -- SF-55 wetness-input substitution (harvest call site): the same
-                    -- positional blend the driving pass uses - SCS field-level moisture
-                    -- for the detected field vs the rain-scalar fallback (confirm 2).
-                    local wet = g_SoilFertilityManager:_blendedWetness01(detectedX, detectedZ, detectedFieldId)
-                    local points = SoilCompactionModel.pointsForVehicle(rootVeh, wet)
-                    if points and points > 0 then
-                        pcall(function()
-                            g_SoilFertilityManager.soilSystem:onCompaction(detectedFieldId, detectedX, detectedZ, points)
-                        end)
-                    end
-                end
-            end
+            -- Compaction from a harvester is laid by the traffic check
+            -- (SoilFertilityManager:_checkVehicleCompaction), which visits every heavy
+            -- vehicle including the combine and, since the move to 2 m pixels, lays its
+            -- strip at any speed. The per-tick call from here went with that move.
 
             -- Forward original return values so Cutter.lua gets appliedDelta intact
             return r1, r2, r3, r4, r5
@@ -6789,7 +6801,7 @@ function HookManager:installSprayerAreaHook()
                                                         else
                                                             soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)
                                                         end
-                                                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
+                                                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self, sectioned == true)  -- MAINTENANCE row 234; #1098 coverage when sectioned
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
                                                             soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
@@ -6851,12 +6863,12 @@ function HookManager:installSprayerAreaHook()
                     end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
-                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
+                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self, true)  -- MAINTENANCE row 234; #1098 coverage
                     else
                         -- Broadcast / dry spreader (or any vehicle with no spanning boom).
                         if boomPts then
                             soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)  -- overlay only
-                            hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
+                            hookMgrRef:markOverlapRecord(soilSys, fieldId, self, false)  -- MAINTENANCE row 234; litres own coverage here
                         end
                         -- Fertilizers advance the counter here via the liter estimate. Crop
                         -- protection products already did so in the trackSprayerCoverage call
@@ -7577,6 +7589,41 @@ function HookManager:installWeatherHook()
     return true
 end
 
+--- The world quads of a tool's active, non-auxiliary work areas, each in perimeter
+--- order (start, width, width + height - start, height): the ground a relief pass
+--- works this tick. The engine's work area is the parallelogram start / width /
+--- height (WorkArea.lua:289-291, :307-316).
+---@return table quads
+function HookManager:_activeWorkAreaQuads(vehicle)
+    local out = {}
+    local spec = vehicle and vehicle.spec_workArea
+    if not spec or type(spec.workAreas) ~= "table" then return out end
+    -- MAINTENANCE row 74: the engine global is read BARE, as PositionalPH does.
+    local aux = WorkAreaType.AUXILIARY
+    for _, wa in ipairs(spec.workAreas) do
+        local usable = type(wa) == "table" and wa.type ~= aux
+            and wa.start ~= nil and wa.width ~= nil and wa.height ~= nil
+        if usable and type(vehicle.getIsWorkAreaActive) == "function" then
+            local ok, active = pcall(vehicle.getIsWorkAreaActive, vehicle, wa)
+            if ok and active == false then usable = false end
+        end
+        if usable then
+            local ok1, sx, _, sz = pcall(getWorldTranslation, wa.start)
+            local ok2, wx, _, wz = pcall(getWorldTranslation, wa.width)
+            local ok3, hx, _, hz = pcall(getWorldTranslation, wa.height)
+            if ok1 and ok2 and ok3 and type(sx) == "number" and type(wx) == "number"
+                and type(hx) == "number" and type(sz) == "number" and type(wz) == "number"
+                and type(hz) == "number" then
+                out[#out + 1] = {
+                    { x = sx, z = sz }, { x = wx, z = wz },
+                    { x = wx + hx - sx, z = wz + hz - sz }, { x = hx, z = hz },
+                }
+            end
+        end
+    end
+    return out
+end
+
 -- =========================================================
 -- HOOK 5: Plowing operations (Cultivator.onEndWorkAreaProcessing)
 -- =========================================================
@@ -7674,29 +7721,24 @@ function HookManager:installPlowingHook()
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
-                    -- Compaction: tillage LOOSENS soil - it never packs it. A subsoiler clears
-                    -- the deep pan (full relief); a plow-action tool only loosens the topsoil it
-                    -- inverts, so it relieves far less (PLOW_RELIEF) and the pan stays - keeping
-                    -- the subsoiler the real fix (#687). Shallow cultivation is neutral. Only
-                    -- harvest traffic (the combine hook) adds compaction. This still avoids the
-                    -- #672-adjacent bug where a deep-tillage tool built on the Cultivator spec
-                    -- (e.g. a Bourgault SPS configured as a subsoiler) ADDED compaction per pass.
+                    -- Compaction: tillage LOOSENS soil - it never packs it. A subsoiler or a
+                    -- plow-action tool clears compaction on every 2 m pixel under its active
+                    -- work areas: one pass clears, as it did on the 10 m cells (Tyson,
+                    -- 2026-10-15). Shallow cultivation is neutral; only traffic adds
+                    -- compaction. A deep-tillage tool built on the Cultivator spec (e.g. a
+                    -- Bourgault SPS configured as a subsoiler) must never ADD compaction (#672).
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
                         local isSubsoiler = (cultivatorSelf.spec_cultivator and
                                             cultivatorSelf.spec_cultivator.isSubsoiler) or false
                         if isSubsoiler or isPlowingTool then
-                            -- A subsoiler clears the deep pan (FULL relief = nil → SUBSOILER_REDUCTION);
-                            -- a plow-action tool only loosens topsoil (partial PLOW_RELIEF). NOTE: the
-                            -- old `isSubsoiler and nil or PLOW_RELIEF` idiom always returned PLOW_RELIEF
-                            -- (Lua: `true and nil` → nil → `nil or X` → X), so subsoilers were silently
-                            -- getting partial relief since #687. Use an explicit branch (#680).
-                            local relief = SoilConstants.COMPACTION.PLOW_RELIEF
-                            if isSubsoiler then relief = nil end
+                            local relieved = 0
+                            for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(cultivatorSelf)) do
+                                relieved = relieved + g_SoilFertilityManager.soilSystem:relieveCompactionInQuad(quad)
+                            end
                             SoilLogger.debug(
-                                "Compaction: deep-tillage relief on farmland=%d veh=%d pos=(%.1f,%.1f) subsoiler=%s plow=%s relief=%s",
-                                farmlandId, cultivatorSelf.id or 0, x, z,
-                                tostring(isSubsoiler), tostring(isPlowingTool), tostring(relief or "full"))
-                            g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z, relief)
+                                "Compaction: deep-tillage relief on farmland=%d veh=%d subsoiler=%s plow=%s pixels=%d",
+                                farmlandId, cultivatorSelf.id or 0,
+                                tostring(isSubsoiler), tostring(isPlowingTool), relieved)
                         end
                         -- shallow cultivator: neutral, no compaction change
                     end
@@ -7777,16 +7819,14 @@ function HookManager:installDedicatedPlowHook()
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, false, cropBiomass)
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
-                    -- Plowing inverts and loosens the topsoil, so it relieves a little
-                    -- compaction (no-op if the cell isn't compacted) - but only the small
-                    -- PLOW_RELIEF, not the full subsoiler amount: a plough leaves the deep
-                    -- pan, so routine ploughing can't erase compaction the way a subsoiler
-                    -- does (#687). It still never ADDS compaction, which keeps DeltaFive's
-                    -- "one field keeps climbing" plow-spec report fixed.
+                    -- Compaction: a plow pass clears every 2 m pixel under its work areas (Tyson, 2026-10-15).
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
-                        SoilLogger.debug("Compaction: plow relief (PLOW_RELIEF) on farmland=%d veh=%d pos=(%.1f,%.1f)",
-                            farmlandId, plowSelf.id or 0, x, z)
-                        g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z, SoilConstants.COMPACTION.PLOW_RELIEF)
+                        local relieved = 0
+                        for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(plowSelf)) do
+                            relieved = relieved + g_SoilFertilityManager.soilSystem:relieveCompactionInQuad(quad)
+                        end
+                        SoilLogger.debug("Compaction: plow relief on farmland=%d veh=%d pixels=%d",
+                            farmlandId, plowSelf.id or 0, relieved)
                     end
                 end
             end)
@@ -8067,12 +8107,13 @@ function HookManager:installWeederHook()
                         SoilLogger.debug("[WeederHook] Field %d: mechanical weed removal applied", farmlandId)
                     end
                     if doRelief then
-                        -- Full relief for a flagged deep grassland sward-lifter, partial otherwise.
-                        local relief = SoilConstants.COMPACTION.GRASSLAND_RELIEF
-                        if hookMgrRef:isDeepGrasslandTool(weederSelf) then relief = nil end
-                        mgr.soilSystem:onSubsoilerPass(farmlandId, x, z, relief)
-                        SoilLogger.debug("[WeederHook] Field %d: grassland compaction relief (%s)",
-                            farmlandId, relief and "partial" or "full")
+                        -- One pass clears every 2 m pixel under the work areas (Tyson, 2026-10-15).
+                        local relieved = 0
+                        for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(weederSelf)) do
+                            relieved = relieved + mgr.soilSystem:relieveCompactionInQuad(quad)
+                        end
+                        SoilLogger.debug("[WeederHook] Field %d: grassland compaction relief, pixels=%d",
+                            farmlandId, relieved)
                     end
                 end
             end)
@@ -8967,7 +9008,11 @@ function HookManager:patchExistingSilos()
             if ok then patched = patched + 1 end
         end
     end
-    if patched > 0 then
+    -- _updateDeferredInit calls this every tick until setup completes, so this line
+    -- printed once per frame (#1098: 7,000 copies in one log). Log a count only when
+    -- it differs from the last one logged, so a silo placed later still reports.
+    if patched > 0 and patched ~= self._loggedSiloPatchCount then
+        self._loggedSiloPatchCount = patched
         SoilLogger.info("Retroactively injected SF fill types into %d existing silo(s)", patched)
     end
     return patched

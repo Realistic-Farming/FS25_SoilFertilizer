@@ -121,8 +121,9 @@ end
 --- input (the brief's add: headlands become disease-prone from the player's own
 --- turning). Returns a multiplier >= 1 (sicker ground grows pressure faster).
 ---@param cell table  a zoneData cell (.pH/.N/.OM/.compaction)
+---@param compaction number|nil the cell's mean compaction from the 2 m map; nil falls back to cell.compaction
 ---@return number mult
-function SpatialPressures:cellSoilMult(cell)
+function SpatialPressures:cellSoilMult(cell, compaction)
     local sh = SoilConstants.DISEASE_SOIL_HEALTH
     if not sh or not cell then return 1.0 end
     local mult = 1.0
@@ -134,7 +135,8 @@ function SpatialPressures:cellSoilMult(cell)
     if om >= sh.OM_GOOD_THRESHOLD then mult = mult * sh.OM_GOOD_MULT end
     -- Compaction: a packed cell is sicker. Linear 1.0 at 0 up to a cap; never
     -- lets an empty category dominate (the term is additive, not the whole).
-    local comp = cell.compaction or 0
+    local comp = compaction
+    if comp == nil then comp = cell.compaction or 0 end
     if comp > 0 then
         mult = mult * (1.0 + math.min(0.5, comp / 100.0))
     end
@@ -253,7 +255,9 @@ function SpatialPressures:run(selfSoilSystem, fieldId, field, day, fieldPoly, ne
     if diseaseRaised then
         local weights, totalW = {}, 0
         for i, c in ipairs(cells) do
-            local w = self:cellSoilMult(c.cell)
+            local comp = selfSoilSystem and type(selfSoilSystem.compactionMeanInSquare) == "function"
+                and selfSoilSystem:compactionMeanInSquare(c.x, c.z, half) or nil
+            local w = self:cellSoilMult(c.cell, comp)
             weights[i] = w
             totalW = totalW + w
         end
