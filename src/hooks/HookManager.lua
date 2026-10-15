@@ -990,11 +990,17 @@ end
 ---@return nil
 function HookManager:registerCustomSprayTypes()
     if not g_sprayTypeManager then
-        SoilLogger.warning("registerCustomSprayTypes: g_sprayTypeManager not available - skipping")
+        if not self._loggedSprayNoSprayTypeManager then
+            self._loggedSprayNoSprayTypeManager = true
+            SoilLogger.warning("registerCustomSprayTypes: g_sprayTypeManager not available - skipping")
+        end
         return
     end
     if not g_fillTypeManager then
-        SoilLogger.warning("registerCustomSprayTypes: g_fillTypeManager not available - skipping")
+        if not self._loggedSprayNoFillTypeManager then
+            self._loggedSprayNoFillTypeManager = true
+            SoilLogger.warning("registerCustomSprayTypes: g_fillTypeManager not available - skipping")
+        end
         return
     end
 
@@ -1005,7 +1011,10 @@ function HookManager:registerCustomSprayTypes()
     local limeType = g_sprayTypeManager:getSprayTypeByName("LIME")
 
     if not liqType and not dryType then
-        SoilLogger.warning("registerCustomSprayTypes: vanilla spray types not found - skipping")
+        if not self._loggedSprayNoVanillaTypes then
+            self._loggedSprayNoVanillaTypes = true
+            SoilLogger.warning("registerCustomSprayTypes: vanilla spray types not found - skipping")
+        end
         return
     end
 
@@ -1117,9 +1126,13 @@ function HookManager:registerCustomSprayTypes()
             local invalid = type(declared) == "number" and HookManager.densityOf(ft) == nil
             if invalid then
                 self.refusedProducts[ft.index or -1] = "density"
-                SoilLogger.warning(
-                    "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
-                    name, tostring(ft.massPerLiter))
+                if not self._loggedRefusedDensity then self._loggedRefusedDensity = {} end
+                if not self._loggedRefusedDensity[name] then
+                    self._loggedRefusedDensity[name] = true
+                    SoilLogger.warning(
+                        "SprayType [DRY] %-20s REFUSED: no usable density (massPerLiter=%s)",
+                        name, tostring(ft.massPerLiter))
+                end
                 skipped = skipped + 1
             else
                 -- R1a/R6: a retry that finds a previously refused product now valid
@@ -1162,7 +1175,10 @@ function HookManager:registerCustomSprayTypes()
         SoilLogger.debug("LIQUIDLIME: overrode sprayTypeIndex → %d (LPS=%.5f, ~%.0f L/ha)",
             llST.index, llST.litersPerSecond or 0, (llST.litersPerSecond or 0) * 36000)
     else
-        SoilLogger.warning("LIQUIDLIME spray type override failed: ft=%s st=%s", tostring(llFT), tostring(llST))
+        if not self._loggedLiquidLimeOverrideFailed then
+            self._loggedLiquidLimeOverrideFailed = true
+            SoilLogger.warning("LIQUIDLIME spray type override failed: ft=%s st=%s", tostring(llFT), tostring(llST))
+        end
     end
 
     if not self._loggedSprayTypeSummary then
@@ -1191,13 +1207,20 @@ function HookManager:registerCustomSprayTypes()
     -- (#970), which warns once, keeps refusals and leaves this false; no flag.
     local priceComplete = self:rebuildCustomPriceMap()
 
+    -- One-shot: the deferred loop calls this every tick until complete (see reapplyFillUnitPatch).
     -- Track whether all expected custom types registered (nil on dedi if fill types loaded late)
     self._sprayTypesComplete = (skipped == 0) and priceComplete
     if not self._sprayTypesComplete then
         if skipped > 0 then
-            SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+            if not self._loggedSprayRetryNilTypes then
+                self._loggedSprayRetryNilTypes = true
+                SoilLogger.warning("[DeferredInit] %d fill types were nil - scheduling retry for dedi server timing", skipped)
+            end
         else
-            SoilLogger.warning("[DeferredInit] every fill type resolved but a priced product carries an unusable price - scheduling retry")
+            if not self._loggedSprayRetryPrice then
+                self._loggedSprayRetryPrice = true
+                SoilLogger.warning("[DeferredInit] every fill type resolved but a priced product carries an unusable price - scheduling retry")
+            end
         end
     end
 end
@@ -8976,7 +8999,11 @@ function HookManager:patchExistingSilos()
             if ok then patched = patched + 1 end
         end
     end
-    if patched > 0 then
+    -- _updateDeferredInit calls this every tick until setup completes, so this line
+    -- printed once per frame (#1098: 7,000 copies in one log). Log a count only when
+    -- it differs from the last one logged, so a silo placed later still reports.
+    if patched > 0 and patched ~= self._loggedSiloPatchCount then
+        self._loggedSiloPatchCount = patched
         SoilLogger.info("Retroactively injected SF fill types into %d existing silo(s)", patched)
     end
     return patched
