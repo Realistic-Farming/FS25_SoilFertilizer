@@ -3671,30 +3671,10 @@ function HookManager:installHarvestHook()
                 end)
             end
 
-            -- Compaction: harvesters pack soil by ground pressure, not raw mass. A combine
-            -- on wide flotation tyres in dry soil adds little; a heavy one on narrow tyres
-            -- in wet soil adds a lot. Same model as the driving check, incl. VTP/moisture.
-            if detectedFieldId and detectedX and
-               g_SoilFertilityManager.settings.compactionEnabled and
-               SoilConstants.COMPACTION and SoilCompactionModel then
-                local cp = SoilConstants.COMPACTION
-                local rootVeh = combineSelf.rootVehicle or combineSelf
-                local okM, totalMass = pcall(function()
-                    return rootVeh:getTotalMass(false)
-                end)
-                if okM and totalMass and totalMass >= cp.HEAVY_VEHICLE_THRESHOLD_T then
-                    -- SF-55 wetness-input substitution (harvest call site): the same
-                    -- positional blend the driving pass uses - SCS field-level moisture
-                    -- for the detected field vs the rain-scalar fallback (confirm 2).
-                    local wet = g_SoilFertilityManager:_blendedWetness01(detectedX, detectedZ, detectedFieldId)
-                    local points = SoilCompactionModel.pointsForVehicle(rootVeh, wet)
-                    if points and points > 0 then
-                        pcall(function()
-                            g_SoilFertilityManager.soilSystem:onCompaction(detectedFieldId, detectedX, detectedZ, points)
-                        end)
-                    end
-                end
-            end
+            -- Compaction from a harvester is laid by the traffic check
+            -- (SoilFertilityManager:_checkVehicleCompaction), which visits every heavy
+            -- vehicle including the combine and, since the move to 2 m pixels, lays its
+            -- strip at any speed. The per-tick call from here went with that move.
 
             -- Forward original return values so Cutter.lua gets appliedDelta intact
             return r1, r2, r3, r4, r5
@@ -7609,6 +7589,41 @@ function HookManager:installWeatherHook()
     return true
 end
 
+--- The world quads of a tool's active, non-auxiliary work areas, each in perimeter
+--- order (start, width, width + height - start, height): the ground a relief pass
+--- works this tick. The engine's work area is the parallelogram start / width /
+--- height (WorkArea.lua:289-291, :307-316).
+---@return table quads
+function HookManager:_activeWorkAreaQuads(vehicle)
+    local out = {}
+    local spec = vehicle and vehicle.spec_workArea
+    if not spec or type(spec.workAreas) ~= "table" then return out end
+    -- MAINTENANCE row 74: the engine global is read BARE, as PositionalPH does.
+    local aux = WorkAreaType.AUXILIARY
+    for _, wa in ipairs(spec.workAreas) do
+        local usable = type(wa) == "table" and wa.type ~= aux
+            and wa.start ~= nil and wa.width ~= nil and wa.height ~= nil
+        if usable and type(vehicle.getIsWorkAreaActive) == "function" then
+            local ok, active = pcall(vehicle.getIsWorkAreaActive, vehicle, wa)
+            if ok and active == false then usable = false end
+        end
+        if usable then
+            local ok1, sx, _, sz = pcall(getWorldTranslation, wa.start)
+            local ok2, wx, _, wz = pcall(getWorldTranslation, wa.width)
+            local ok3, hx, _, hz = pcall(getWorldTranslation, wa.height)
+            if ok1 and ok2 and ok3 and type(sx) == "number" and type(wx) == "number"
+                and type(hx) == "number" and type(sz) == "number" and type(wz) == "number"
+                and type(hz) == "number" then
+                out[#out + 1] = {
+                    { x = sx, z = sz }, { x = wx, z = wz },
+                    { x = wx + hx - sx, z = wz + hz - sz }, { x = hx, z = hz },
+                }
+            end
+        end
+    end
+    return out
+end
+
 -- =========================================================
 -- HOOK 5: Plowing operations (Cultivator.onEndWorkAreaProcessing)
 -- =========================================================
@@ -7706,29 +7721,24 @@ function HookManager:installPlowingHook()
                         g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, false)
                     end
 
-                    -- Compaction: tillage LOOSENS soil - it never packs it. A subsoiler clears
-                    -- the deep pan (full relief); a plow-action tool only loosens the topsoil it
-                    -- inverts, so it relieves far less (PLOW_RELIEF) and the pan stays - keeping
-                    -- the subsoiler the real fix (#687). Shallow cultivation is neutral. Only
-                    -- harvest traffic (the combine hook) adds compaction. This still avoids the
-                    -- #672-adjacent bug where a deep-tillage tool built on the Cultivator spec
-                    -- (e.g. a Bourgault SPS configured as a subsoiler) ADDED compaction per pass.
+                    -- Compaction: tillage LOOSENS soil - it never packs it. A subsoiler or a
+                    -- plow-action tool clears compaction on every 2 m pixel under its active
+                    -- work areas: one pass clears, as it did on the 10 m cells (Tyson,
+                    -- 2026-10-15). Shallow cultivation is neutral; only traffic adds
+                    -- compaction. A deep-tillage tool built on the Cultivator spec (e.g. a
+                    -- Bourgault SPS configured as a subsoiler) must never ADD compaction (#672).
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
                         local isSubsoiler = (cultivatorSelf.spec_cultivator and
                                             cultivatorSelf.spec_cultivator.isSubsoiler) or false
                         if isSubsoiler or isPlowingTool then
-                            -- A subsoiler clears the deep pan (FULL relief = nil → SUBSOILER_REDUCTION);
-                            -- a plow-action tool only loosens topsoil (partial PLOW_RELIEF). NOTE: the
-                            -- old `isSubsoiler and nil or PLOW_RELIEF` idiom always returned PLOW_RELIEF
-                            -- (Lua: `true and nil` → nil → `nil or X` → X), so subsoilers were silently
-                            -- getting partial relief since #687. Use an explicit branch (#680).
-                            local relief = SoilConstants.COMPACTION.PLOW_RELIEF
-                            if isSubsoiler then relief = nil end
+                            local relieved = 0
+                            for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(cultivatorSelf)) do
+                                relieved = relieved + g_SoilFertilityManager.soilSystem:relieveCompactionInQuad(quad)
+                            end
                             SoilLogger.debug(
-                                "Compaction: deep-tillage relief on farmland=%d veh=%d pos=(%.1f,%.1f) subsoiler=%s plow=%s relief=%s",
-                                farmlandId, cultivatorSelf.id or 0, x, z,
-                                tostring(isSubsoiler), tostring(isPlowingTool), tostring(relief or "full"))
-                            g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z, relief)
+                                "Compaction: deep-tillage relief on farmland=%d veh=%d subsoiler=%s plow=%s pixels=%d",
+                                farmlandId, cultivatorSelf.id or 0,
+                                tostring(isSubsoiler), tostring(isPlowingTool), relieved)
                         end
                         -- shallow cultivator: neutral, no compaction change
                     end
@@ -7809,16 +7819,14 @@ function HookManager:installDedicatedPlowHook()
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, false, cropBiomass)
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
-                    -- Plowing inverts and loosens the topsoil, so it relieves a little
-                    -- compaction (no-op if the cell isn't compacted) - but only the small
-                    -- PLOW_RELIEF, not the full subsoiler amount: a plough leaves the deep
-                    -- pan, so routine ploughing can't erase compaction the way a subsoiler
-                    -- does (#687). It still never ADDS compaction, which keeps DeltaFive's
-                    -- "one field keeps climbing" plow-spec report fixed.
+                    -- Compaction: a plow pass clears every 2 m pixel under its work areas (Tyson, 2026-10-15).
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
-                        SoilLogger.debug("Compaction: plow relief (PLOW_RELIEF) on farmland=%d veh=%d pos=(%.1f,%.1f)",
-                            farmlandId, plowSelf.id or 0, x, z)
-                        g_SoilFertilityManager.soilSystem:onSubsoilerPass(farmlandId, x, z, SoilConstants.COMPACTION.PLOW_RELIEF)
+                        local relieved = 0
+                        for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(plowSelf)) do
+                            relieved = relieved + g_SoilFertilityManager.soilSystem:relieveCompactionInQuad(quad)
+                        end
+                        SoilLogger.debug("Compaction: plow relief on farmland=%d veh=%d pixels=%d",
+                            farmlandId, plowSelf.id or 0, relieved)
                     end
                 end
             end)
@@ -8099,12 +8107,13 @@ function HookManager:installWeederHook()
                         SoilLogger.debug("[WeederHook] Field %d: mechanical weed removal applied", farmlandId)
                     end
                     if doRelief then
-                        -- Full relief for a flagged deep grassland sward-lifter, partial otherwise.
-                        local relief = SoilConstants.COMPACTION.GRASSLAND_RELIEF
-                        if hookMgrRef:isDeepGrasslandTool(weederSelf) then relief = nil end
-                        mgr.soilSystem:onSubsoilerPass(farmlandId, x, z, relief)
-                        SoilLogger.debug("[WeederHook] Field %d: grassland compaction relief (%s)",
-                            farmlandId, relief and "partial" or "full")
+                        -- One pass clears every 2 m pixel under the work areas (Tyson, 2026-10-15).
+                        local relieved = 0
+                        for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(weederSelf)) do
+                            relieved = relieved + mgr.soilSystem:relieveCompactionInQuad(quad)
+                        end
+                        SoilLogger.debug("[WeederHook] Field %d: grassland compaction relief, pixels=%d",
+                            farmlandId, relieved)
                     end
                 end
             end)

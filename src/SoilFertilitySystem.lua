@@ -3641,7 +3641,6 @@ function SoilFertilitySystem:getOrCreateField(fieldId, createIfMissing, area)
         sessionLastProduct = nil,    -- Fill type name of last product applied this session
         compaction = 0,            -- field-average compaction 0–100 (derived from cells)
         compactionCells = {},      -- {cellKey → 0-100} per-cell compaction (10×10 m grid)
-        compactionCellDays = {},   -- {cellKey → day} per-cell once-per-day throttle (transient)
         compactionSum = 0,         -- running sum of cell values for O(1) average
         compactionTotalCells = 0,  -- total estimated field cells (set lazily from fieldArea)
         lastAlertSeason = nil, -- Season when the last critical alert fired (persisted)
@@ -5300,7 +5299,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             local tunComp = getTuningMult(self.settings, "tuningCompactionDecay", "ZERO_MULT")
             -- Route through _applyCompactionDecay so the recovery sticks: shaving
             -- field.compaction alone was wiped by the next per-cell rewrite.
-            self:_applyCompactionDecay(field, cp.NATURAL_DECAY_PER_DAY * timeFactor * tunComp)
+            self:_applyCompactionDecay(field, cp.NATURAL_DECAY_PER_DAY * timeFactor * tunComp, fieldId)
         end
     end
 
@@ -5435,7 +5434,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
             -- Same persistence fix as natural decay: the bio-drilling gain must land on
             -- compactionSum/zoneData or the next subsoiler/wheel pass erases it.
             self:_applyCompactionDecay(field,
-                cp.TAPROOT_DECOMPACT_PER_DAY * taprootMult * timeFactor * tunComp)
+                cp.TAPROOT_DECOMPACT_PER_DAY * taprootMult * timeFactor * tunComp, fieldId)
         end
     end
 
@@ -8759,8 +8758,8 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             coverageFraction = getXMLFloat(xmlFile, fieldKey .. "#coverageFraction") or 0,
             lastAlertSeason = getXMLInt(xmlFile, fieldKey .. "#lastAlertSeason") or nil,
             compaction = 0,
+            compactionSaved = getXMLFloat(xmlFile, fieldKey .. "#compaction"),
             compactionCells = {},
-            compactionCellDays = {},
             compactionSum = 0,
             compactionTotalCells = 0,
             initialized = true,
@@ -8953,24 +8952,26 @@ function SoilFertilitySystem:_finalizeLoadedField(fieldId, f)
         f.activeDiseaseSeverity = SoilDiseaseSystem.yieldSeverity(f.activeDisease)
     end
 
-    -- Rebuild the compaction running sum + field-average from per-cell zoneData
-    -- (the #656 fix: onCompaction stores per-cell in zoneData, never the legacy
-    -- compactionCells table, so the scalar must be reconstructed here).
+    -- Compaction lives on the 2 m map; the saved field average is the scalar, and
+    -- the running sum is rebuilt on the 2 m pixel total. A save without the average
+    -- (older than the attribute) falls back to the 10 m zone cells (#656).
     local zone = SoilConstants.ZONE
-    local compSum = 0
-    if f.zoneData then
-        for _, cell in pairs(f.zoneData) do
-            compSum = compSum + (cell.compaction or 0)
+    local maxC = (SoilConstants.COMPACTION and SoilConstants.COMPACTION.MAX_COMPACTION) or 100.0
+    local avg = f.compactionSaved
+    f.compactionSaved = nil
+    if avg == nil then
+        local compSum = 0
+        if f.zoneData then
+            for _, cell in pairs(f.zoneData) do
+                compSum = compSum + (cell.compaction or 0)
+            end
         end
+        local cells10 = math.max(1, math.ceil((f.fieldArea or 1.0) / zone.CELL_AREA_HA))
+        avg = compSum / cells10
     end
-    if compSum > 0 then
-        local areaInHa   = f.fieldArea or 1.0
-        local totalCells = math.max(1, math.ceil(areaInHa / zone.CELL_AREA_HA))
-        local maxC = (SoilConstants.COMPACTION and SoilConstants.COMPACTION.MAX_COMPACTION) or 100.0
-        f.compactionSum        = compSum
-        f.compactionTotalCells = totalCells
-        f.compaction           = math.min(maxC, compSum / totalCells)
-    end
+    f.compaction           = math.min(maxC, math.max(0, avg))
+    f.compactionTotalCells = self:_compactionTotalPixels(f)
+    f.compactionSum        = f.compaction * f.compactionTotalCells
 end
 
 -- Build a plain Lua table snapshot of all persisted soil state. Mirrors exactly
@@ -9188,8 +9189,8 @@ function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
                 coverageFraction      = e.coverageFraction or 0,
                 lastAlertSeason       = e.lastAlertSeason,
                 compaction            = 0,
+                compactionSaved       = e.compaction,
                 compactionCells       = {},
-                compactionCellDays    = {},
                 compactionSum         = 0,
                 compactionTotalCells  = 0,
                 initialized           = true,
@@ -9283,179 +9284,211 @@ function SoilFertilitySystem:listAllFields()
     SoilLogger.info("=== End field list ===")
 end
 
+--- Pixels in the field's area on the value-map grain (the 2 m grid): the
+--- denominator of the field-average compaction.
+---@param field table
+---@return number
+function SoilFertilitySystem:_compactionTotalPixels(field)
+    local vm = self.valueMaps
+    local grain = (vm and type(vm.getGrainMetres) == "function" and vm:getGrainMetres())
+        or SoilConstants.ZONE.OVERLAP_CELL_SIZE
+    local areaInHa = (field and field.fieldArea) or 1.0
+    return math.max(1, math.ceil(areaInHa * 10000 / (grain * grain)))
+end
+
+--- The mean compaction over the 2 m pixels whose centres lie in the square of
+--- half-size `half` around (cx, cz), or nil when the value maps are unavailable.
+--- For the 10 m zone-cell readers (SpatialPressures, EstablishmentFailure).
+---@return number|nil
+function SoilFertilitySystem:compactionMeanInSquare(cx, cz, half)
+    if not self:vmAvailable() then return nil end
+    local vm = self.valueMaps
+    local grain = vm:getGrainMetres()
+    if not grain then return nil end
+    local quad = {
+        { x = cx - half, z = cz - half }, { x = cx + half, z = cz - half },
+        { x = cx + half, z = cz + half }, { x = cx - half, z = cz + half },
+    }
+    local sum, n = 0, 0
+    for _, c in ipairs(PositionalPH.centresInQuad(quad, grain, vm.terrainSize)) do
+        sum = sum + (vm:readValueAtWorld("compaction", c.x, c.z) or 0)
+        n = n + 1
+    end
+    if n == 0 then return nil end
+    return sum / n
+end
+
 -- =========================================================
 -- COMPACTION API (P2-D)
 -- =========================================================
 
---- Apply compaction from a heavy vehicle work pass at a specific world position.
---- Throttled to once per cell per in-game day. Field-average is maintained as a
---- running sum over estimated total field cells so the nutrient penalty stays correct.
----@param farmlandId number
----@param worldX number  world X of the implement's work area centre
----@param worldZ number  world Z of the implement's work area centre
---- Apply compaction at a world position.
----@param farmlandId number
----@param worldX number
----@param worldZ number
----@param points number|nil Raw ground-pressure points for this pass (surface+subsoil×
+--- Compact the strip a heavy vehicle drove over: the 2 m pixels whose centres lie
+--- in the rectangle `width` wide from (x0, z0) to (x1, z1). Each pixel gains once
+--- per game day. The per-pixel points are scaled to the strip width so the same
+--- driving moves the field average as much as the 10 m cells did (Tyson,
+--- 2026-10-14): a 10 m cell was credited about 10 m of width per step.
+---@param x0 number  segment start (world)
+---@param z0 number
+---@param x1 number  segment end (world)
+---@param z1 number
+---@param width number|nil  vehicle width in metres
+---@param points number|nil Raw ground-pressure points for this pass (surface+subsoil x
 ---       moisture, NOT yet rate-scaled). When nil, the legacy flat per-pass amount is
 ---       used. Either way the tuningCompactionRate multiplier is applied here, in one place.
-function SoilFertilitySystem:onCompaction(farmlandId, worldX, worldZ, points)
-    if not self.settings.compactionEnabled then return end
+---@return number pixels compacted
+function SoilFertilitySystem:compactStrip(x0, z0, x1, z1, width, points)
+    if not self.settings.compactionEnabled then return 0 end
     local cp = SoilConstants.COMPACTION
-    if not cp then return end
+    if not cp then return 0 end
+    if not self:vmAvailable() then return 0 end
 
-    -- Field-ground gate (Talia, Discord): compaction is keyed on the *farmland* parcel,
-    -- which also covers painted gravel / parking / decoration ground inside that parcel.
-    -- Only pack soil where the engine reports real field ground at this point so a
-    -- parking pad on a field no longer compacts (the #672 overlay uses the same check).
-    -- y is ignored by the lookup; pass 0 like Giants' own code. If the API is missing
-    -- (older build) we proceed rather than silently disabling compaction.
-    if FSDensityMapUtil and FSDensityMapUtil.getFieldDataAtWorldPosition then
-        local ok, isOnField = pcall(FSDensityMapUtil.getFieldDataAtWorldPosition, worldX, 0, worldZ)
-        if ok and isOnField == false then return end
-    end
-
-    -- Build-up amount. The pressure model (driving + harvest hooks) passes raw points;
-    -- legacy callers (none currently) get the flat per-pass amount. The user-facing
-    -- tuningCompactionRate multiplier is applied here so it governs every path equally.
     -- ZERO_MULT LUT: idx 1 = 0x (no build-up), 3 = 1x, 5 = 2x.
     local rateMult = getTuningMult(self.settings, "tuningCompactionRate", "ZERO_MULT")
     local base = (points ~= nil) and points or cp.COMPACTION_PER_PASS
     local added = base * rateMult
-    if added <= 0 then return end
+    if added <= 0 then return 0 end
 
-    local field = self:getOrCreateField(farmlandId, false)
-    if not field then return end
+    local dx, dz = x1 - x0, z1 - z0
+    local len = math.sqrt(dx * dx + dz * dz)
+    if len <= 0 then return 0 end
 
-    local zone = SoilConstants.ZONE
-    local cx = math.floor(worldX / zone.CELL_SIZE)
-    local cz = math.floor(worldZ / zone.CELL_SIZE)
-    local cellKey = tostring(cx * 10000 + cz)
+    local vm = self.valueMaps
+    local grain = vm:getGrainMetres()
+    if not grain then return 0 end
+    local w = math.max(grain, width or cp.VEHICLE_WIDTH_FALLBACK_M or 3.0)
+    local perPixel = math.min(cp.MAX_COMPACTION, added * (SoilConstants.ZONE.CELL_SIZE / w))
+
+    -- The strip in perimeter order: the segment offset by half the width each side.
+    local nx, nz = -dz / len * w * 0.5, dx / len * w * 0.5
+    local quad = {
+        { x = x0 + nx, z = z0 + nz }, { x = x1 + nx, z = z1 + nz },
+        { x = x1 - nx, z = z1 - nz }, { x = x0 - nx, z = z0 - nz },
+    }
 
     local currentDay = (g_currentMission and g_currentMission.environment and
                         g_currentMission.environment.currentDay) or 0
-
-    if not field.compactionCellDays then field.compactionCellDays = {} end
-    if field.compactionCellDays[cellKey] == currentDay then return end
-    field.compactionCellDays[cellKey] = currentDay
-
-    -- 1. Update unified zoneData for HUD/Map
-    if not field.zoneData then field.zoneData = {} end
-    if not field.zoneData[cellKey] then
-        field.zoneData[cellKey] = {
-            N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-            pH = field.pH, OM = field.organicMatter,
-            weedPressure = field.weedPressure, pestPressure = field.pestPressure,
-            diseasePressure = field.diseasePressure, compaction = field.compaction
-        }
+    local count = 0
+    for _, c in ipairs(PositionalPH.centresInQuad(quad, grain, vm.terrainSize)) do
+        count = count + self:_compactPixel(c.x, c.z, perPixel, currentDay, grain, cp)
     end
-    local cell = field.zoneData[cellKey]
-    local prev = cell.compaction or 0
-    local newVal = math.min(cp.MAX_COMPACTION, prev + added)
-    cell.compaction = newVal
+    if count > 0 then
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
+    end
+    SoilLogger.debug("Compaction strip: w=%.1f m  +%.1f pts/pixel  pixels=%d", w, perPixel, count)
+    return count
+end
 
-    -- 2. Update field average
+--- One pixel of a compaction strip: the field under it, the real-field-ground gate,
+--- once per pixel per game day, then a read-modify-write of that pixel alone.
+---@return number 1 when the pixel was raised, else 0
+function SoilFertilitySystem:_compactPixel(cx, cz, perPixel, currentDay, grain, cp)
+    local hm = self.hookManager
+    local fieldId = hm and hm:getFieldIdAtWorldPosition(cx, cz, false)
+    if not fieldId or fieldId <= 0 then return 0 end
+
+    -- Field-ground gate (Talia, Discord): compaction is keyed on the field, whose parcel
+    -- also covers painted gravel / parking / decoration ground. Only pack soil where the
+    -- engine reports real field ground at this point (the #672 overlay uses the same
+    -- check). y is ignored by the lookup; pass 0 like Giants' own code. If the API is
+    -- missing (older build) we proceed rather than silently disabling compaction.
+    if FSDensityMapUtil and FSDensityMapUtil.getFieldDataAtWorldPosition then
+        local ok, isOnField = pcall(FSDensityMapUtil.getFieldDataAtWorldPosition, cx, 0, cz)
+        if ok and isOnField == false then return 0 end
+    end
+
+    local field = self:getOrCreateField(fieldId, false)
+    if not field then return 0 end
+
+    -- Once per pixel per game day: the set is per field and starts over each day.
+    if field.compactionPixelDay ~= currentDay or field.compactionPixelsToday == nil then
+        field.compactionPixelDay = currentDay
+        field.compactionPixelsToday = {}
+    end
+    local key = math.floor(cx / grain) .. "," .. math.floor(cz / grain)
+    if field.compactionPixelsToday[key] then return 0 end
+    field.compactionPixelsToday[key] = true
+
+    local vm = self.valueMaps
+    local prev = vm:readValueAtWorld("compaction", cx, cz) or 0
+    local newVal = math.min(cp.MAX_COMPACTION, prev + perPixel)
+    if newVal <= prev then return 0 end
+    -- A square a quarter pixel wide each side of the centre sets this pixel only.
+    vm:writeValueAtWorld("compaction", cx, cz, newVal, grain * 0.25)
+    -- Legacy map-shipped GRLE layer (kept for maps that declare it)
+    if self.layerSystem and self.layerSystem.available then
+        self.layerSystem:updatePixelForField("compaction", cx, cz, newVal, grain * 0.5)
+    end
+
     field.compactionSum = (field.compactionSum or 0) + (newVal - prev)
     if (field.compactionTotalCells or 0) == 0 then
-        local areaInHa = field.fieldArea or 1.0
-        field.compactionTotalCells = math.max(1, math.ceil(areaInHa / zone.CELL_AREA_HA))
+        field.compactionTotalCells = self:_compactionTotalPixels(field)
     end
-    -- Clamp the field-AVERAGE to MAX_COMPACTION. Each cell is already capped at 100, but the
-    -- average can creep past it when more cells get packed than `compactionTotalCells` - that
-    -- denominator comes from the crop-polygon fieldArea, while cells are packed across the
-    -- (larger) real field ground incl. headland/boundary cells. That was the "105% compaction"
-    -- overshoot in #703.
+    -- Clamp the field-AVERAGE to MAX_COMPACTION: the denominator comes from the
+    -- crop-polygon fieldArea, while pixels are packed across the (larger) real field
+    -- ground incl. headland, so the average can creep past the cap (#703).
     field.compaction = math.min(cp.MAX_COMPACTION, field.compactionSum / field.compactionTotalCells)
-
-    -- 3. Write per-pixel compaction
-    do
-        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
-        if minimapLayer then minimapLayer:markDirty() end
-        -- REFINED: runtime value map (~2 m/px) - crisp wheel-trail stamps
-        if self:vmAvailable() then
-            self.valueMaps:writeValueAtWorld("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
-        end
-        -- Legacy map-shipped GRLE layer (kept for maps that declare it)
-        if self.layerSystem and self.layerSystem.available then
-            self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
-        end
-    end
-
-    SoilLogger.debug("Compaction: field=%d cell=%s  %.0f→%.0f%%  avg=%.1f%%",
-        farmlandId, cellKey, prev, newVal, field.compaction)
+    return 1
 end
 
---- Apply a deep-tillage compaction reduction at a specific world position.
----@param farmlandId number
----@param worldX number
----@param worldZ number
----@param reliefPoints number|nil  Points to remove from the cell. Defaults to the full
----                                SUBSOILER_REDUCTION; plows pass the smaller PLOW_RELIEF (#687).
-function SoilFertilitySystem:onSubsoilerPass(farmlandId, worldX, worldZ, reliefPoints)
-    if not self.settings.compactionEnabled then return end
+--- Compaction relief under one work area of a subsoiler, a plow-action tool or a
+--- grassland weeder: every 2 m pixel whose centre lies in `quad` goes to 0. A pass
+--- cleared its 10 m cells before the move to 2 m, because the relief hooks run every
+--- tick; on 2 m it clears the ground the tool really worked (Tyson, 2026-10-15). It
+--- is idempotent, so the many ticks a work area spends over a pixel need no dedup.
+---@param quad table  4 world vertices {x=,z=} in perimeter order
+---@return number pixels relieved
+function SoilFertilitySystem:relieveCompactionInQuad(quad)
+    if not self.settings.compactionEnabled then return 0 end
     local cp = SoilConstants.COMPACTION
-    if not cp then return end
-    local field = self:getOrCreateField(farmlandId, false)
-    if not field then return end
+    if not cp then return 0 end
+    if not self:vmAvailable() then return 0 end
+    local vm = self.valueMaps
+    local grain = vm:getGrainMetres()
+    if not grain then return 0 end
 
-    local zone = SoilConstants.ZONE
-    local cx = math.floor(worldX / zone.CELL_SIZE)
-    local cz = math.floor(worldZ / zone.CELL_SIZE)
-    local cellKey = tostring(cx * 10000 + cz)
-
-    if not field.zoneData then field.zoneData = {} end
-    if not field.zoneData[cellKey] then
-        field.zoneData[cellKey] = {
-            N = field.nitrogen, P = field.phosphorus, K = field.potassium,
-            pH = field.pH, OM = field.organicMatter,
-            weedPressure = field.weedPressure, pestPressure = field.pestPressure,
-            diseasePressure = field.diseasePressure, compaction = field.compaction
-        }
+    local hm = self.hookManager
+    local count = 0
+    for _, c in ipairs(PositionalPH.centresInQuad(quad, grain, vm.terrainSize)) do
+        local prev = vm:readValueAtWorld("compaction", c.x, c.z)
+        if prev and prev > 0 then
+            -- skipNegativeCache=true: player-created fields are not in the cache yet
+            local fieldId = hm and hm:getFieldIdAtWorldPosition(c.x, c.z, true)
+            local field = (fieldId and fieldId > 0) and self:getOrCreateField(fieldId, false) or nil
+            if field then
+                vm:writeValueAtWorld("compaction", c.x, c.z, 0, grain * 0.25)
+                if self.layerSystem and self.layerSystem.available then
+                    self.layerSystem:updatePixelForField("compaction", c.x, c.z, 0, grain * 0.5)
+                end
+                field.compactionSum = math.max(0, (field.compactionSum or 0) - prev)
+                local tc = field.compactionTotalCells or 0
+                if tc == 0 then
+                    tc = self:_compactionTotalPixels(field)
+                    field.compactionTotalCells = tc
+                end
+                field.compaction = math.min(cp.MAX_COMPACTION, field.compactionSum / tc)
+                count = count + 1
+            end
+        end
     end
-    local cell = field.zoneData[cellKey]
-    local prev = cell.compaction or 0
-    if prev <= 0 then return end
-
-    local relief = reliefPoints or cp.SUBSOILER_REDUCTION
-    local newVal = math.max(0, prev - relief)
-    cell.compaction = newVal
-
-    field.compactionSum = math.max(0, (field.compactionSum or 0) - (prev - newVal))
-    local tc = field.compactionTotalCells or 0
-    field.compaction = tc > 0 and math.min(cp.MAX_COMPACTION, field.compactionSum / tc) or 0
-
-    -- Write per-pixel compaction relief
-    do
+    if count > 0 then
         local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
         if minimapLayer then minimapLayer:markDirty() end
-        if self:vmAvailable() then
-            self.valueMaps:writeValueAtWorld("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
-        end
-        if self.layerSystem and self.layerSystem.available then
-            self.layerSystem:updatePixelForField("compaction", worldX, worldZ, newVal, zone.CELL_SIZE * 0.5)
-        end
     end
-
-    SoilLogger.debug("Subsoiler: field=%d cell=%s  %.0f→%.0f%%  avg=%.1f%%",
-        farmlandId, cellKey, prev, newVal, field.compaction)
+    return count
 end
 
---- Apply a field-average compaction reduction (natural decay, taproot bio-drilling) in a
---- way that PERSISTS through later per-cell rewrites. The displayed average is DERIVED as
---- compactionSum / compactionTotalCells, so shaving only field.compaction (as the daily
---- decay used to) was silently discarded the instant onCompaction / onSubsoilerPass
---- re-derived the average from the untouched compactionSum. That was the "radish
---- decompaction and natural recovery reset on the first subsoiler or wheel pass" report
---- (nemrod153, Discord). Fading compactionSum AND every zoneData cell by the same ratio
---- keeps the accounting total, the
---- per-cell store (read back as `prev` by onCompaction/onSubsoilerPass) and the average
---- mutually consistent, and preserves the existing points-per-day tuning exactly
---- (newAvg = oldAvg - reductionPoints).
+--- Apply a field-average compaction reduction (natural decay, taproot bio-drilling).
+--- The average is DERIVED as compactionSum / compactionTotalCells, so the sum is faded
+--- by the same ratio as the average or a later pixel write would re-derive the old
+--- average (the "decompaction reset on the next wheel pass" report, nemrod153). The
+--- map fades each pixel by the same ratio (Tyson, 2026-10-14: proportional per
+--- pixel), through banded passes once the pending fade reaches MAP_DECAY_STEP.
 ---@param field table  fieldData entry
 ---@param reductionPoints number  points to shave off the field-average compaction
+---@param fieldId number|nil  the field's id, for its polygon; nil skips the map fade
 ---@return boolean changed
-function SoilFertilitySystem:_applyCompactionDecay(field, reductionPoints)
+function SoilFertilitySystem:_applyCompactionDecay(field, reductionPoints, fieldId)
     if not field or not reductionPoints or reductionPoints <= 0 then return false end
     local oldAvg = field.compaction or 0
     if oldAvg <= 0 then return false end
@@ -9463,24 +9496,56 @@ function SoilFertilitySystem:_applyCompactionDecay(field, reductionPoints)
     local newAvg = math.max(0, oldAvg - reductionPoints)
     local ratio  = newAvg / oldAvg   -- oldAvg > 0 guaranteed above
 
-    -- Fade the authoritative accounting total so the derived average survives a later
-    -- per-cell rewrite, and fade each per-cell value so relief/build-up math (which reads
-    -- cell.compaction as `prev`) stays in lockstep with the faded sum.
     field.compactionSum = (field.compactionSum or 0) * ratio
-    if field.zoneData then
-        for _, cell in pairs(field.zoneData) do
-            if cell.compaction and cell.compaction > 0 then
-                cell.compaction = cell.compaction * ratio
-            end
-        end
-    end
     field.compaction = newAvg
 
-    -- REFINED: mirror the decay onto the per-pixel compaction map as a uniform
-    -- shift (additive approximation of the ratio fade; accumulates via _vmPend
-    -- so slow daily decay is not lost to raw quantisation).
-    if self:vmAvailable() then
-        self:_vmQueueFieldDelta(field, "compaction", -(oldAvg - newAvg))
+    -- The map fade is held until it reaches MAP_DECAY_STEP, so a pixel a few raw steps
+    -- above zero still fades instead of rounding to no change every day. The pending
+    -- ratio is not saved: a reload drops at most one held step from the map.
+    local cp = SoilConstants.COMPACTION
+    local step = (cp and cp.MAP_DECAY_STEP) or 0.95
+    field._compactionMapRatio = (field._compactionMapRatio or 1.0) * ratio
+    if fieldId ~= nil and field._compactionMapRatio <= step and self:vmAvailable() then
+        if self:_compactionMapFade(fieldId, field, field._compactionMapRatio) then
+            field._compactionMapRatio = 1.0
+        end
+    end
+    return true
+end
+
+--- Fade every compaction pixel in the field polygon to `ratio` of its value. The
+--- engine write is additive, so the fade is a banded pass: each band of raw values
+--- drops by the fade of its middle value, lowest band first, so a pixel that drops
+--- into a lower band is never faded twice (the drying curve's pattern, SF-49).
+---@return boolean done
+function SoilFertilitySystem:_compactionMapFade(fieldId, field, ratio)
+    local vm = self.valueMaps
+    if type(vm.applyRawDeltaToPolygonBand) ~= "function" then return false end
+    local verts = self:_getFieldPolyVerts(fieldId, field)
+    if not verts then return false end
+    local RMIN, RMAX = SoilValueMaps.RAW_MIN, SoilValueMaps.RAW_MAX
+    local span = RMAX - RMIN
+    local f = 1 - math.max(0, ratio)   -- the fraction removed
+    if f <= 0 then return true end
+    if f >= 1 then
+        -- A field average of 0: every pixel goes to 0 in one floored pass.
+        return vm:applyRawDeltaToPolygonBand("compaction", verts, -span, RMIN + 1, RMAX,
+            { floorTo = RMIN }) ~= nil
+    end
+    -- Band width: the drop varies by at most about one raw step inside a band, and
+    -- never more than 32 bands.
+    local width = math.max(math.ceil(span / 32), math.floor(1 / f))
+    local lo = RMIN + 1   -- raw RMIN is a compaction of 0: nothing to fade
+    while lo <= RMAX do
+        local hi = math.min(RMAX, lo + width - 1)
+        local drop = math.floor(((lo + hi) * 0.5 - RMIN) * f + 0.5)
+        if drop > 0 then
+            if vm:applyRawDeltaToPolygonBand("compaction", verts, -drop, lo, hi,
+                    { floorTo = RMIN }) == nil then
+                return false
+            end
+        end
+        lo = hi + 1
     end
     return true
 end

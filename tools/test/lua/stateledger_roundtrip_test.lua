@@ -83,8 +83,16 @@ do
   T.near("roundtrip: zone 3_4 N", b.zoneData["3_4"].N, 50)
   T.near("roundtrip: zone 3_4 compaction", b.zoneData["3_4"].compaction, 12)
 
-  -- Derived by _finalizeLoadedField: compaction rebuilt from zoneData, coverage restored.
-  T.ok("roundtrip: compaction rebuilt > 0", (b.compaction or 0) > 0)
+  -- CHANGED (SF-2m-compaction): compaction now lives on the 2 m value map; the saved
+  -- field-average SCALAR (compactionSaved, round-tripped through e.compaction) wins over
+  -- zoneData whenever it is present, even when it is exactly 0 - the same rule
+  -- SF-2m-compaction_entry_test.lua's L3/L4c prove directly. The source field above sets
+  -- compaction = 0 explicitly, so the old claim here ("compaction rebuilt from zoneData,
+  -- so it ends up > 0 from the 12/8 cells") no longer holds: the round trip must carry
+  -- the saved 0 through untouched, not rebuild a nonzero average from zoneData.
+  T.eq("CHANGED (was 'compaction rebuilt from zoneData > 0'): the saved scalar (0) wins over zoneData", b.compaction, 0)
+  T.near("roundtrip: compactionTotalCells is the 2 m pixel total (3.5 ha -> 8750 px)", b.compactionTotalCells, 8750, 1e-6)
+  T.near("roundtrip: compactionSum = avg * pixel total (0)", b.compactionSum, 0, 1e-6)
   T.near("roundtrip: coveredAreaHa restored", b.coveredAreaHa, 0.5 * 3.5)
 end
 

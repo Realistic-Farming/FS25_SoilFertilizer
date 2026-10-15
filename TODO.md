@@ -368,3 +368,10 @@
 - [x] `src/hooks/HookManager.lua`: `patchExistingSilos` logs only when the patched count differs from the last one logged (`_loggedSiloPatchCount`); `registerCustomSprayTypes` one-shot flags on the three early-skip warnings, the per-product density REFUSED warning (`_loggedRefusedDensity`), the LIQUIDLIME override warning and the two retry warnings.
 - [x] Bar `SF-1098-deferred_init_log_once_test.lua` (32 rows from `_updateDeferredInit`; development fails 13).
 - [~] In game (owed): TESTING row 583.
+
+## Compaction on 2 m (step 2, 2026-10-15)
+
+- [x] `src/SoilFertilitySystem.lua`: `compactStrip` and `_compactPixel` replace `onCompaction`; `relieveCompactionInQuad` replaces `onSubsoilerPass`; `_applyCompactionDecay` fades the map through `_compactionMapFade` (held at `MAP_DECAY_STEP`); load reads the saved average (`compactionSaved`) and rebuilds the sum on the 2 m pixel total (`_compactionTotalPixels`); `compactionMeanInSquare` for the 10 m readers. `src/SoilFertilityManager.lua`: the strip per driven segment, and the anchor keeps its position until the vehicle has moved 2 m. `src/hooks/HookManager.lua`: relief over `_activeWorkAreaQuads`; the harvest-hook compaction call removed. `src/SpatialPressures.lua`, `src/EstablishmentFailure.lua`: the map mean. `src/config/Constants.lua`: relief constants removed; `VEHICLE_WIDTH_FALLBACK_M`, `MAP_DECAY_STEP`.
+- [x] Bar `SF-2m-compaction_entry_test.lua` (61 rows; development fails 29); `compaction_decay_test.lua` and `stateledger_roundtrip_test.lua` moved to the 2 m store.
+- [ ] Step 2b: N, P, K and organic matter one dose per pixel (the stripes). Then step 3, the pressures, and step 4, retiring zone data.
+- [~] In game (owed): TESTING row 584.

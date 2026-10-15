@@ -364,3 +364,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] While a save loads, Soil retries its fill-type setup every tick until it completes, and eight log lines on that path printed on every retry: a player's log held "Retroactively injected SF fill types into 5 existing silo(s)" 7,000 times. The silo line now prints when its count changes, and the three early-skip warnings, the per-product density refusal, the LIQUIDLIME override warning and the two retry warnings print once. Nothing else changes.
 - The check is TESTING row 583 (log only). Design origin none.
+
+## 2026-10-15 (Fred (via Desk)): compaction on the 2 m map (step 2 of one 2 m grid)
+
+- [x] Compaction lived in 10 m cells and was painted onto the map as 10 m squares. On Tyson's rulings of 2026-10-14 and 2026-10-15 it now lives on the 2 m map. Traffic compacts a strip as wide as the vehicle along its path, each 2 m pixel once a game day, with the per-pass points scaled to the strip so one pass moves the field average as a 10 m cell row did; every track counts. Slow vehicles, combines at work included, now lay their strip once they have moved 2 m; before, anything under 7.2 km/h laid nothing through the traffic check and combines relied on a separate harvest call, which is gone. One pass of a subsoiler, plow-action tool or grassland weeder clears every pixel under its active work areas, as a pass already cleared its 10 m cells. Decay fades each pixel by the field's ratio. The saved field average is now read back on load. Disease origin weighting and the seedbed waterlogging threshold read the 2 m cells under each 10 m cell.
+- The in-game check is TESTING row 584. Design origin SF-55, SF-19, SF-57 (DESIGN-CHECK rows 263 to 265).
