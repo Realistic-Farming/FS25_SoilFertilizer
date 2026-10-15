@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0.3] - 2026-10-15
+
+> **This is not a final release.** It gives everyone, testers and players, new or returning, everything we have built so far, so nobody has to wait on an old version any longer. The Realistic Farming suite is far from done: we are still building and expanding every mod, and completing it could take months, possibly a year. Expect changes and rough edges along the way, and please report anything that looks wrong.
+
+### Fixed
+- **The game no longer stalls at the second midnight on a new save.** The crop disease grid copied itself every frame while it filled, and again at the day change; on a planted map that made memory jump by more than a gigabyte in one frame (#1128).
+- **The sprayer's Pass % counts the ground actually sprayed.** It used to reach 99% at about half the field, so Overlap Prevention switched the sprayer off early: products stopped being used and lime stopped partway (#1098).
+- **Fewer repeated log lines while a save loads.** A few Soil & Fertilizer lines, "Retroactively injected SF fill types into ... silo(s)" among them, could repeat thousands of times in log.txt. Each now prints once (#1098).
+
+### Changed
+- **Soil compaction follows the real wheel tracks.** It now lives on a 2 m map instead of 10 m squares. Slow vehicles and working combines compact as they drive. A subsoiler, plough or grassland weeder clears the ground it works. Compaction fades evenly everywhere. Every wheel track counts, so a day of work with a narrow implement packs more than before.
+
 ## [2.6.0.2] - 2026-10-14
 
 > **This is not a final release.** It gives everyone, testers and players, new or returning, everything we have built so far, so nobody has to wait on an old version any longer. The Realistic Farming suite is far from done: we are still building and expanding every mod, and completing it could take months, possibly a year. Expect changes and rough edges along the way, and please report anything that looks wrong.
