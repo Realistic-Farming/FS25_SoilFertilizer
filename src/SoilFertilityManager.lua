@@ -1821,32 +1821,33 @@ function SoilFertilityManager:_checkOneVehicleCompaction(vehicle)
         return false
     end
 
-    -- One stepped position: write the traffic drag when the gate holds (independent of
-    -- the compaction write), then compact the cell if it sits on a field (onCompaction
-    -- gates each cell to once/day and to real field ground, so repeated calls are cheap
-    -- no-ops).
+    -- One stepped position: write the traffic drag when the gate holds. Compaction is
+    -- laid once for the whole segment below, as a strip as wide as the vehicle.
     local function stepAt(px, pz)
         self:_maybeWriteTrafficDrag(px, pz, wet)
-        local fid = self.soilSystem.hookManager:getFieldIdAtWorldPosition(px, pz, false)
-        if fid and fid > 0 then
-            pcall(function() self.soilSystem:onCompaction(fid, px, pz, points) end)
-        end
     end
 
     local lx, lz = self:_compactionLastPos(vehicle)
-    self:_rememberCompactionPos(vehicle, x, z)
 
     -- First sample, or a teleport/fast-travel jump: record position but lay NOTHING.
     -- Compaction only accrues along ground actually driven over, so sitting still or
     -- spawning on a field never raises it (Talia: "equipment just sitting raises it").
-    if not (lx and lz) then return false end
+    if not (lx and lz) then
+        self:_rememberCompactionPos(vehicle, x, z)
+        return false
+    end
 
     local dx, dz = x - lx, z - lz
     local dist   = math.sqrt(dx * dx + dz * dz)
+    -- Below the minimum the stored position stays put, so a slow vehicle builds up its
+    -- travel and lays the strip once it has really moved MIN_MOVE_DISTANCE_M. It used to
+    -- move on every sample, so nothing under 7.2 km/h (a working combine) ever laid
+    -- compaction here (Tyson, 2026-10-15). Parked jitter never reaches the minimum.
     if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return false end   -- parked / barely moved
+    self:_rememberCompactionPos(vehicle, x, z)
     if dist > (cp.MAX_SEGMENT_M or 30.0) then return false end        -- discontinuity: no line across the gap
 
-    -- Walk the driven segment in ~half-cell steps so no cell is skipped at speed.
+    -- Walk the driven segment in ~half-cell steps so the drag skips no cell at speed.
     -- This is what keeps the trail continuous whether crawling or driving fast.
     local cellSize = (SoilConstants.ZONE and SoilConstants.ZONE.CELL_SIZE) or 10.0
     local step     = cellSize * 0.5
@@ -1856,7 +1857,13 @@ function SoilFertilityManager:_checkOneVehicleCompaction(vehicle)
         stepAt(lx + dx * t, lz + dz * t)
     end
 
-    SoilLogger.debug("Compaction: %s pass +%.2f raw pts/cell  wet=%.2f  steps=%d",
+    -- Compaction: the strip as wide as the vehicle along the driven segment (Tyson,
+    -- 2026-10-14). compactStrip gates each 2 m pixel to once a day and to real field
+    -- ground, and finds the field under each pixel itself.
+    local width = (vehicle.size and vehicle.size.width) or cp.VEHICLE_WIDTH_FALLBACK_M or 3.0
+    pcall(function() self.soilSystem:compactStrip(lx, lz, x, z, width, points) end)
+
+    SoilLogger.debug("Compaction: %s pass +%.2f raw pts  wet=%.2f  steps=%d",
         tostring(source), points, wet, steps)
     return true
 end

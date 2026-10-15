@@ -1934,7 +1934,7 @@ SoilConstants.COMPACTION = {
     },
 
     -- Legacy fallback: points added when a caller has no computed pressure (kept so any
-    -- path that calls onCompaction without a points value still does something sane).
+    -- path that calls compactStrip without a points value still does something sane).
     COMPACTION_PER_PASS       = 6.0,
     NATURAL_DECAY_PER_DAY     = 0.5,   -- points removed per game day (natural recovery)
     -- Taproot bio-drilling (#687, long-term): deep-rooting crops drive roots through
@@ -1943,17 +1943,12 @@ SoilConstants.COMPACTION = {
     -- replacement. Scaled per crop: oilseed radish is the classic bio-driller; canola less so.
     TAPROOT_DECOMPACT_PER_DAY = 0.4,   -- base points/day at full strength while standing
     TAPROOT_CROPS             = { oilseedradish = 1.0, canola = 0.5 },
-    SUBSOILER_REDUCTION       = 15.0,  -- points removed per subsoiler pass (clears the deep pan)
-    PLOW_RELIEF               = 3.0,   -- points removed per plow pass - a plough only loosens the
-                                       -- topsoil it inverts; the deep pan stays, so it relieves far
-                                       -- less than a subsoiler. Keeps the subsoiler meaningful and
-                                       -- stops routine ploughing from erasing compaction (#687).
-    -- Grassland compaction relief (#680). A grassland weeder (isGrasslandWeeder: aerators,
-    -- sward renovators) works the sward WITHOUT destroying it, so it can ease pasture
-    -- compaction without a reseed - but only a partial amount (it is not a deep subsoiler).
-    GRASSLAND_RELIEF          = 3.0,   -- points removed per generic grassland-weeder pass
+    -- Relief: one pass of a subsoiler, a plow-action tool or a grassland weeder
+    -- (isGrasslandWeeder: aerators, sward renovators, #680) sets every 2 m pixel under
+    -- its active work areas to 0. A pass already cleared its 10 m cells before the move
+    -- to 2 m, because the relief hooks run every tick (Tyson, 2026-10-15).
     -- Deep grassland sward-lifters (e.g. Latapia 5P1H) ARE built as Cultivator+isSubsoiler,
-    -- so they already get the full SUBSOILER_REDUCTION - but as cultivators they destroy the
+    -- so the subsoiler pass already relieves them - but as cultivators they destroy the
     -- grass. Tools whose configFileName matches one of these lowercase substrings are treated
     -- as grass-preserving: SF snapshots the sward before the pass and restores it after, so the
     -- deep tool decompacts without forcing a reseed. Extend freely as more mods are confirmed.
@@ -1972,6 +1967,10 @@ SoilConstants.COMPACTION = {
     MIN_MOVE_DISTANCE_M       = 2.0,   -- must move at least this far between samples (skip when parked)
     MAX_SEGMENT_M             = 30.0,  -- if the vehicle jumped more than this between samples assume a
                                        -- teleport/fast-travel and don't paint a compaction line across the gap
+    VEHICLE_WIDTH_FALLBACK_M  = 3.0,   -- strip width for a vehicle with no size.width
+    -- The per-pixel map fade waits until the pending decay ratio reaches this (a 5%
+    -- fade), so a slow daily decay is not lost to raw rounding on the 254-step map.
+    MAP_DECAY_STEP            = 0.95,
 
     -- SF-55 TRAFFIC ON WET GROUND (trafficDrag): a loaded wheel crossing wet ground
     -- bruises a standing crop, quietly worse at harvest. Own small layer, bounded
