@@ -73,6 +73,28 @@ function getWorldTranslation(node)
 end
 function getWorldRotation() return 0, 0, 0 end
 
+-- #1098 (Desk follow-up, 2026-10-14): group S's VWW rig needs these so its 2 m
+-- overlap record (getBoomOverlapPositions, which now owns coverage area on a
+-- sectioned pass) can resolve real points, the same no-rotation model as
+-- getWorldTranslation above (nodes and frames are plain {x=, z=} world points; no
+-- heading is modelled because this rig never turns). Every other group here stays a
+-- non-VWW (broadcast) pass, so markOverlapRecord's countArea is always false for
+-- them regardless: these three are reached, but never add area, for any group but S.
+local function xz(n) if type(n) == "table" then return n.x, n.z end return 0, 0 end
+function localToLocal(node, frame, _x, _y, _z)
+  local nx, nz = xz(node)
+  local fx, fz = xz(frame)
+  return nx - fx, 0, nz - fz
+end
+function localToWorld(frame, lx, _ly, lz)
+  local fx, fz = xz(frame)
+  return fx + lx, 0, fz + lz
+end
+function worldToLocal(frame, wx, _wy, wz)
+  local fx, fz = xz(frame)
+  return wx - fx, 0, wz - fz
+end
+
 -- ── fill types and the map's spray types ─────────────────────────────────────
 -- massPerLiter in tonnes per litre, the descriptor's unit.
 local DECL = { FERTILIZER = 0.001, LIQUIDFERTILIZER = 0.001, LIME = 0.001, PROPICONAZOLE = 0.001 }

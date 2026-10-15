@@ -1011,6 +1011,9 @@ SoilConstants.ZONE = {
     -- really sprayed, not over a whole 10 m cell it grazed. Session only, server only,
     -- never saved; the 10 m cells above keep the green square, pass % and the grants.
     OVERLAP_CELL_SIZE = 2,
+    -- #1098: Pass % and daily coverage count the 2 m cells of that record, this many
+    -- hectares each (OVERLAP_CELL_SIZE^2 / 10000).
+    OVERLAP_CELL_AREA_HA = 0.0004,
 }
 
 -- ========================================

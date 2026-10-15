@@ -44,7 +44,15 @@ end)
 
 -- ── G: the grant through the real hook ──────────────────────────────────────────
 group("G grant through the hook", function()
-  local w = PSW.new()
+  -- #1098: coverage now accrues through the 2 m overlap record (PSW.AREA_SCALE x the
+  -- old 0.01 ha/cell = 0.0004 ha/cell), plus a one-time bonus on tick 1 only: HERBICIDE
+  -- is not a FERTILIZER_PROFILES entry, so trackSprayerCoverage's own litres path
+  -- (liters / 100 L/ha = 0.2/100 = 0.002 ha) still runs once, before markBoomCells sets
+  -- _geometricCoverageOwner and gates it off for every later tick. areaHa is recomputed
+  -- so pass 16 (0.002 + 16x0.0004 = 0.0084 ha) crosses 80% and pass 15
+  -- (0.002 + 15x0.0004 = 0.008 ha) does not: 0.0104 ha sits in the (0.01, 0.0105] ha
+  -- window with margin either side.
+  local w = PSW.new({ areaHa = 0.0104 })
   T.eq("G1 [reached: the real installSprayerAreaHook installed]", w.installed, true)
   -- One new cell of twenty per pass, a little herbicide each pass, far under the day's
   -- cap. Within a pass the hook runs onHerbicideAppliedDirect before markBoomCells, so

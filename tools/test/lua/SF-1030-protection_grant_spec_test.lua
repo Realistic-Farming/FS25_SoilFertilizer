@@ -61,11 +61,20 @@ local ROUTES = {
 for _, r in ipairs(ROUTES) do
   local K = r.key
   group(K .. " " .. r.what, function()
-    -- 0.195 ha, so sixteen 0.01 ha cells are 82%. On a field of exactly twenty cells the
-    -- sixteenth sits on 0.80 to the last floating-point bit; until MAINTENANCE row 170 the
-    -- fertilizer-profile routes (I, F) were carried over it by a first-tick litre count
-    -- they should never have had. 20 L on pass 2 still spends the day's cap (19.5 L).
-    local w = PSW.new({ product = r.product, multiplayer = true, areaHa = 0.195 })
+    -- #1098: coverage now accrues through the 2 m overlap record (0.0004 ha/cell),
+    -- not the old 10 m credit (0.01 ha/cell) markBoomCells used to add. A direct
+    -- (non-FERTILIZER_PROFILES) route's product still takes a one-time bonus through
+    -- trackSprayerCoverage's own litres path on pass 1 only (0.01 L / that product's
+    -- L/ha), same as before #1098, gated off once markBoomCells sets
+    -- _geometricCoverageOwner at the end of that pass. Measured (areaHa=1000, so
+    -- nothing caps): pass 16's ha is 0.0065 (H, Z), 0.0065068... (P, PESTICIDE's own
+    -- rate), 0.0064 (I, F -- no bonus, a FERTILIZER_PROFILES entry); pass 15's is
+    -- 0.0004 ha less in every route. 0.008 ha sits at or under every route's own
+    -- pass-16 figure (so pass 16 reaches exactly 80%, the same "to the last
+    -- floating-point bit" design row 170's history already describes) and strictly
+    -- over every route's pass-15 figure / 0.80 (so pass 15 does not). 20 L on pass 2
+    -- still spends the day's cap.
+    local w = PSW.new({ product = r.product, multiplayer = true, areaHa = 0.008 })
     local sys = w.sys
     w:tick(0.01, w:cells(1, 1))
     local f = w:field()
@@ -97,7 +106,9 @@ end
 
 -- ── S: a route whose pressure setting is off grants nothing ─────────────────────
 group("S setting off", function()
-  local w = PSW.new({ product = "INSECTICIDE", multiplayer = true })
+  -- #1098: same areaHa as the ROUTES loop (INSECTICIDE has no litres bonus; 18 cells
+  -- x 0.0004 ha = 0.0072 ha, comfortably >= 0.80 x 0.008 ha = 0.0064 ha).
+  local w = PSW.new({ product = "INSECTICIDE", multiplayer = true, areaHa = 0.008 })
   w.sys.settings.pestPressure = SettingsSchema.validate("pestPressure", false)
   w:tick(0.01, w:cells(1, 1))
   for i = 2, 18 do w:tick(0.2, w:cells(i, i)) end
