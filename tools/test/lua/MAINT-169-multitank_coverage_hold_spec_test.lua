@@ -136,7 +136,13 @@ end)
 group("F overlap gate input", function()
   -- A trickle per tick, so only the passes' own cells can carry the field to 99% (on this
   -- small field 10 L of litres alone would).
-  local w = PSW.new({ product = "FERTILIZER", secondTank = "LIQUIDFERTILIZER", areaHa = 0.05 })
+  -- #1098: FERTILIZER is a FERTILIZER_PROFILES entry, so trackSprayerCoverage's own
+  -- litres path never runs here (updateFractions=false for it); coverage is purely
+  -- the 2 m overlap record's own 0.0004 ha/cell (measured: 0.0004, 0.0008, ..., 0.0020
+  -- ha after ticks 1-5, the secondary LIQUIDFERTILIZER tank adding nothing extra).
+  -- areaHa recomputed so 5 cells (0.0020 ha) reach 100% (>= 99%) and 4 (0.0016 ha,
+  -- 80%) do not.
+  local w = PSW.new({ product = "FERTILIZER", secondTank = "LIQUIDFERTILIZER", areaHa = 0.002 })
   for i = 1, 4 do w:tick(0.1, w:cells(i, i)) end
   T.ok("F0 [reached: four of five cells leave the field under 99%]", (w:field().sessionCoverageFraction or 0) < 0.99)
   w:tick(0.1, w:cells(5, 5))

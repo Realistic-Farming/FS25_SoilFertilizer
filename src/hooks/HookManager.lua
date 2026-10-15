@@ -2496,8 +2496,9 @@ end
 --- when its centre lies across the boom's span (between the outer nodes) and within half
 --- a cell of the boom line (the mean of the nodes along the travel), so a cell the boom
 --- only grazes, past its end or ahead of it, is not; at any heading. A cell whose centre
---- only switched-off sections cover is left out. Returns the cells' centres; nil with
---- fewer than two nodes or no frame.
+--- only switched-off sections cover is left out. Returns the cells' centres. With fewer
+--- than two nodes it spans the implement's working width across the frame's origin (as
+--- getBoomCellPositions does); nil with neither, or no frame.
 function HookManager:getBoomOverlapPositions(vehicle)
     local size = SoilConstants.ZONE.OVERLAP_CELL_SIZE
     local frame = vehicle.components and vehicle.components[1] and vehicle.components[1].node or vehicle.rootNode
@@ -2512,7 +2513,14 @@ function HookManager:getBoomOverlapPositions(vehicle)
             fwdSum = fwdSum + z
         end
     end
-    if n < 2 or hi <= lo then return nil end
+    if n < 2 or hi <= lo then
+        -- #1098: no usable boom nodes. Span the implement's working width across the
+        -- frame's origin, as getBoomCellPositions falls back for the 10 m sweep, so the
+        -- coverage this record now carries never stops counting.
+        local implWW = self:_implWorkingWidth(vehicle)
+        if type(implWW) ~= "number" or implWW <= 0 then return nil end
+        lo, hi, fwdSum, n = -implWW * 0.5, implWW * 0.5, 0, 1
+    end
     local fwd = fwdSum / n
     -- The frame's origin and axes in world space; everything below is arithmetic.
     local okO, ox, _, oz = pcall(localToWorld, frame, 0, 0, 0)
@@ -2566,11 +2574,12 @@ function HookManager._onlySwitchedOffAt(grounds, x, z)
 end
 
 --- Stamp this tick's overlap record beside a markBoomCells call.
-function HookManager:markOverlapRecord(soilSys, fieldId, vehicle)
+---@param countArea boolean|nil  true when this call owns the coverage area (#1098)
+function HookManager:markOverlapRecord(soilSys, fieldId, vehicle, countArea)
     if soilSys == nil or type(soilSys.markOverlapCells) ~= "function" then return end
     local pts = self:getBoomOverlapPositions(vehicle)
     if pts == nil then return end
-    soilSys:markOverlapCells(fieldId, pts, vehicle)
+    soilSys:markOverlapCells(fieldId, pts, vehicle, countArea)
 end
 
 -- =========================================================
@@ -6789,7 +6798,7 @@ function HookManager:installSprayerAreaHook()
                                                         else
                                                             soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)
                                                         end
-                                                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
+                                                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self, sectioned == true)  -- MAINTENANCE row 234; #1098 coverage when sectioned
                                                         -- REFINED: paint the real boom strip on the value maps
                                                         if soilSys.paintBoomStrip then
                                                             soilSys:paintBoomStrip(fieldId, boomPts, ftName, boomLine)
@@ -6851,12 +6860,12 @@ function HookManager:installSprayerAreaHook()
                     end
                     if hasVWW and boomPts then
                         soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), false, self)
-                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
+                        hookMgrRef:markOverlapRecord(soilSys, fieldId, self, true)  -- MAINTENANCE row 234; #1098 coverage
                     else
                         -- Broadcast / dry spreader (or any vehicle with no spanning boom).
                         if boomPts then
                             soilSys:markBoomCells(fieldId, hookMgrRef:cellsToStamp(self, boomPts), true, self)  -- overlay only
-                            hookMgrRef:markOverlapRecord(soilSys, fieldId, self)  -- MAINTENANCE row 234
+                            hookMgrRef:markOverlapRecord(soilSys, fieldId, self, false)  -- MAINTENANCE row 234; litres own coverage here
                         end
                         -- Fertilizers advance the counter here via the liter estimate. Crop
                         -- protection products already did so in the trackSprayerCoverage call

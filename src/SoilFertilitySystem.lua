@@ -5288,6 +5288,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     field.sessionCoverageFraction = 0
     field.sessionCoverageCells    = {}
     field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil   -- MAINTENANCE row 234
+    field.dailyOverlapCells       = nil   -- #1098: the 2 m daily cells, rebuilt lazily
     field.sessionLastProduct      = nil
     field._geometricCoverageOwner = nil  -- #753
     field.sprayTrailPts           = nil
@@ -7230,9 +7231,7 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly, sta
                         odo = stampVehicle and stampVehicle._sfOdoM or nil,
                         by  = stampVehicle,
                     }
-                    if not overlayOnly then
-                        field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellArea)
-                    end
+                    -- Coverage area is no longer added per 10 m cell here; markOverlapCells adds it per 2 m cell (#1098).
                     -- ── Spray trail (in-view overlay) ──────────────────────────────
                     -- Cache world-center + terrain height for SoilHUD:drawSprayTrail().
                     if not field.sprayTrailPts then field.sprayTrailPts = {} end
@@ -7245,7 +7244,6 @@ function SoilFertilitySystem:markBoomCells(fieldId, boomPoints, overlayOnly, sta
                 end
                 if not overlayOnly and not field.dailyCoverageCells[cellKey] then
                     field.dailyCoverageCells[cellKey] = true
-                    field.coveredAreaHa = math.min(areaInHa, (field.coveredAreaHa or 0) + cellArea)
                 end
 
                 -- ── Pressure zone stamp (zoneData) ─────────────────────────────────
@@ -7357,11 +7355,13 @@ end
 --- as markBoomCells stamps the 10 m session cells (false where either is unknown), and
 --- only where the cell's centre is inside the field polygon, as there. Two plain maps,
 --- not a table per cell. Session only and server only: never saved or sent, cleared
---- with the session cells. Writes nothing else.
+--- with the session cells. With countArea it also adds each newly covered 2 m cell to the
+--- session and daily coverage area.
 ---@param fieldId number
 ---@param points table|nil  Array of {x=, z=} world positions
 ---@param stampVehicle table|nil
-function SoilFertilitySystem:markOverlapCells(fieldId, points, stampVehicle)
+---@param countArea boolean|nil  true when this call owns the coverage area (#1098)
+function SoilFertilitySystem:markOverlapCells(fieldId, points, stampVehicle, countArea)
     if not points or #points == 0 then return end
     local field = self.fieldData and self.fieldData[fieldId]
     if not field then return end
@@ -7375,16 +7375,39 @@ function SoilFertilitySystem:markOverlapCells(fieldId, points, stampVehicle)
     end
     local odo = stampVehicle and stampVehicle._sfOdoM or false
     local by = stampVehicle or false
+
+    local cellHa = SoilConstants.ZONE.OVERLAP_CELL_AREA_HA
+    local areaInHa = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
+    local daily = nil
+    if countArea then
+        daily = field.dailyOverlapCells
+        if daily == nil then daily = {}; field.dailyOverlapCells = daily end
+    end
+
     for _, pt in ipairs(points) do
         local key = HookManager.overlapCellKey(pt.x, pt.z)
-        if odoMap[key] == nil then
-            local cx = (math.floor(pt.x / size) + 0.5) * size
-            local cz = (math.floor(pt.z / size) + 0.5) * size
-            if polyVerts == nil or _isPointInPoly(cx, cz, polyVerts) then
+        local cx = (math.floor(pt.x / size) + 0.5) * size
+        local cz = (math.floor(pt.z / size) + 0.5) * size
+        local inPoly = polyVerts == nil or _isPointInPoly(cx, cz, polyVerts)
+
+        if inPoly then
+            if odoMap[key] == nil then
                 odoMap[key] = odo
                 byMap[key] = by
+                if countArea then
+                    field.sessionCoverageHa = math.min(areaInHa, (field.sessionCoverageHa or 0) + cellHa)
+                end
+            end
+            if countArea and daily[key] == nil then
+                daily[key] = true
+                field.coveredAreaHa = math.min(areaInHa, (field.coveredAreaHa or 0) + cellHa)
             end
         end
+    end
+
+    if countArea then
+        field.coverageFraction        = math.min(1.0, (field.coveredAreaHa  or 0) / areaInHa)
+        field.sessionCoverageFraction = math.min(1.0, (field.sessionCoverageHa or 0) / areaInHa)
     end
 end
 

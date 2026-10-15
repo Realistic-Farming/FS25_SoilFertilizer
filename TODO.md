@@ -355,3 +355,10 @@
 - [x] Bar `SF-1098-ph_whole_pixel_dose_entry_test.lua` from onFertilizerApplied and paintBoomStrip on a pixel raster under both fill rules; `SF-79-is_true_lime_test.lua` follows the boom write to the closing tick and checks the CELLS scope for writer blindness.
 - [ ] #1098 items 2 and 3 (Bob's intake of 2026-10-11): products not used up, and the pass counter not resetting from digestate to lime. Not traced.
 - [~] In game (owed): TESTING row 580.
+
+## #1098 items 2 and 3: coverage on 2 m (2026-10-15)
+
+- [x] `src/SoilFertilitySystem.lua`: `markBoomCells` adds no area; `markOverlapCells(..., countArea)` adds `ZONE.OVERLAP_CELL_AREA_HA` per new 2 m cell to the session and daily area (`dailyOverlapCells`, reset in `_processOneDailyField`) and recomputes both fractions. `src/hooks/HookManager.lua`: `markOverlapRecord` passes countArea (sectioned, true, false at the three call sites); `getBoomOverlapPositions` falls back to `_implWorkingWidth`. `src/config/Constants.lua`: `OVERLAP_CELL_AREA_HA`.
+- [x] Bar `SF-1098-coverage_2m_entry_test.lua` (46 rows; development fails 11); eight coverage benches moved to the 2 m figures.
+- [ ] The rest of the 2 m move: compaction, the nutrient paint, the pressures, then retiring zone data.
+- [~] In game (owed): TESTING row 582.

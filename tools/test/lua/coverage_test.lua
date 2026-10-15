@@ -1,5 +1,10 @@
 -- coverage_test.lua - spray-coverage accounting, incl. the #650 dry-spreader fix.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--
+-- #1098 (Desk follow-up, 2026-10-14): HookManager.lua is now loaded too, so a direct
+-- call to markOverlapCells (the 2 m overlap record, the real production method that
+-- now owns coverage area on a sectioned pass) can resolve HookManager.overlapCellKey;
+-- without it markOverlapCells returns at once (its own guard) and proves nothing.
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 -- Build a `self` that resolves SoilFertilitySystem methods (so self:method() works)
 -- without running .new() (which would pull in HookManager and the live game).
@@ -29,10 +34,13 @@ end
 -- Two boom points 10 m apart land in two distinct 10×10 m cells.
 local boom = { { x = 5, z = 5 }, { x = 15, z = 5 } }
 
-do  -- full mode: advances the session counter
+do  -- #1098: markBoomCells no longer owns coverage area; the 2 m overlap record does.
   local sys = newSys({ [1] = { fieldArea = 1.0 } })
   sys:markBoomCells(1, boom, false)
-  T.ok("markBoomCells full: session ha advances",
+  T.eq("markBoomCells full: session ha adds NO area (the 2 m overlap record owns it now)",
+       sys.fieldData[1].sessionCoverageHa or 0, 0)
+  sys:markOverlapCells(1, boom, nil, true)
+  T.ok("markOverlapCells (countArea=true): session ha advances",
        (sys.fieldData[1].sessionCoverageHa or 0) > 0)
 end
 
@@ -189,6 +197,11 @@ do
 
   T.eq("F61: an accepted cell still claims geometric ownership",
        sys.fieldData[1]._geometricCoverageOwner, true)
-  T.ok("F61: accepted cells accrue session ha",
+  -- #1098: markBoomCells claims ownership (the cell-dedup flag above) but adds no
+  -- area any more; the 2 m overlap record (markOverlapCells, countArea=true) does.
+  T.eq("F61: accepted cells accrue NO session ha through markBoomCells",
+       sys.fieldData[1].sessionCoverageHa or 0, 0)
+  sys:markOverlapCells(1, { { x = 5, z = 5 }, { x = 15, z = 5 } }, nil, true)
+  T.ok("F61: the 2 m overlap record accrues session ha for the same points",
        (sys.fieldData[1].sessionCoverageHa or 0) > 0)
 end

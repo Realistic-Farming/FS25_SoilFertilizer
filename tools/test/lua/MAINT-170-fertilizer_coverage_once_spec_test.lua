@@ -93,7 +93,11 @@ group("W VWW control", function()
     cells[i], ha[i] = n, w:field().sessionCoverageHa or 0
   end
   T.eq("W1 FERTILIZER on a VWW rig still marks cells 1/2/3", cells[1] .. "/" .. cells[2] .. "/" .. cells[3], "1/2/3")
-  T.ok("W2 NAMED: its first tick adds no litres, only its one cell", near(ha[1], SoilConstants.ZONE.CELL_AREA_HA))
+  -- #1098: coverage counts 2 m cells. markBoomCells's own 10 m cell (CELL_AREA_HA,
+  -- 0.01 ha) is still marked in sessionCoverageCells (W1 above), but the area the
+  -- first tick adds is now the 2 m overlap record's own OVERLAP_CELL_AREA_HA
+  -- (0.0004 ha), not CELL_AREA_HA: markBoomCells no longer credits area at all.
+  T.ok("W2 NAMED: its first tick adds no litres, only its one 2 m cell", near(ha[1], SoilConstants.ZONE.OVERLAP_CELL_AREA_HA))
 end)
 
 PSW.restore()

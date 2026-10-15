@@ -938,11 +938,26 @@ end
 --      session-coverage writer (SoilFertilitySystem:markBoomCells), and the
 --      suppression is the real prepend's own verdict from them.
 -- =====================================================================
-local function stampPriorPass(points) W.ss:markBoomCells(7, points) end
+-- #1098 (Desk follow-up, 2026-10-14): markBoomCells no longer owns coverage area; the
+-- 2 m overlap record does (markOverlapCells, countArea=true, the real production path
+-- a sectioned pass's area now comes from). Both are real production writers a real
+-- pass calls together: markBoomCells still owns field.sessionCoverageCells (the plain
+-- "any ground sprayed this session" existence check the overlap prepend reads before
+-- it ever looks at the fraction), markOverlapCells owns the area and the fraction.
+local function stampPriorPass(points)
+  W.ss:markBoomCells(7, points)
+  W.ss:markOverlapCells(7, points, W.v, true)
+end
 local function leftStripSprayedEarlier()
   -- an earlier pass covered the strip under the LEFT section's tip (x = -6) only;
-  -- the right tip shares the root's cell, which stays unsprayed
-  stampPriorPass({ { x = -5, z = -15 }, { x = -5, z = -25 } })
+  -- the right tip shares the root's cell, which stays unsprayed. This group's own
+  -- checks (E11.1-E11.11) never read coverage area, only the per-section 2 m check
+  -- just below -- so this stays the plain 10 m stamp (markBoomCells, no vehicle, no
+  -- area), not stampPriorPass's countArea=true writer: that one credits W.v as the
+  -- stamping vehicle, which would otherwise feed the DISTANCE-graced "own vehicle"
+  -- branch of the 2 m check below instead of the "another vehicle, counts at once"
+  -- one this group is testing.
+  W.ss:markBoomCells(7, { { x = -5, z = -15 }, { x = -5, z = -25 } })
   -- MAINTENANCE row 234: overlap prevention reads its own 2 m record; the same earlier
   -- pass covered those two 10 m cells (x -10..0, z -30..-10) whole, written by the real
   -- overlap writer (SoilFertilitySystem:markOverlapCells).
@@ -993,9 +1008,14 @@ do
   newWorld({ vww = true, overlap = true })
   paintCarrier(40, 39.8, 39.8)
   local field = W.ss.fieldData[7]
+  -- #1098: the 2 m grid (OVERLAP_CELL_SIZE/OVERLAP_CELL_AREA_HA), not the old 10 m one:
+  -- 25x the points, 2 m apart, to cover the same field.
   local area = (field.fieldArea and field.fieldArea > 0) and field.fieldArea or 1.0
+  local cellSize, cellHa = SoilConstants.ZONE.OVERLAP_CELL_SIZE, SoilConstants.ZONE.OVERLAP_CELL_AREA_HA
   local pts = {}
-  for i = 0, math.ceil(area / 0.01) do pts[#pts + 1] = { x = 1000 + (i % 100) * 10 + 5, z = 1000 + math.floor(i / 100) * 10 + 5 } end
+  for i = 0, math.ceil(area / cellHa) do
+    pts[#pts + 1] = { x = 1000 + (i % 100) * cellSize + 1, z = 1000 + math.floor(i / 100) * cellSize + 1 }
+  end
   stampPriorPass(pts)
   T.ok("E11.12 the earlier passes covered the field (the writer's own fraction)", (field.sessionCoverageFraction or 0) >= 0.99)
   W.v.ai = true

@@ -27,8 +27,62 @@
 --
 -- Cells are 10 m (SoilConstants.ZONE.CELL_SIZE), 0.01 ha each; world:cells(from, to)
 -- gives distinct cell centres along one row, so a pass covers exactly those cells.
+--
+-- #1098 (Desk follow-up, 2026-10-14): coverage area now accrues through the 2 m
+-- overlap record (markOverlapCells, OVERLAP_CELL_AREA_HA = 0.0004 ha per cell) on a
+-- sectioned (VWW) pass, not through markBoomCells any more. The vehicle now carries
+-- real boom nodes (the work area's start/width/height, the same three
+-- _collectBoomNodes always reads) positioned at BOOM_HALF either side of each tick's
+-- pass point -- narrow enough that the 2 m record's sweep lands in exactly the one
+-- fresh 2 m cell that pass point represents, never its neighbour -- and the engine
+-- transforms the record's sweep needs (localToLocal/localToWorld/worldToLocal), a
+-- static non-rotating frame since this fixture never turns.
+--
+-- opts.areaHa is passed straight through, UNSCALED: a VWW-path bar whose row claims
+-- depend on crossing a coverage threshold (80%, 99%, ...) at a specific tick now
+-- recomputes its OWN areaHa from PSW.AREA_SCALE and that tick's own litres (a fixed
+-- field.fieldArea scale can't be universal, because the first VWW tick also takes a
+-- one-time bonus through trackSprayerCoverage's own litres-based path -- see
+-- SoilFertilitySystem.lua's `_useLitCov = not isFertilizer`, true for any pass whose
+-- product is not a FERTILIZER_PROFILES entry, gated off only once
+-- _geometricCoverageOwner is set at the end of that same first tick -- so the right
+-- areaHa depends on the bar's own litres value, not a single constant). A litres-path
+-- (noVww) bar's areaHa is unaffected either way: that path never reads the 2 m record.
 
 PSW = {}
+
+-- #1098: the old 10 m credit (CELL_AREA_HA, 0.01 ha) to the new 2 m one
+-- (OVERLAP_CELL_AREA_HA, 0.0004 ha) per-cell ratio, 1/25th. A VWW-path bar recomputes
+-- its own areaHa with this (see the file header); it is not applied automatically.
+PSW.AREA_SCALE = SoilConstants.ZONE.OVERLAP_CELL_AREA_HA / SoilConstants.ZONE.CELL_AREA_HA
+local BOOM_HALF = SoilConstants.ZONE.OVERLAP_CELL_SIZE / 2 - 0.01
+
+-- #1098: a position table and the static (non-rotating) local<->world transforms
+-- getBoomOverlapPositions needs. local X and world X are the same axis (the axis
+-- world:cells advances the pass along); local Z and world Z are the same axis (the
+-- row the fixture stays on, z = 5 throughout). No heading is modelled: this fixture
+-- never turns, only jumps from one pass point to the next.
+local POS = {}
+local function psw_getWorldTranslation(n)
+  local p = POS[n]
+  if p == nil then return 0, 0, 0 end
+  return p[1], 0, p[2]
+end
+local function psw_localToLocal(n, frame, _x, _y, _z)
+  local p, f = POS[n], POS[frame]
+  if p == nil or f == nil then return 0, 0, 0 end
+  return p[1] - f[1], 0, p[2] - f[2]
+end
+local function psw_localToWorld(frame, lx, _ly, lz)
+  local f = POS[frame]
+  if f == nil then return lx, 0, lz end
+  return f[1] + lx, 0, f[2] + lz
+end
+local function psw_worldToLocal(frame, wx, _wy, wz)
+  local f = POS[frame]
+  if f == nil then return wx, 0, wz end
+  return wx - f[1], 0, wz - f[2]
+end
 
 local FT = {
   HERBICIDE   = { name = "HERBICIDE",   index = 70, massPerLiter = 0.001 },
@@ -70,6 +124,8 @@ function PSW.restore()
   g_currentMission.missionDynamicInfo, g_currentMission.weedSystem = saved.mdi, saved.weed
   g_currentMission.addUpdateable, g_currentMission.removeUpdateable = saved.addU, saved.removeU
   FieldState, FieldUpdateTask = saved.fieldState, saved.fieldUpdateTask
+  getWorldTranslation, localToLocal = saved.gwt, saved.l2l
+  localToWorld, worldToLocal = saved.l2w, saved.w2l
   saved = nil
 end
 
@@ -89,10 +145,15 @@ function PSW.new(opts)
       mdi = g_currentMission.missionDynamicInfo, weed = g_currentMission.weedSystem,
       addU = g_currentMission.addUpdateable, removeU = g_currentMission.removeUpdateable,
       fieldState = FieldState, fieldUpdateTask = FieldUpdateTask,
+      gwt = getWorldTranslation, l2l = localToLocal, l2w = localToWorld, w2l = worldToLocal,
     }
   end
   local world = { tasks = {}, events = {}, centreWeed = opts.centreWeed or 2, boom = {} }
   local areaHa = opts.areaHa or 0.2
+  getWorldTranslation = psw_getWorldTranslation
+  localToLocal = psw_localToLocal
+  localToWorld = psw_localToWorld
+  worldToLocal = psw_worldToLocal
 
   FillType = FillType or { UNKNOWN = 0 }
   ToolType = ToolType or { UNDEFINED = 0 }
@@ -218,7 +279,7 @@ function PSW.new(opts)
   end
   world.units = units
   local v = {
-    isServer = true, id = "veh1",
+    isServer = true, id = "veh1", rootNode = "root",
     spec_workArea = { workAreas = {} },
     spec_variableWorkWidth = (not opts.noVww) and { sections = { { isActive = true } } } or nil,
     getIsTurnedOn = function() return true end,
@@ -239,7 +300,9 @@ function PSW.new(opts)
   }
   v.spec_fillUnit = { fillUnits = units }
   v.processSprayerArea = function() return 250, 3 end
-  local wa = { functionName = "processSprayerArea" }
+  -- #1098: real boom nodes (_collectBoomNodes always reads a work area's start/
+  -- width/height, VWW or not), repositioned each tick in world:tick.
+  local wa = { functionName = "processSprayerArea", start = "waS", width = "waW", height = "waH" }
   wa.processingFunction = v.processSprayerArea
   table.insert(v.spec_workArea.workAreas, wa)
   world.vehicle = v
@@ -266,6 +329,14 @@ function PSW.new(opts)
     self.boom = cells or {}
     local veh = self.vehicle
     veh.spec_sprayer.workAreaParameters.usage = liters
+    -- #1098: put the real boom nodes at this tick's pass point (the same point the
+    -- stubbed 10 m sweep uses), BOOM_HALF either side -- narrow enough that the 2 m
+    -- record stamps exactly the one fresh cell this tick represents.
+    local pt = (cells and cells[1]) or { x = 0, z = 0 }
+    POS.root = { pt.x, pt.z }
+    POS.waS  = { pt.x - BOOM_HALF, pt.z }
+    POS.waW  = { pt.x + BOOM_HALF, pt.z }
+    POS.waH  = { pt.x + BOOM_HALF, pt.z }
     Sprayer.onStartWorkAreaProcessing(veh, 16)
     veh.spec_workArea.workAreas[1].processingFunction(veh, veh.spec_workArea.workAreas[1], 16)
     Sprayer.onEndWorkAreaProcessing(veh, 16, true)

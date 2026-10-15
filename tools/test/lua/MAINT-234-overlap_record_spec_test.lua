@@ -54,10 +54,16 @@ do
          tenMetreSignature(ss), sigOn)
 end
 -- The same drive's 10 m record as development 54407c80 produced it, before this PR (captured
--- by running this bar against that commit's src): the record and everything read from it are
--- unchanged.
-T.eq("N2b the 10 m record is identical to development 54407c80's own output", sigOn,
-     "cells=36 [-10000 -9994 -9995 -9996 -9997 -9998 -9999 0 1 10000 10001 10002 10003 10004 10005 10006 10007 2 20001 20002 20003 20004 20005 20006 20007 3 30001 30002 30003 30004 30005 30006 4 5 6 7] sessionHa=0.3600 sessionFrac=0.000360 daily=36 coveredHa=0.3600 trail=36")
+-- by running this bar against that commit's src): the cell keys, pass %'s inputs other than
+-- the ha figures, the daily cell count and the trail are unchanged.
+--
+-- #1098 (Desk follow-up, 2026-10-14): coverage now counts 2 m cells (markOverlapCells,
+-- OVERLAP_CELL_AREA_HA = 0.0004 ha/cell), not the old whole 10 m cell (0.01 ha/cell)
+-- markBoomCells used to credit. sessionHa/coveredHa are measured, not carried over from
+-- 54407c80: this same two-lane drive's real 2 m sweep gives 0.3280 ha (820 distinct 2 m
+-- cells), not the old 0.3600 ha (36 whole 10 m cells x 0.01 ha).
+T.eq("N2b the 10 m record is identical to development 54407c80's own output, at the 2 m rule's own figures", sigOn,
+     "cells=36 [-10000 -9994 -9995 -9996 -9997 -9998 -9999 0 1 10000 10001 10002 10003 10004 10005 10006 10007 2 20001 20002 20003 20004 20005 20006 20007 3 30001 30002 30003 30004 30005 30006 4 5 6 7] sessionHa=0.3280 sessionFrac=0.000328 daily=36 coveredHa=0.3280 trail=36")
 do
     local ss, _, v = install("boundary", BOUNDARY_ON)
     local off = twoRows(v)
