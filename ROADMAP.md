@@ -359,3 +359,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] Pass % counted a whole 10 m cell for every 10 m cell a boom touched, so a 12 m boom was counted 20 to 30 m wide and Pass % read 99% at about 40-60% real coverage. At 99% Overlap Prevention switched every section off, so products stopped being used and lime stopped (#1098). Pass % and daily coverage now count the 2 m cells of the overlap record (MAINTENANCE row 234) the boom really covered; the 99% block, the 80% protection grants and the panel read the same fraction. Broadcast spreaders keep their litre count. A sprayer with fewer than two boom nodes spans its implement width, as the 10 m sweep did. Step 1 of moving Soil onto one 2 m grid.
 - The in-game check is TESTING row 582. Design origin none.
+
+## 2026-10-15 (Fred (via Desk)): the deferred-init log lines print once (#1098)
+
+- [x] While a save loads, Soil retries its fill-type setup every tick until it completes, and eight log lines on that path printed on every retry: a player's log held "Retroactively injected SF fill types into 5 existing silo(s)" 7,000 times. The silo line now prints when its count changes, and the three early-skip warnings, the per-product density refusal, the LIQUIDLIME override warning and the two retry warnings print once. Nothing else changes.
+- The check is TESTING row 583 (log only). Design origin none.

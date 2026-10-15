@@ -362,3 +362,9 @@
 - [x] Bar `SF-1098-coverage_2m_entry_test.lua` (46 rows; development fails 11); eight coverage benches moved to the 2 m figures.
 - [ ] The rest of the 2 m move: compaction, the nutrient paint, the pressures, then retiring zone data.
 - [~] In game (owed): TESTING row 582.
+
+## #1098 log flood: deferred-init lines print once (2026-10-15)
+
+- [x] `src/hooks/HookManager.lua`: `patchExistingSilos` logs only when the patched count differs from the last one logged (`_loggedSiloPatchCount`); `registerCustomSprayTypes` one-shot flags on the three early-skip warnings, the per-product density REFUSED warning (`_loggedRefusedDensity`), the LIQUIDLIME override warning and the two retry warnings.
+- [x] Bar `SF-1098-deferred_init_log_once_test.lua` (32 rows from `_updateDeferredInit`; development fails 13).
+- [~] In game (owed): TESTING row 583.
