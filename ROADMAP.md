@@ -374,3 +374,8 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] A player's game stalled at the second midnight on a new save (#1128: emergency garbage collection, Lua memory 443 MB to 1855 MB in one frame). CD-15 discovery admits a row for every 2 m cell of living crop, and three paths copied the whole store into a new table per cell: discovery on every update, the daily settlement and the daily spread snapshot. They now walk the store in the same order without copying it, which restores CD-15's own bound of 256 cells a call. Discovery also skips cells it admitted earlier in the same call, as the old once-a-call row list did. Nothing a player sees changes except the stall.
 - The in-game check is TESTING row 585. Design origin CD-15 v1.14 (certificate 08-CD15), step 1c (DESIGN-CHECK row 266).
+
+## 2026-10-16 (Fred (via Desk)): N, P, K and organic matter one dose per pixel (step 2b of one 2 m grid)
+
+- [x] The sprayer painted each tick's N, P, K and organic matter over that tick's thin strip, so a 2 m pixel took a varying number of tick doses: stripes along the driving direction on the Soil Layers map. Under about 5 cm of travel a tick (roughly 10 km/h at 60 fps) each write rounded down to nothing, so a slow pass put nothing on the map; faster passes put 6 to 8 times the dose on some pixels. These four nutrients now get the pass write pH has had since #1125: one pass adds its dose once to every pixel whose centre the boom crossed, rounded to the nearest map step (Tyson's ruling of 2026-10-16). The first tick of a pass and a jump drop their dose, as pH does (ruled 2026-10-16).
+- The in-game check is TESTING row 589. Design origin RSF-762 (DEVIATES on the seed strip, ruled) and RSF-836 (DESIGN-CHECK rows 267 and 268).

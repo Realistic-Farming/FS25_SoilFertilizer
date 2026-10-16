@@ -381,3 +381,10 @@
 - [x] `src/disease/CD15Grid.lua`: `newWalk` / `walkNext` / `walkDone`, a walk in `orderedCells` order that copies a tile's keys on entry and allocates nothing per cell. `src/disease/CD15Model.lua`: SETTLE walks. `src/disease/CD15Day.lua`: `snapshotSources` walks and makes a table only for a source. `src/disease/CD15Admission.lua`: discovery walks the rows (`d.rowWalk`, skip-ahead to a saved cursor) and skips cells admitted as new rows earlier in the same call.
 - [x] Bar `SF-1128-cd15_store_walk_entry_test.lua` (32 rows; over 300 updates development calls `orderedCells` 264 times, the fix 0).
 - [~] In game (owed): TESTING row 585.
+
+## N, P, K and organic matter one dose per pixel (step 2b, 2026-10-16)
+
+- [x] `src/SoilFertilitySystem.lua`: `_nutrientPassStrip` (own anchor `field._nutrientPass`, reusing PositionalPH's pass constants and `centresInQuad`; each pixel written through a square inside it, rounded to the nearest raw step); `paintBoomStrip` hands N, P, K and OM to it whenever PositionalPH is loaded, the old strip stays as the fallback.
+- [x] Bar `SF-2m-nutrient_whole_pixel_dose_entry_test.lua` (39 rows; development fails 15).
+- [ ] Step 3, the pressures, then step 4, retiring zone data.
+- [~] In game (owed): TESTING row 589.
