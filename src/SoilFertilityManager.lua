@@ -1667,6 +1667,12 @@ function SoilFertilityManager:update(dt)
         self.zoneYield:advanceJobs(budget)
     end
 
+    -- [#1128] ViabilityMask's daily pass runs a slice per update; Time Guard's
+    -- midnight settle only starts it.
+    if self.viability and type(self.viability.stepPass) == 'function' then
+        self.viability:stepPass(ViabilityMask.PASS_SQUARES_PER_UPDATE)
+    end
+
     -- Always update soil system (server side)
     if self.soilSystem then
         self.soilSystem:update(dt)
