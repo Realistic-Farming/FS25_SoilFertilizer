@@ -4621,6 +4621,103 @@ function SoilFertilitySystem:vmLocalBump(worldX, worldZ, deltas, radius, fieldId
     end
 end
 
+--- [SF-2m] The value-map keys the sprayer pass writes once per pixel (_nutrientPassStrip).
+SoilFertilitySystem.PASS_NUTRIENT_KEYS = { "nitrogen", "phosphorus", "potassium", "organicMatter" }
+
+--- [SF-2m] N, P, K and organic matter for one sprayer tick, one pass's dose per pixel:
+--- the pass write #1125 gave pH (PositionalPH _phPassStrip), on its own anchor
+--- (field._nutrientPass). The tick that starts a pass, or follows a jump of more than
+--- three boom lengths, sets the anchor and drops its dose: that spray fell behind the
+--- line, on ground no quad will cover. A tick that moves the boom less than
+--- PASS_MIN_TRAVEL holds the anchor and carries its dose. A tick that moves it further
+--- closes the quad from the anchor line to its own line and adds the carried dose's
+--- density (dose over the quad's area) once to every pixel whose centre lies inside
+--- it, each through a square well inside that pixel. Successive quads share edges, so
+--- each pixel centre of a pass is in exactly one of them. A pause longer than
+--- PASS_GAP_MS, a product change or time going backwards ends the pass.
+---@return string 'seeded' | 'reset' | 'held' | 'written' | 'empty'
+function SoilFertilitySystem:_nutrientPassStrip(field, sd, ax, az, bx, bz, boomLen, nowMs)
+    local pass = field._nutrientPass
+    if pass == nil or pass.product ~= sd.product or pass.time == nil
+        or nowMs < pass.time or (nowMs - pass.time) > PositionalPH.PASS_GAP_MS then
+        pass = { product = sd.product, carry = {} }
+        field._nutrientPass = pass
+    end
+    pass.time = nowMs
+
+    local anchor = pass.anchor
+    if anchor == nil then
+        pass.anchor = { ax = ax, az = az, bx = bx, bz = bz }
+        pass.carry = {}
+        return 'seeded'
+    end
+
+    -- Tip pairing, as paintBoomStrip pairs them (RSF-836): the endpoints arrive in
+    -- either order, so take whichever pairing moved less.
+    local dxS = (ax - anchor.ax) + (bx - anchor.bx)
+    local dzS = (az - anchor.az) + (bz - anchor.bz)
+    local dxW = (ax - anchor.bx) + (bx - anchor.ax)
+    local dzW = (az - anchor.bz) + (bz - anchor.az)
+    if dxW * dxW + dzW * dzW < dxS * dxS + dzS * dzS then
+        ax, az, bx, bz = bx, bz, ax, az
+        dxS, dzS = dxW, dzW
+    end
+    local travel = math.sqrt(dxS * dxS + dzS * dzS) * 0.5
+    if travel > boomLen * 3 then
+        pass.anchor = { ax = ax, az = az, bx = bx, bz = bz }
+        pass.carry = {}
+        return 'reset'
+    end
+
+    local carry = pass.carry
+    carry.nitrogen      = (carry.nitrogen or 0)      + sd.dN
+    carry.phosphorus    = (carry.phosphorus or 0)    + sd.dP
+    carry.potassium     = (carry.potassium or 0)     + sd.dK
+    carry.organicMatter = (carry.organicMatter or 0) + sd.dOM
+    if travel < PositionalPH.PASS_MIN_TRAVEL then return 'held' end
+
+    local quad = {
+        { x = anchor.ax, z = anchor.az }, { x = anchor.bx, z = anchor.bz },
+        { x = bx, z = bz }, { x = ax, z = az },
+    }
+    local twice = 0
+    for i = 1, 4 do
+        local p, q = quad[i], quad[i % 4 + 1]
+        twice = twice + (p.x * q.z - q.x * p.z)
+    end
+    local areaM2 = math.abs(twice) * 0.5
+    if areaM2 <= boomLen * 0.02 then return 'held' end
+
+    pass.carry = {}
+    pass.anchor = { ax = ax, az = az, bx = bx, bz = bz }
+
+    local vm = self.valueMaps
+    local grain = vm ~= nil and type(vm.getGrainMetres) == "function" and vm:getGrainMetres() or nil
+    local cells = PositionalPH.centresInQuad(quad, grain, vm ~= nil and vm.terrainSize or nil)
+    if #cells == 0 then return 'empty' end
+    local r = grain * PositionalPH.CELL_HALF
+    local perArea = sd.area / (areaM2 / 10000)
+    local rawSpan = SoilValueMaps ~= nil and SoilValueMaps.RAW_SPAN or nil
+    for _, key in ipairs(SoilFertilitySystem.PASS_NUTRIENT_KEYS) do
+        local value = (carry[key] or 0) * perArea
+        if value ~= 0 then
+            -- Round each pixel's write to the nearest raw step (Tyson, 2026-10-16):
+            -- addPaintStrip floors toward zero, which under-applied every pass by up to
+            -- one step. Half a step added away from zero turns that floor into rounding.
+            local entry = rawSpan ~= nil and type(vm.getLayerEntry) == "function" and vm:getLayerEntry(key) or nil
+            local def = entry ~= nil and entry.def or nil
+            if def ~= nil and def.maxVal ~= nil and def.minVal ~= nil then
+                local half = 0.5 * (def.maxVal - def.minVal) / rawSpan
+                value = value + (value > 0 and half or -half)
+            end
+            for _, c in ipairs(cells) do
+                vm:addPaintStrip(key, c.x - r, c.z - r, c.x + r, c.z - r, c.x - r, c.z + r, value)
+            end
+        end
+    end
+    return 'written'
+end
+
 --- Paint the sprayer's real boom strip into the value maps additively as a
 --- SWEPT QUAD (RSF-762). Each frame with a valid dose paints the parallelogram
 --- between the last PAINTED boom line and the current boom line, then advances
@@ -4677,6 +4774,19 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         sd.dPH = 0
     end
 
+    -- [SF-2m] N, P, K and organic matter go on their own pass anchor too, one pass's
+    -- dose per pixel (_nutrientPassStrip). They are consumed here every tick, so the
+    -- strip below writes them only when the positional pass helpers are not loaded.
+    if (sd.dN ~= 0 or sd.dP ~= 0 or sd.dK ~= 0 or sd.dOM ~= 0)
+        and PositionalPH ~= nil and type(PositionalPH.centresInQuad) == "function" then
+        self:_nutrientPassStrip(field, sd, ax, az, bx, bz, boomLen, nowMs)
+        sd.dN, sd.dP, sd.dK, sd.dOM = 0, 0, 0, 0
+        -- The boom took this tick's dose, so the narrow-tool dot in applyFertilizer defers.
+        field._vmBoomPaintTime = nowMs
+        local minimapLayer = g_SoilFertilityManager and g_SoilFertilityManager.soilMinimapLayer
+        if minimapLayer then minimapLayer:markDirty() end
+    end
+
     local anchor = field._vmLastBoomLine
     local sx, sz, wx, wz, hx, hz
     local areaM2
@@ -4730,6 +4840,8 @@ function SoilFertilitySystem:paintBoomStrip(fieldId, boomPoints, _fillTypeName, 
         local areaHa = areaM2 / 10000
         local scale = sd.area / areaHa
         local vm = self.valueMaps
+        -- [SF-2m] N, P, K and OM normally went to _nutrientPassStrip above and are 0
+        -- here; these strip writes are reached only when PositionalPH is not loaded.
         if sd.dN  ~= 0 then vm:addPaintStrip("nitrogen",      sx, sz, wx, wz, hx, hz, sd.dN  * scale) end
         if sd.dP  ~= 0 then vm:addPaintStrip("phosphorus",    sx, sz, wx, wz, hx, hz, sd.dP  * scale) end
         if sd.dK  ~= 0 then vm:addPaintStrip("potassium",     sx, sz, wx, wz, hx, hz, sd.dK  * scale) end
