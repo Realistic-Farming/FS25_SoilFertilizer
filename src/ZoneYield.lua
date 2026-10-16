@@ -477,7 +477,7 @@ end
 --- write, then queue one ordered job.
 function ZoneYield:_queueFarmland(farmlandId, vm, variationScale)
     local plan = self:_plan(farmlandId)
-    if plan == nil or type(plan.regions) ~= 'table' or #plan.regions == 0 then return false end
+    if plan == nil or ViabilityMask.regionCount(plan) == 0 then return false end
     local token = self:_token(farmlandId)
     if token == nil then return false end
     if plan.farmlandInputRevision ~= token.farmlandRevision
@@ -489,9 +489,9 @@ function ZoneYield:_queueFarmland(farmlandId, vm, variationScale)
     local regions = {}
     local observed = {}        -- fp -> { fruit -> true }
     local observedForage = {}  -- fp -> { fruit -> boolean }
-    for _, region in ipairs(plan.regions) do
-        if region.writableForFarmland == true and region.blocked ~= true then
-            local gx, gz = self:_decodeKey(region.key)
+    for i = 1, ViabilityMask.regionCount(plan) do
+        local key, gx, gz, blocked, _, writable, sourceFp = ViabilityMask.regionAt(plan, i)
+        if writable and not blocked then
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
@@ -501,9 +501,9 @@ function ZoneYield:_queueFarmland(farmlandId, vm, variationScale)
                     local route = ZoneYield.classifyCapability(desc)
                     if route ~= ZoneYield.ROUTE_SCALAR and state ~= nil
                         and not desc:getIsCut(state) and not desc:getIsWithered(state) then
-                        local fp = region.sourcePolygonFingerprint
+                        local fp = sourceFp
                         regions[#regions + 1] = {
-                            key = region.key, gx = gx, gz = gz, cx = cx, cz = cz,
+                            key = key, gx = gx, gz = gz, cx = cx, cz = cz,
                             sourcePolygonFingerprint = fp,
                             fruitTypeIndex = fruitIndex,
                             route = route,
@@ -593,9 +593,9 @@ function ZoneYield:_sourceArea(plan, sourcePolygonFingerprint, fruitTypeIndex, f
     if grain == nil then return nil end
     local total = 0
     local seen = false
-    for _, region in ipairs(plan.regions) do
-        if region.sourcePolygonFingerprint == sourcePolygonFingerprint then
-            local gx, gz = self:_decodeKey(region.key)
+    for i = 1, ViabilityMask.regionCount(plan) do
+        local _, gx, gz, _, _, _, sourceFp = ViabilityMask.regionAt(plan, i)
+        if sourceFp == sourcePolygonFingerprint then
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
@@ -835,12 +835,9 @@ end
 --- @return boolean proved
 function ZoneYield:_sourcePolygonForWorkArea(fieldId, para)
     local plan = self:_plan(fieldId)
-    if plan == nil or type(plan.regions) ~= 'table' then return nil, false end
+    if plan == nil or (type(plan.regions) ~= 'table' and type(plan.regionCount) ~= 'number') then return nil, false end
     local grain = self:_grain(plan)
     if grain == nil then return nil, false end
-
-    local lookup = {}
-    for _, region in ipairs(plan.regions) do lookup[region.key] = region end
 
     local minGX = math.floor(math.min(para.start.x, para.width.x, para.height.x) / grain)
     local maxGX = math.floor(math.max(para.start.x, para.width.x, para.height.x) / grain)
@@ -853,12 +850,13 @@ function ZoneYield:_sourcePolygonForWorkArea(fieldId, para)
         for gz = minGZ, maxGZ do
             count = count + 1
             if count > 4096 then return nil, false end
-            local region = lookup[gx .. ':' .. gz]
-            if region ~= nil then
-                if region.carrierOwnerFarmlandId ~= nil and region.carrierOwnerFarmlandId ~= fieldId then
+            local idx = ViabilityMask.findRegion(plan, gx, gz)
+            if idx ~= nil then
+                local _, _, _, _, owner, _, sourceFp = ViabilityMask.regionAt(plan, idx)
+                if owner ~= nil and owner ~= fieldId then
                     return nil, false
                 end
-                covered[region.sourcePolygonFingerprint] = true
+                covered[sourceFp] = true
             end
         end
     end
@@ -1150,22 +1148,19 @@ function ZoneYield:getGrowthSurfaceWitness(fieldId, x, z)
     local grain = self:_grain(plan)
     if grain == nil then return nil end
 
-    local key = math.floor(x / grain) .. ':' .. math.floor(z / grain)
-    local region = nil
-    for _, r in ipairs(plan.regions) do
-        if r.key == key then region = r; break end
-    end
-    if region == nil then return nil end
-    if region.carrierOwnerFarmlandId ~= nil and region.carrierOwnerFarmlandId ~= fieldId then return nil end
+    local idx = ViabilityMask.findRegion(plan, math.floor(x / grain), math.floor(z / grain))
+    if idx == nil then return nil end
+    local _, _, _, _, regionOwner, _, regionFp = ViabilityMask.regionAt(plan, idx)
+    if regionOwner ~= nil and regionOwner ~= fieldId then return nil end
 
     local _, fruitIndex = self:_readCellState(x, z)
     if fruitIndex == nil then return nil end
     local pct = vm:readValueAtWorld('yieldEfficiency', x, z)
-    local receipt = self:_findReceipt(fieldId, region.sourcePolygonFingerprint, fruitIndex)
+    local receipt = self:_findReceipt(fieldId, regionFp, fruitIndex)
     return {
         farmlandId = fieldId,
         coversPoint = true,
-        sourcePolygonFingerprint = region.sourcePolygonFingerprint,
+        sourcePolygonFingerprint = regionFp,
         fruitTypeIndex = fruitIndex,
         grainMetres = grain,
         generation = receipt and receipt.captureGeneration or self._captureGeneration,

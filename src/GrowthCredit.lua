@@ -479,7 +479,7 @@ end
 --- generation.
 function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
     local plan = self:_plan(farmlandId)
-    if plan == nil or type(plan.regions) ~= 'table' or #plan.regions == 0 then return false end
+    if plan == nil or ViabilityMask.regionCount(plan) == 0 then return false end
     local token = self:_token(farmlandId)
     if token == nil then return false end
     if plan.farmlandInputRevision ~= token.farmlandRevision
@@ -537,10 +537,10 @@ function GrowthCredit:_accrueFarmland(farmlandId, vm, day)
     local radius = grain * 0.5
 
     local committedAny = false
-    for _, region in ipairs(plan.regions) do
+    for i = 1, ViabilityMask.regionCount(plan) do
+        local _, gx, gz, blocked, _, writable = ViabilityMask.regionAt(plan, i)
         -- Only squares this farmland may write (carrier ownership partition).
-        if region.writableForFarmland == true and region.blocked ~= true then
-            local gx, gz = self:_decodeKey(region.key)
+        if writable and not blocked then
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
@@ -783,9 +783,9 @@ function GrowthCredit:_spendFarmland(receipt, vm, bracket)
     -- Re-enumerate provider-owned regions and select threshold-banked cells.
     local _, threshold = GrowthCredit.effectiveThresholdDays(self:_readProfile(), self._daysPerPeriod)
     local candidates = {}
-    for _, region in ipairs(plan.regions) do
-        if region.writableForFarmland == true and region.blocked ~= true then
-            local gx, gz = self:_decodeKey(region.key)
+    for i = 1, ViabilityMask.regionCount(plan) do
+        local _, gx, gz, blocked, _, writable = ViabilityMask.regionAt(plan, i)
+        if writable and not blocked then
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
@@ -1056,9 +1056,11 @@ function GrowthCredit:readCreditAt(fieldId, x, z)
     local carrierOwner = nil
     local grain = plan.executionGrainMetres or plan.truthGrainMetres
     if type(grain) ~= 'number' or grain <= 0 then return nil end
-    local key = math.floor(x / grain) .. ':' .. math.floor(z / grain)
-    for _, region in ipairs(plan.regions) do
-        if region.key == key then covered = true; carrierOwner = region.carrierOwnerFarmlandId; break end
+    local idx = ViabilityMask.findRegion(plan, math.floor(x / grain), math.floor(z / grain))
+    if idx ~= nil then
+        covered = true
+        local _, _, _, _, owner = ViabilityMask.regionAt(plan, idx)
+        carrierOwner = owner
     end
     if not covered then return nil end
     if carrierOwner ~= nil and carrierOwner ~= fieldId then return nil end

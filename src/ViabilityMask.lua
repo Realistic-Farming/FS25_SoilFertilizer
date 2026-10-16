@@ -358,51 +358,129 @@ function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carri
             owned[region.key] = region
         end
     end
-    local ordered = {}
-    for key, region in pairs(owned) do
-        local owner = carrierOwners and carrierOwners[key]
-        local ownerFarmlandId = (type(owner) == 'table' and owner.farmlandId)
-            or (type(owner) == 'number' and owner) or farmlandId
-        ordered[#ordered + 1] = {
-            key = key,
-            sourcePolygonFingerprint = region.sourcePolygonFingerprint,
-            blocked = region.blocked,
-            area = region.area,
-            carrierOwnerFarmlandId = ownerFarmlandId,
-            writableForFarmland = (ownerFarmlandId == farmlandId),
-        }
-    end
-    table.sort(ordered, function(a, b) return a.key < b.key end)
-    -- [#1128] Fixed-size digests. The content hash used to join every region's whole
-    -- source-polygon fingerprint (every vertex as text), and the map-wide ownership
-    -- digest was rebuilt for every farmland: hundreds of megabytes a farmland on a
-    -- large map. Each distinct polygon fingerprint is hashed once here.
+    local keys = {}
+    for key in pairs(owned) do keys[#keys + 1] = key end
+    table.sort(keys)
+    -- Fixed-size digests (#1128): each distinct polygon fingerprint is hashed once.
     ownershipDigest = ownershipDigest or ViabilityMask.carrierOwnershipHash(carrierOwners)
     local h1, h2 = hashString(7, 11, 'OWNERS=' .. ownershipDigest)
     local polygonDigests = {}
-    for _, region in ipairs(ordered) do
-        local fp = tostring(region.sourcePolygonFingerprint)
-        local d = polygonDigests[fp]
-        if d == nil then
-            local d1, d2 = hashString(3, 5, fp)
-            d = { d1, d2 }
-            polygonDigests[fp] = d
+    -- The regions are stored as columns, one entry per carrier square in key order,
+    -- not as a table per square: about 80 bytes a square instead of about 400 (a
+    -- 4x map holds millions of squares). Read them with regionCount / regionAt /
+    -- findRegion.
+    local gxs, gzs, polys, blockeds, owners = {}, {}, {}, {}, {}
+    local polygonFingerprints, polygonIndex = {}, {}
+    local regionArea = nil
+    local n = 0
+    for _, key in ipairs(keys) do
+        local region = owned[key]
+        local gx, gz = ViabilityMask.decodeKey(key)
+        if gx ~= nil then
+            local owner = carrierOwners and carrierOwners[key]
+            local ownerFarmlandId = (type(owner) == 'table' and owner.farmlandId)
+                or (type(owner) == 'number' and owner) or farmlandId
+            local writable = (ownerFarmlandId == farmlandId)
+            local fp = tostring(region.sourcePolygonFingerprint)
+            local pi = polygonIndex[fp]
+            if pi == nil then
+                polygonFingerprints[#polygonFingerprints + 1] = region.sourcePolygonFingerprint
+                pi = #polygonFingerprints
+                polygonIndex[fp] = pi
+            end
+            n = n + 1
+            gxs[n], gzs[n], polys[n] = gx, gz, pi
+            blockeds[n], owners[n] = (region.blocked == true), ownerFarmlandId
+            if regionArea == nil then regionArea = region.area end
+
+            local d = polygonDigests[fp]
+            if d == nil then
+                local d1, d2 = hashString(3, 5, fp)
+                d = { d1, d2 }
+                polygonDigests[fp] = d
+            end
+            h1, h2 = hashString(h1, h2, tostring(key))
+            h1, h2 = hashMix(h1, h2, d[1])
+            h1, h2 = hashMix(h1, h2, d[2])
+            h1, h2 = hashMix(h1, h2, region.blocked and 1 or 0)
+            h1, h2 = hashMix(h1, h2, math.floor((region.area or 0) * 1000 + 0.5))
+            h1, h2 = hashMix(h1, h2, tonumber(ownerFarmlandId) or 0)
+            h1, h2 = hashMix(h1, h2, writable and 1 or 0)
         end
-        h1, h2 = hashString(h1, h2, tostring(region.key))
-        h1, h2 = hashMix(h1, h2, d[1])
-        h1, h2 = hashMix(h1, h2, d[2])
-        h1, h2 = hashMix(h1, h2, region.blocked and 1 or 0)
-        h1, h2 = hashMix(h1, h2, math.floor((region.area or 0) * 1000 + 0.5))
-        h1, h2 = hashMix(h1, h2, tonumber(region.carrierOwnerFarmlandId) or 0)
-        h1, h2 = hashMix(h1, h2, region.writableForFarmland and 1 or 0)
     end
     return {
-        regions = ordered,
+        fieldId = farmlandId,
+        regionCount = n,
+        regionGX = gxs, regionGZ = gzs, regionPoly = polys,
+        regionBlocked = blockeds, regionOwner = owners,
+        regionArea = regionArea,
+        polygonFingerprints = polygonFingerprints,
         resultHash = resultHash,
-        planContentHash = string.format('%d:', #ordered) .. hashHex(h1, h2),
+        planContentHash = string.format('%d:', n) .. hashHex(h1, h2),
         carrierOwnershipHash = ownershipDigest,
         fruitIdentity = nil, fruitState = nil, periodKey = nil,
     }
+end
+
+--- Carrier square indices from a region key "gx:gz", or nil.
+function ViabilityMask.decodeKey(key)
+    if type(key) ~= 'string' then return nil end
+    local a, b = key:match('^(-?%d+):(-?%d+)$')
+    if a == nil then return nil end
+    return tonumber(a), tonumber(b)
+end
+
+--- How many regions a plan holds. Reads the columns of a committed plan, or a
+--- `regions` list (bench fixtures built the old way).
+function ViabilityMask.regionCount(plan)
+    if type(plan) ~= 'table' then return 0 end
+    if type(plan.regionCount) == 'number' then return plan.regionCount end
+    if type(plan.regions) == 'table' then return #plan.regions end
+    return 0
+end
+
+--- Region i of a plan: key, gx, gz, blocked, carrierOwnerFarmlandId,
+--- writableForFarmland, sourcePolygonFingerprint, area. nil past the end.
+function ViabilityMask.regionAt(plan, i)
+    if type(plan.regionCount) == 'number' then
+        local gx, gz = plan.regionGX[i], plan.regionGZ[i]
+        if gx == nil then return nil end
+        local owner = plan.regionOwner[i]
+        return gx .. ':' .. gz, gx, gz, plan.regionBlocked[i] == true, owner,
+            owner == plan.fieldId, plan.polygonFingerprints[plan.regionPoly[i]], plan.regionArea
+    end
+    local r = type(plan.regions) == 'table' and plan.regions[i] or nil
+    if r == nil then return nil end
+    local gx, gz = ViabilityMask.decodeKey(r.key)
+    return r.key, gx, gz, r.blocked == true, r.carrierOwnerFarmlandId,
+        r.writableForFarmland == true, r.sourcePolygonFingerprint, r.area
+end
+
+--- The index of the region at carrier square (gx, gz), or nil. The plan's index is
+--- built on first use and kept with the plan (plans never change once committed).
+--- The first region at a square wins, as a scan from the start would find.
+function ViabilityMask.findRegion(plan, gx, gz)
+    if type(plan) ~= 'table' or gx == nil or gz == nil then return nil end
+    local index = plan._regionIndex
+    if index == nil then
+        index = {}
+        if type(plan.regionCount) == 'number' then
+            for i = 1, plan.regionCount do
+                local k = plan.regionGX[i] * 1048576 + plan.regionGZ[i]
+                if index[k] == nil then index[k] = i end
+            end
+        elseif type(plan.regions) == 'table' then
+            for i, r in ipairs(plan.regions) do
+                local rgx, rgz = ViabilityMask.decodeKey(r.key)
+                if rgx ~= nil then
+                    local k = rgx * 1048576 + rgz
+                    if index[k] == nil then index[k] = i end
+                end
+            end
+        end
+        plan._regionIndex = index
+    end
+    return index[gx * 1048576 + gz]
 end
 
 --- The live polygon-union fingerprint for a farmland, or nil when its geometry

@@ -167,15 +167,22 @@ local function runSlicedToCompletion(mask, budget)
   end
 end
 
-local function regionsEqual(a, b)
-  if #a ~= #b then return false, "count " .. #a .. " vs " .. #b end
-  for i = 1, #a do
-    local ra, rb = a[i], b[i]
-    if ra.key ~= rb.key or ra.blocked ~= rb.blocked or ra.area ~= rb.area
-        or ra.carrierOwnerFarmlandId ~= rb.carrierOwnerFarmlandId
-        or ra.writableForFarmland ~= rb.writableForFarmland
-        or ra.sourcePolygonFingerprint ~= rb.sourcePolygonFingerprint then
-      return false, "region " .. i .. " (" .. tostring(ra.key) .. ") differs"
+-- Moved to the accessors (SF-vm-compact-plans): a committed plan no longer
+-- holds a `regions` list, so this reads planA/planB through regionCount /
+-- regionAt instead of indexing `.regions` directly. Same claims, same order:
+-- count, key, blocked, area, carrierOwnerFarmlandId, writableForFarmland,
+-- sourcePolygonFingerprint.
+local function regionsEqual(planA, planB)
+  local na, nb = ViabilityMask.regionCount(planA), ViabilityMask.regionCount(planB)
+  if na ~= nb then return false, "count " .. na .. " vs " .. nb end
+  for i = 1, na do
+    local keyA, _, _, blockedA, ownerA, writableA, fpA, areaA = ViabilityMask.regionAt(planA, i)
+    local keyB, _, _, blockedB, ownerB, writableB, fpB, areaB = ViabilityMask.regionAt(planB, i)
+    if keyA ~= keyB or blockedA ~= blockedB or areaA ~= areaB
+        or ownerA ~= ownerB
+        or writableA ~= writableB
+        or fpA ~= fpB then
+      return false, "region " .. i .. " (" .. tostring(keyA) .. ") differs"
     end
   end
   return true
@@ -300,7 +307,7 @@ group("S3", function()
     local pa, pb = maskSliced._plans[fid], maskWhole._plans[fid]
     T.ok("S3 farmland " .. fid .. " has a plan on both", pa ~= nil and pb ~= nil)
     if pa ~= nil and pb ~= nil then
-      local eqRegions, why = regionsEqual(pa.regions, pb.regions)
+      local eqRegions, why = regionsEqual(pa, pb)
       T.ok("S3 NAMED (row #1128): farmland " .. fid .. " regions match" .. (why and (" (" .. why .. ")") or ""),
         eqRegions)
       T.eq("S3 NAMED (row #1128): farmland " .. fid .. " planContentHash matches", pa.planContentHash, pb.planContentHash)
@@ -330,11 +337,16 @@ group("S4", function()
 
   local checked, mismatches = 0, 0
   for _, fid in ipairs({ 7, 9 }) do
-    for _, region in ipairs(mask._plans[fid].regions) do
-      local ref = refOwners[region.key]
+    local plan = mask._plans[fid]
+    -- Moved to the accessors (SF-vm-compact-plans): the committed plan has no
+    -- `regions` list; walk it by regionCount / regionAt instead. Same claim:
+    -- every region's key/owner compared against assignCarrierOwners.
+    for i = 1, ViabilityMask.regionCount(plan) do
+      local key, _, _, _, owner = ViabilityMask.regionAt(plan, i)
+      local ref = refOwners[key]
       if ref ~= nil then
         checked = checked + 1
-        if ref.farmlandId ~= region.carrierOwnerFarmlandId then mismatches = mismatches + 1 end
+        if ref.farmlandId ~= owner then mismatches = mismatches + 1 end
       end
     end
   end
@@ -392,8 +404,11 @@ group("S6", function()
   local plan = mask._plans[7]
   T.ok("S6 [reached] the plan committed", plan ~= nil)
   if plan ~= nil then
-    T.ok("S6 [reached] the fixture carries a few thousand squares (" .. #plan.regions .. ")",
-      #plan.regions >= 2000)
+    -- Moved to the accessor (SF-vm-compact-plans): a committed plan has no
+    -- `regions` list; regionCount reads the columns. Same claim: >= 2000.
+    local regionCount = ViabilityMask.regionCount(plan)
+    T.ok("S6 [reached] the fixture carries a few thousand squares (" .. regionCount .. ")",
+      regionCount >= 2000)
     T.ok("S6 NAMED (row #1128): planContentHash is under 32 characters (" .. #plan.planContentHash .. ")",
       #plan.planContentHash < 32)
     T.ok("S6 NAMED (row #1128): carrierOwnershipHash is under 32 characters (" .. #plan.carrierOwnershipHash .. ")",

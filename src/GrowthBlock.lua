@@ -533,7 +533,7 @@ end
 --- only this farmland's owned cells and omits it.
 function GrowthBlock:_captureFarmland(farmlandId, vm, period)
     local plan = self:_plan(farmlandId)
-    if plan == nil or type(plan.regions) ~= 'table' or #plan.regions == 0 then return nil end
+    if plan == nil or ViabilityMask.regionCount(plan) == 0 then return nil end
     local token = self:_token(farmlandId)
     if token == nil then return nil end
     if plan.farmlandInputRevision ~= token.farmlandRevision
@@ -548,16 +548,16 @@ function GrowthBlock:_captureFarmland(farmlandId, vm, period)
     -- completed outcomes; completed bytes can never restore again.
     local written = {}
     local committed = false
-    for _, region in ipairs(plan.regions) do
-        if region.writableForFarmland == true then
-            local gx, gz = self:_decodeKey(region.key)
+    for i = 1, ViabilityMask.regionCount(plan) do
+        local key, gx, gz, blocked, _, writable = ViabilityMask.regionAt(plan, i)
+        if writable then
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
                 self:_clearPair(vm, cx, cz, radius)
-                if region.blocked == true then
-                    if self:_captureCell(farmlandId, vm, cx, cz, radius, region.key) then
-                        written[#written + 1] = region.key
+                if blocked then
+                    if self:_captureCell(farmlandId, vm, cx, cz, radius, key) then
+                        written[#written + 1] = key
                         committed = true
                     end
                 end
@@ -729,13 +729,13 @@ function GrowthBlock:_restoreFarmland(receipt, vm)
     -- Ownership is the filter; _restoreCandidate then requires an ACTIVE pair, so
     -- the blocked flag at capture time is already encoded in the carrier.
     local candidates = {}
-    for _, region in ipairs(plan.regions) do
-        if region.writableForFarmland == true then
-            local gx, gz = self:_decodeKey(region.key)
+    for i = 1, ViabilityMask.regionCount(plan) do
+        local key, gx, gz, _, _, writable = ViabilityMask.regionAt(plan, i)
+        if writable then
             if gx ~= nil then
                 local cx = gx * grain + grain * 0.5
                 local cz = gz * grain + grain * 0.5
-                local cell = self:_restoreCandidate(farmlandId, vm, cx, cz, gx, gz, region.key,
+                local cell = self:_restoreCandidate(farmlandId, vm, cx, cz, gx, gz, key,
                     steps, receipt.transitionCount)
                 if cell ~= nil then candidates[#candidates + 1] = cell end
             end
@@ -954,10 +954,12 @@ function GrowthBlock:getGrowthSurfaceWitness(fieldId, x, z)
     local grain = self:_grain(plan)
     if grain == nil then return nil end
 
-    local key = math.floor(x / grain) .. ':' .. math.floor(z / grain)
     local covered, carrierOwner = false, nil
-    for _, region in ipairs(plan.regions) do
-        if region.key == key then covered = true; carrierOwner = region.carrierOwnerFarmlandId; break end
+    local idx = ViabilityMask.findRegion(plan, math.floor(x / grain), math.floor(z / grain))
+    if idx ~= nil then
+        covered = true
+        local _, _, _, _, owner = ViabilityMask.regionAt(plan, idx)
+        carrierOwner = owner
     end
     if not covered then return nil end
     if carrierOwner ~= nil and carrierOwner ~= fieldId then return nil end
