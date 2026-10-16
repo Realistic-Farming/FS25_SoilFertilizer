@@ -57,6 +57,14 @@ ViabilityMask.MAX_SAMPLES    = 600
 ViabilityMask.DAILY_ACCURAL_ID       = 'SoilFertilizer_viability_daily'
 ViabilityMask.DAILY_ACCURAL_PRIORITY = 96
 
+-- [#1128] The daily pass runs a slice per update, never the whole map in one frame
+-- (brief 3.5's per-frame cursor): carrier squares enumerated per update (each
+-- farmland's start costs one), ownership entries digested per update, and farmlands
+-- committed per update.
+ViabilityMask.PASS_SQUARES_PER_UPDATE = 1024
+ViabilityMask.PASS_OWNERS_PER_UPDATE  = 8192
+ViabilityMask.PASS_COMMITS_PER_UPDATE = 1
+
 function ViabilityMask.new(manager)
     local self = setmetatable({}, ViabilityMask_mt)
     self.manager = manager
@@ -248,6 +256,35 @@ end
 -- reference contract exactly.
 -- ============================================================
 
+-- [#1128] Fixed-size digests. Two polynomial hashes modulo primes below 2^26, so
+-- every intermediate stays below 2^53 and exact in a double (Lua 5.1 has no bit
+-- operations). Every value mixed in is an integer.
+local HASH_P1, HASH_P2 = 67108859, 67108837
+local HASH_M1, HASH_M2 = 1000003, 999983
+
+local function hashMix(h1, h2, v)
+    return (h1 * HASH_M1 + v % HASH_P1) % HASH_P1, (h2 * HASH_M2 + v % HASH_P2) % HASH_P2
+end
+
+local function hashString(h1, h2, s)
+    for i = 1, #s do
+        h1, h2 = hashMix(h1, h2, string.byte(s, i))
+    end
+    return h1, h2
+end
+
+local function hashHex(h1, h2)
+    return string.format('%07x%07x', h1, h2)
+end
+
+-- One carrier ownership entry: its square key and owning farmland. The owner may be
+-- a candidate table (assignCarrierOwners) or a bare farmland id (the sliced pass).
+local function ownerEntryHash(key, owner)
+    local farmlandId = type(owner) == 'table' and owner.farmlandId or owner
+    local e1, e2 = hashString(17, 31, tostring(key))
+    return hashMix(e1, e2, tonumber(farmlandId) or 0)
+end
+
 --- Carrier-ownership partition. For each physical carrier square, the farmland
 --- with the greatest positive intersection area owns consequence writes; an
 --- exact area tie selects the lowest numeric farmland id.
@@ -265,16 +302,17 @@ function ViabilityMask.assignCarrierOwners(candidates)
     return owners
 end
 
---- Deterministic ownership digest: sorted "key:farmlandId" pairs. Every farmland
---- plan in one generation carries the same digest.
+--- Deterministic ownership digest over the "key:farmlandId" pairs, fixed size and
+--- independent of order. Every farmland plan in one generation carries the same digest.
 function ViabilityMask.carrierOwnershipHash(owners)
-    local keys, parts = {}, {}
-    for key in pairs(owners or {}) do keys[#keys + 1] = key end
-    table.sort(keys)
-    for _, key in ipairs(keys) do
-        parts[#parts + 1] = key .. ':' .. tostring(owners[key].farmlandId)
+    -- [#1128] Order-independent and fixed-size: the sum of every entry's hash, plus
+    -- the entry count. It used to sort and join every carrier square of the map.
+    local s1, s2, n = 0, 0, 0
+    for key, owner in pairs(owners or {}) do
+        local e1, e2 = ownerEntryHash(key, owner)
+        s1, s2, n = (s1 + e1) % HASH_P1, (s2 + e2) % HASH_P2, n + 1
     end
-    return table.concat(parts, '|')
+    return string.format('%d:', n) .. hashHex(s1, s2)
 end
 
 --- Area-weighted band fractions over the visited region set (brief 3.6). Unknown
@@ -310,8 +348,9 @@ end
 ---@param regions table[]  { {key, sourcePolygonFingerprint, blocked, area}, ... }
 ---@param resultHash string
 ---@param farmlandId number
----@param carrierOwners table  key -> owning candidate (from assignCarrierOwners)
-function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carrierOwners)
+---@param carrierOwners table  key -> owning candidate (assignCarrierOwners) or owning farmland id
+---@param ownershipDigest string|nil  the pass's carrierOwnershipHash; computed here when nil
+function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carrierOwners, ownershipDigest)
     local owned = {}
     for _, region in ipairs(regions or {}) do
         local prior = owned[region.key]
@@ -321,8 +360,9 @@ function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carri
     end
     local ordered = {}
     for key, region in pairs(owned) do
-        local ownerFarmlandId = (carrierOwners and carrierOwners[key]
-            and carrierOwners[key].farmlandId) or farmlandId
+        local owner = carrierOwners and carrierOwners[key]
+        local ownerFarmlandId = (type(owner) == 'table' and owner.farmlandId)
+            or (type(owner) == 'number' and owner) or farmlandId
         ordered[#ordered + 1] = {
             key = key,
             sourcePolygonFingerprint = region.sourcePolygonFingerprint,
@@ -333,19 +373,33 @@ function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carri
         }
     end
     table.sort(ordered, function(a, b) return a.key < b.key end)
-    local ownershipDigest = ViabilityMask.carrierOwnershipHash(carrierOwners)
-    local parts = { 'OWNERS=' .. ownershipDigest }
+    -- [#1128] Fixed-size digests. The content hash used to join every region's whole
+    -- source-polygon fingerprint (every vertex as text), and the map-wide ownership
+    -- digest was rebuilt for every farmland: hundreds of megabytes a farmland on a
+    -- large map. Each distinct polygon fingerprint is hashed once here.
+    ownershipDigest = ownershipDigest or ViabilityMask.carrierOwnershipHash(carrierOwners)
+    local h1, h2 = hashString(7, 11, 'OWNERS=' .. ownershipDigest)
+    local polygonDigests = {}
     for _, region in ipairs(ordered) do
-        parts[#parts + 1] = table.concat({
-            region.key, region.sourcePolygonFingerprint,
-            region.blocked and 'B' or 'N', tostring(region.area),
-            tostring(region.carrierOwnerFarmlandId), region.writableForFarmland and 'W' or 'R',
-        }, ':')
+        local fp = tostring(region.sourcePolygonFingerprint)
+        local d = polygonDigests[fp]
+        if d == nil then
+            local d1, d2 = hashString(3, 5, fp)
+            d = { d1, d2 }
+            polygonDigests[fp] = d
+        end
+        h1, h2 = hashString(h1, h2, tostring(region.key))
+        h1, h2 = hashMix(h1, h2, d[1])
+        h1, h2 = hashMix(h1, h2, d[2])
+        h1, h2 = hashMix(h1, h2, region.blocked and 1 or 0)
+        h1, h2 = hashMix(h1, h2, math.floor((region.area or 0) * 1000 + 0.5))
+        h1, h2 = hashMix(h1, h2, tonumber(region.carrierOwnerFarmlandId) or 0)
+        h1, h2 = hashMix(h1, h2, region.writableForFarmland and 1 or 0)
     end
     return {
         regions = ordered,
         resultHash = resultHash,
-        planContentHash = table.concat(parts, '|'),
+        planContentHash = string.format('%d:', #ordered) .. hashHex(h1, h2),
         carrierOwnershipHash = ownershipDigest,
         fruitIdentity = nil, fruitState = nil, periodKey = nil,
     }
@@ -558,9 +612,23 @@ end
 -- ============================================================
 
 function ViabilityMask:runPass()
-    if not self.enabled then return 0 end
+    -- The whole pass at once (the bench and any direct caller). The daily accrual
+    -- starts a sliced pass instead (#1128); this finishes one already running.
+    if self._pass == nil and not self:startPass() then return 0 end
+    while self._pass ~= nil do
+        self:stepPass(math.huge)
+    end
+    return self._lastPassCommitted or 0
+end
+
+--- [#1128] Start a pass: one generation of live geometry, its farmland list in id
+--- order, and no enumeration yet. A pass already running carries on.
+---@return boolean started
+function ViabilityMask:startPass()
+    if self._pass ~= nil then return false end
+    if not self.enabled then return false end
     local vm = self:_valueMaps()
-    if vm == nil then return 0 end
+    if vm == nil then return false end
     -- Establish the growth-input coordinates on first use, after seeding has
     -- produced coherent server truth (brief 3.1); idempotent + server-only, and
     -- it seeds any farmland bought since the last generation.
@@ -568,50 +636,129 @@ function ViabilityMask:runPass()
         vm:establishGrowthInputRevisions(self:_currentFarmlandIds())
     end
     local grain = self:_executionGrain(vm)
-    if grain == nil then return 0 end
+    if grain == nil then return false end
     local soilSystem = self.manager and self.manager.soilSystem
-    if soilSystem == nil or soilSystem.fieldData == nil then return 0 end
+    if soilSystem == nil or soilSystem.fieldData == nil then return false end
 
     -- Resolve one coherent generation of live geometry.
     if type(soilSystem._invalidateFarmlandPolygons) == 'function' then
         soilSystem:_invalidateFarmlandPolygons()
     end
     self._planGeneration = self._planGeneration + 1
-    local generation = self._planGeneration
-    local monotonicDay = self:_monotonicDay()
+    local ids = {}
+    for farmlandId in pairs(soilSystem.fieldData) do ids[#ids + 1] = farmlandId end
+    table.sort(ids, function(a, b)
+        if type(a) == type(b) then return a < b end
+        return type(a) < type(b)
+    end)
+    self._pass = {
+        generation = self._planGeneration, monotonicDay = self:_monotonicDay(), grain = grain,
+        ids = ids, index = 0, enum = nil, perFarmland = {}, order = {}, owners = {},
+        phase = 'ENUMERATE', committed = 0,
+    }
+    return true
+end
 
-    -- Enumerate every tracked farmland's parcel union into this generation, then
-    -- derive ONE global carrier-ownership partition before committing, so a
-    -- carrier square shared by touching parcels resolves to a single owner
-    -- (brief 3.4). Complete work with no omission ceiling.
-    --
-    -- NOTE (perf gate #6, in-game measured): this v1 enumerates every farmland
-    -- fully per daily pass. The per-frame cursor/time budget and any measured
-    -- execution-grain coarsening (brief 3.5) are runtime tuning deferred to the
-    -- in-game acceptance measurements; the contract here is complete, atomic and
-    -- deterministic regardless of how the work is later spread across frames.
-    local perFarmland, allCandidates = {}, {}
-    for farmlandId in pairs(soilSystem.fieldData) do
-        local polygons = (type(soilSystem._getFarmlandPolygons) == 'function')
-            and soilSystem:_getFarmlandPolygons(farmlandId) or nil
-        if polygons ~= nil then
-            local regions, candidates = self:_enumerateFarmland(farmlandId, polygons, grain, vm)
-            if #regions > 0 then
-                perFarmland[farmlandId] = { regions = regions, polygons = polygons }
-                for _, c in ipairs(candidates) do allCandidates[#allCandidates + 1] = c end
+--- [#1128] Advance the pass by one slice. ENUMERATE walks carrier squares (`budget`
+--- per call, each farmland's start costing one) and keeps each square's owner as the
+--- lowest farmland id (all squares share one area, so this is assignCarrierOwners'
+--- rule); OWNERS digests the ownership; COMMIT commits farmlands one by one. A
+--- budget of math.huge runs every phase to its end. Returns true while a pass remains.
+---@param budget number|nil
+---@return boolean running
+function ViabilityMask:stepPass(budget)
+    local pass = self._pass
+    if pass == nil then return false end
+    local vm = self:_valueMaps()
+    if not self.enabled or vm == nil then
+        self._pass = nil
+        return false
+    end
+    budget = budget or ViabilityMask.PASS_SQUARES_PER_UPDATE
+    local unbounded = (budget == math.huge)
+
+    if pass.phase == 'ENUMERATE' then
+        local soilSystem = self.manager and self.manager.soilSystem
+        while budget > 0 do
+            local st = pass.enum
+            if st == nil then
+                pass.index = pass.index + 1
+                local farmlandId = pass.ids[pass.index]
+                if farmlandId == nil then
+                    pass.phase, pass.ownerKey, pass.s1, pass.s2, pass.n = 'OWNERS', nil, 0, 0, 0
+                    break
+                end
+                budget = budget - 1
+                local polygons = soilSystem ~= nil and type(soilSystem._getFarmlandPolygons) == 'function'
+                    and soilSystem:_getFarmlandPolygons(farmlandId) or nil
+                if polygons ~= nil then
+                    st = self:_beginEnumeration(farmlandId, polygons, pass.grain)
+                    if st ~= nil then
+                        st.token = type(vm.getGrowthInputToken) == 'function'
+                            and vm:getGrowthInputToken(farmlandId) or nil
+                        st.fingerprint = ViabilityMask.polygonUnionFingerprint(polygons)
+                    end
+                end
+                pass.enum = st
+            else
+                local used, done = self:_enumerateSome(st, vm, budget, pass.owners)
+                budget = budget - used
+                if done then
+                    if #st.regions > 0 then
+                        pass.perFarmland[st.farmlandId] = st
+                        pass.order[#pass.order + 1] = st.farmlandId
+                    end
+                    pass.enum = nil
+                end
             end
         end
+        if not unbounded then return true end
     end
 
-    local carrierOwners = ViabilityMask.assignCarrierOwners(allCandidates)
-    local committed = 0
-    for farmlandId, data in pairs(perFarmland) do
-        if self:_commitFarmland(farmlandId, data, carrierOwners, generation, monotonicDay, grain, vm) then
-            committed = committed + 1
+    if pass.phase == 'OWNERS' then
+        local owners, key = pass.owners, pass.ownerKey
+        local steps = unbounded and math.huge or ViabilityMask.PASS_OWNERS_PER_UPDATE
+        while steps > 0 do
+            local owner
+            key, owner = next(owners, key)
+            if key == nil then
+                pass.ownershipDigest = string.format('%d:', pass.n) .. hashHex(pass.s1, pass.s2)
+                pass.phase, pass.commitIndex = 'COMMIT', 0
+                break
+            end
+            local e1, e2 = ownerEntryHash(key, owner)
+            pass.s1, pass.s2, pass.n = (pass.s1 + e1) % HASH_P1, (pass.s2 + e2) % HASH_P2, pass.n + 1
+            steps = steps - 1
         end
-        self._pendingFarmlands[farmlandId] = nil
+        pass.ownerKey = key
+        if not unbounded then return true end
     end
-    return committed
+
+    if pass.phase == 'COMMIT' then
+        local commits = unbounded and math.huge or ViabilityMask.PASS_COMMITS_PER_UPDATE
+        while commits > 0 do
+            pass.commitIndex = pass.commitIndex + 1
+            local farmlandId = pass.order[pass.commitIndex]
+            if farmlandId == nil then
+                self._lastPassCommitted = pass.committed
+                self._pass = nil
+                return false
+            end
+            local data = pass.perFarmland[farmlandId]
+            pass.perFarmland[farmlandId] = nil
+            if self:_commitFarmland(farmlandId, data, pass.owners, pass.generation,
+                    pass.monotonicDay, pass.grain, vm, pass.ownershipDigest) then
+                pass.committed = pass.committed + 1
+                self._pendingFarmlands[farmlandId] = nil
+            else
+                -- A cancelled commit leaves the farmland visibly pending; the next
+                -- pass replaces it (brief 3.5: a mismatch queues a replacement).
+                self._pendingFarmlands[farmlandId] = true
+            end
+            commits = commits - 1
+        end
+    end
+    return true
 end
 
 --- Execution grain: the loaded truth grain by default. No fixed lattice or
@@ -639,11 +786,13 @@ end
 --- The source polygon for a carrier-square centre: the lowest-fingerprint field
 --- polygon on the farmland that contains the point, or nil when the centre is in
 --- a gap between the parcel's fields (gaps are never filled).
-function ViabilityMask:_squareSource(x, z, polygons)
+function ViabilityMask:_squareSource(x, z, polygons, fingerprints)
     local best
-    for _, verts in ipairs(polygons) do
+    for i, verts in ipairs(polygons) do
         if ViabilityMask._pointInPolygon(x, z, verts) then
-            local fp = ViabilityMask.polygonFingerprint(verts)
+            -- [#1128] The enumeration passes each polygon's fingerprint, built once;
+            -- it used to be rebuilt from every vertex for every square.
+            local fp = fingerprints ~= nil and fingerprints[i] or ViabilityMask.polygonFingerprint(verts)
             if best == nil or fp < best then best = fp end
         end
     end
@@ -656,8 +805,16 @@ end
 --- per square). Each square is sampled once at its centre on a world-origin
 --- aligned grid, so a square shared by touching parcels carries ONE global key.
 function ViabilityMask:_enumerateFarmland(farmlandId, polygons, grain, vm)
-    local regions, candidates = {}, {}
-    local area = grain * grain
+    local st = self:_beginEnumeration(farmlandId, polygons, grain)
+    if st == nil then return {}, {} end
+    self:_enumerateSome(st, vm, math.huge, nil)
+    return st.regions, st.candidates
+end
+
+--- [#1128] The enumeration state for one farmland: its bounding box on the
+--- world-origin grid, a cursor, and each polygon's fingerprint built once. nil
+--- when the farmland has no vertices.
+function ViabilityMask:_beginEnumeration(farmlandId, polygons, grain)
     local minX, maxX, minZ, maxZ
     for _, verts in ipairs(polygons) do
         for _, v in ipairs(verts) do
@@ -667,33 +824,62 @@ function ViabilityMask:_enumerateFarmland(farmlandId, polygons, grain, vm)
             if maxZ == nil or v.z > maxZ then maxZ = v.z end
         end
     end
-    if minX == nil then return regions, candidates end
+    if minX == nil then return nil end
+    local fingerprints = {}
+    for i, verts in ipairs(polygons) do
+        fingerprints[i] = ViabilityMask.polygonFingerprint(verts)
+    end
+    local gx0, gz0 = math.floor(minX / grain), math.floor(minZ / grain)
+    return {
+        farmlandId = farmlandId, polygons = polygons, fingerprints = fingerprints,
+        grain = grain, half = grain * 0.5, area = grain * grain,
+        gx0 = gx0, gx1 = math.floor(maxX / grain), gz0 = gz0, gz1 = math.floor(maxZ / grain),
+        gx = gx0, gz = gz0, regions = {}, candidates = {},
+    }
+end
 
-    local half = grain * 0.5
-    for gx = math.floor(minX / grain), math.floor(maxX / grain) do
-        local cx = gx * grain + half
-        for gz = math.floor(minZ / grain), math.floor(maxZ / grain) do
-            local cz = gz * grain + half
-            local srcFp = self:_squareSource(cx, cz, polygons)
-            if srcFp ~= nil then
-                local n = vm:readValueAtWorld('nitrogen', cx, cz)
-                local compaction = vm:readValueAtWorld('compaction', cx, cz)
-                local band = ViabilityMask.combine({
-                    n = ViabilityMask.bandNitrogen(n),
-                    compaction = ViabilityMask.bandCompaction(compaction),
-                    moisture = nil,
-                })
-                local key = gx .. ':' .. gz
-                regions[#regions + 1] = {
-                    key = key, sourcePolygonFingerprint = srcFp,
-                    blocked = (band == ViabilityMask.BAND_BLOCKED),
-                    band = band, area = area,
-                }
-                candidates[#candidates + 1] = { key = key, farmlandId = farmlandId, area = area }
+--- [#1128] Walk up to `budget` squares of `st` (gx outer, gz inner, as before).
+--- With `owners` the square's owner is kept there (lowest farmland id) and no
+--- candidate list is built; without it the candidates are listed for
+--- assignCarrierOwners. Returns the squares walked and whether the farmland is done.
+function ViabilityMask:_enumerateSome(st, vm, budget, owners)
+    local used = 0
+    local grain, half, area = st.grain, st.half, st.area
+    while st.gx <= st.gx1 do
+        if used >= budget then return used, false end
+        local gx, gz = st.gx, st.gz
+        local cx, cz = gx * grain + half, gz * grain + half
+        local srcFp = self:_squareSource(cx, cz, st.polygons, st.fingerprints)
+        if srcFp ~= nil then
+            local n = vm:readValueAtWorld('nitrogen', cx, cz)
+            local compaction = vm:readValueAtWorld('compaction', cx, cz)
+            local band = ViabilityMask.combine({
+                n = ViabilityMask.bandNitrogen(n),
+                compaction = ViabilityMask.bandCompaction(compaction),
+                moisture = nil,
+            })
+            local key = gx .. ':' .. gz
+            st.regions[#st.regions + 1] = {
+                key = key, sourcePolygonFingerprint = srcFp,
+                blocked = (band == ViabilityMask.BAND_BLOCKED),
+                band = band, area = area,
+            }
+            if owners ~= nil then
+                local prior = owners[key]
+                if prior == nil or st.farmlandId < prior then owners[key] = st.farmlandId end
+            else
+                st.candidates[#st.candidates + 1] = { key = key, farmlandId = st.farmlandId, area = area }
             end
         end
+        used = used + 1
+        if gz < st.gz1 then
+            st.gz = gz + 1
+        else
+            st.gz = st.gz0
+            st.gx = gx + 1
+        end
     end
-    return regions, candidates
+    return used, true
 end
 
 --- Commit one farmland's complete plan and area-weighted summary atomically,
@@ -701,16 +887,27 @@ end
 --- enumeration. A same-farmland or unscoped write, or a geometry change, that
 --- lands before this commit cancels it (getGrowthInputToken re-read); an
 --- unrelated farmland's global advance does not. No partial fraction is exposed.
-function ViabilityMask:_commitFarmland(farmlandId, data, carrierOwners, generation, monotonicDay, grain, vm)
+function ViabilityMask:_commitFarmland(farmlandId, data, carrierOwners, generation, monotonicDay, grain, vm, ownershipDigest)
     local weighted = ViabilityMask.areaWeightedSummary(data.regions)
     if weighted == nil then return false end
     local token = vm:getGrowthInputToken(farmlandId)
     if token == nil then return false end
-    local fingerprint = ViabilityMask.polygonUnionFingerprint(data.polygons)
+    -- [#1128] The pass now spans several updates, so the cancel this contract names
+    -- is checked against what enumeration saw: a same-farmland or unscoped write, or
+    -- a geometry change, since this farmland was enumerated cancels the commit.
+    if data.token ~= nil and (data.token.farmlandRevision ~= token.farmlandRevision
+        or data.token.unscopedRevision ~= token.unscopedRevision) then
+        return false
+    end
+    local fingerprint = data.fingerprint or ViabilityMask.polygonUnionFingerprint(data.polygons)
+    if data.fingerprint ~= nil then
+        local live = self:_farmlandFingerprint(farmlandId)
+        if live ~= nil and live ~= data.fingerprint then return false end
+    end
 
     local resultHash = string.format('%d|%.6f|%.6f|%.6f|%.6f', generation,
         weighted.blockedFrac, weighted.excellentFrac, weighted.normalFrac, weighted.unknownFrac)
-    local plan = ViabilityMask.assembleGroundPlan(data.regions, resultHash, farmlandId, carrierOwners)
+    local plan = ViabilityMask.assembleGroundPlan(data.regions, resultHash, farmlandId, carrierOwners, ownershipDigest)
     plan.planId                = string.format('%d:%d', farmlandId, generation)
     plan.fieldId               = farmlandId
     plan.globalInputRevision   = token.globalRevision
@@ -818,7 +1015,7 @@ function ViabilityMask:registerDailyAccrual()
             flowClass = 'simulation',
             firstPeriodPolicy = 'skip',
             priority = ViabilityMask.DAILY_ACCURAL_PRIORITY,
-            onSettle = function() self:runPass() end,
+            onSettle = function() self:startPass() end,
         })
     end)
     if ok then self._tgAccrualRegistered = true end
@@ -845,6 +1042,7 @@ function ViabilityMask:delete()
     self._summaries           = {}
     self._plans               = {}
     self._pendingFarmlands    = {}
+    self._pass                = nil
     self._planGeneration      = 0
     self._currentMonotonicDay = nil
 end

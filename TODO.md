@@ -388,3 +388,10 @@
 - [x] Bar `SF-2m-nutrient_whole_pixel_dose_entry_test.lua` (39 rows; development fails 15).
 - [ ] Step 3, the pressures, then step 4, retiring zone data.
 - [~] In game (owed): TESTING row 589.
+
+## 2026-10-16 (Fred (via Desk)): ViabilityMask pass in slices (#1128)
+
+- [x] `src/ViabilityMask.lua`: `startPass` / `stepPass` (ENUMERATE, OWNERS, COMMIT), `runPass` runs both at once; `_beginEnumeration` / `_enumerateSome` (resumable, owners kept as the lowest farmland id per square); fixed-size `carrierOwnershipHash` and `planContentHash`; `_commitFarmland` cancels on a token or geometry change since enumeration. `src/SoilFertilityManager.lua`: `update` steps the pass.
+- [x] Bar `SF-1128-viability_pass_slices_entry_test.lua` (113 rows; development fails 18).
+- [ ] Plan memory on large maps: one region per 2 m square stays in Lua (about 2.6 million on Midwest Moraines). Measure in game; the brief allows a measured execution-grain coarsening.
+- [~] In game (owed): TESTING row 590, and the Wizard workshop's same-save Moraines test.
