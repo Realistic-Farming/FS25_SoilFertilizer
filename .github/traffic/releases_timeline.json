@@ -807,7 +807,7 @@
   "v2.6.0.2": {
     "published_at": "2026-10-14T13:18:34Z",
     "tag": "v2.6.0.2",
-    "peak_downloads": 117
+    "peak_downloads": 118
   },
   "v2.6.0.1": {
     "published_at": "2026-10-14T07:56:46Z",
@@ -817,6 +817,6 @@
   "v2.6.0.3": {
     "published_at": "2026-10-15T19:39:23Z",
     "tag": "v2.6.0.3",
-    "peak_downloads": 116
+    "peak_downloads": 128
   }
 }
