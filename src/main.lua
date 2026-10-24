@@ -350,6 +350,13 @@ source(modDirectory .. "src/integrations/SoilMaterialDownBridge.lua")
 source(modDirectory .. "src/integrations/SoilScoutingBridge.lua")
 source(modDirectory .. "src/integrations/SoilMasterHUDBridge.lua")
 source(modDirectory .. "src/integrations/SoilNetworkSyncBridge.lua")
+source(modDirectory .. "src/integrations/PnhDistanceTextureBridge.lua")
+if not PnhDistanceTextureBridge.install() then
+    SoilLogger.warning("PNH far-distance alias hook unavailable during mod load")
+end
+if not PnhDistanceTextureBridge.installMissionRearm(modName) then
+    SoilLogger.warning("PNH far-distance alias mission rearm unavailable during mod load")
+end
 -- SF-77 TOPOGRAPHY CACHE's own bridges (StateLedger persistence of the static
 -- water-dist table + NetworkSync delivery). No-ops when those mods are absent.
 source(modDirectory .. "src/integrations/SoilTopographyBridge.lua")
@@ -815,6 +822,7 @@ end
 -- Unload handler. Prepended to FSBaseMission.delete, so the argument is the
 -- mission being deleted (menu.lua deletes it before clearing g_currentMission).
 local function unload(mission)
+    if PnhDistanceTextureBridge then PnhDistanceTextureBridge.disable() end
     -- RSF-F227: switch the ground-tip wrapper to pure delegation before anything
     -- else, so the next mission never inherits this one's gates. Unconditional and
     -- outside the sfm block: it must run even when the manager is already gone.
