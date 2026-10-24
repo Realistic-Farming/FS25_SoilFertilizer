@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Reuse the game's distance texture aliases for Soil fill types, reducing repeated texture-limit errors at startup (#1138).
+- When Pumps N' Hoses adds separated manure, share the base manure far-distance texture while keeping the DLC's fill type and near material intact.
 
 ## [2.6.0.3] - 2026-10-15
 
