@@ -354,6 +354,9 @@ source(modDirectory .. "src/integrations/PnhDistanceTextureBridge.lua")
 if not PnhDistanceTextureBridge.install() then
     SoilLogger.warning("PNH far-distance alias hook unavailable during mod load")
 end
+if not PnhDistanceTextureBridge.installMissionRearm(modName) then
+    SoilLogger.warning("PNH far-distance alias mission rearm unavailable during mod load")
+end
 -- SF-77 TOPOGRAPHY CACHE's own bridges (StateLedger persistence of the static
 -- water-dist table + NetworkSync delivery). No-ops when those mods are absent.
 source(modDirectory .. "src/integrations/SoilTopographyBridge.lua")

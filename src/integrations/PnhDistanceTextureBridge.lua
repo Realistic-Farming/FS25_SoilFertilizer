@@ -53,3 +53,30 @@ function bridge.disable()
     bridge.active = false
     bridge.reported = false
 end
+
+-- The mod's scripts are sourced only once per process, while the loading screen
+-- runs for every selected save. Re-arm before its mod and map loading tasks run;
+-- leave the wrapper dormant when Soil is absent from the next save's selection.
+function bridge.installMissionRearm(soilModName)
+    if bridge.missionRearmInstalled then
+        return true
+    end
+    if MPLoadingScreen == nil or type(MPLoadingScreen.initializeLoading) ~= "function"
+            or Utils == nil or type(Utils.prependedFunction) ~= "function" then
+        return false
+    end
+
+    MPLoadingScreen.initializeLoading = Utils.prependedFunction(
+        MPLoadingScreen.initializeLoading, function(screen)
+            bridge.disable()
+            local mods = screen.missionDynamicInfo and screen.missionDynamicInfo.mods or {}
+            for _, item in ipairs(mods) do
+                if item.modName == soilModName then
+                    bridge.install()
+                    break
+                end
+            end
+        end)
+    bridge.missionRearmInstalled = true
+    return true
+end
