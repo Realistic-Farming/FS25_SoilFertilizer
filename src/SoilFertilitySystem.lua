@@ -7076,6 +7076,32 @@ local function _soilApplyCappedReduction(dailyTable, fieldId, proposedRed, maxDa
     return clamped
 end
 
+--- #1145: clear this field's overlap record (and session coverage) the moment a
+--- product switch is detected, independent of whether a tick has sprayed anything
+--- yet. The existing #442 reset below (inside trackSprayerCoverage) needs liters > 0
+--- to fire, but Overlap Prevention can suppress every section before that ever
+--- happens, once the previous product already finished covering the field - a
+--- deadlock with no way out until day change or plowing. HookManager's overlap gate
+--- calls this first, from the pending fill type alone, so the switch can never block
+--- on its own stale coverage. sessionLastProduct is deliberately left untouched: the
+--- #442 check below still needs to see the OLD name once liters > 0, so it reruns
+--- this same reset (now a no-op) and then writes the new name itself, same as always.
+---@param fieldId number
+---@param fillTypeName string
+function SoilFertilitySystem:clearOverlapOnProductChange(fieldId, fillTypeName)
+    local field = self.fieldData[fieldId]
+    if not field then return end
+    if not fillTypeName or not field.sessionLastProduct or fillTypeName == field.sessionLastProduct then
+        return
+    end
+    field.sessionCoverageHa       = 0
+    field.sessionCoverageFraction = 0
+    field.sessionCoverageCells    = {}
+    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil
+    field._geometricCoverageOwner = nil
+    field.sprayTrailPts           = nil
+end
+
 --- Track sprayer coverage using liters consumed per tick as a proxy for area sprayed.
 -- Replaces the old cell-based tracker that used only the rootNode position, which
 -- severely under-reported coverage for wide-boom equipment: a 28 m sprayer covers
