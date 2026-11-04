@@ -318,6 +318,26 @@ group("S3", function()
 end)
 
 -- ============================================================
+-- S3b: regionAt's area column keeps each region's OWN area. S3's regionsEqual
+-- cannot catch a collapse-to-first-region bug here: it only compares two runs
+-- of the SAME assembleGroundPlan, which collapse the same way on the same
+-- input and still agree with each other. This checks against known input
+-- areas instead (the shape of the bug this bar actually missed once: areas
+-- were dropped to the first region's for the whole plan).
+-- ============================================================
+group("S3b", function()
+  local owners = { ["1:1"] = { farmlandId = 7 }, ["2:1"] = { farmlandId = 7 } }
+  local plan = ViabilityMask.assembleGroundPlan({
+    { key = "1:1", sourcePolygonFingerprint = "fpA", blocked = false, area = 16 },
+    { key = "2:1", sourcePolygonFingerprint = "fpA", blocked = false, area = 12 },
+  }, "rh-s3b", 7, owners)
+  local _, _, _, _, _, _, _, area1 = ViabilityMask.regionAt(plan, 1)
+  local _, _, _, _, _, _, _, area2 = ViabilityMask.regionAt(plan, 2)
+  T.eq("S3b NAMED: region 1 of 2 keeps its own area", area1, 16)
+  T.eq("S3b NAMED: region 2 of 2 keeps its own area, not region 1's", area2, 12)
+end)
+
+-- ============================================================
 -- S4: the sliced pass's owners (lowest farmland id per square) equal
 -- assignCarrierOwners over the candidates _enumerateFarmland lists.
 -- ============================================================

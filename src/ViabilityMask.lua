@@ -369,9 +369,8 @@ function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carri
     -- not as a table per square: about 80 bytes a square instead of about 400 (a
     -- 4x map holds millions of squares). Read them with regionCount / regionAt /
     -- findRegion.
-    local gxs, gzs, polys, blockeds, owners = {}, {}, {}, {}, {}
+    local gxs, gzs, polys, blockeds, owners, areas = {}, {}, {}, {}, {}, {}
     local polygonFingerprints, polygonIndex = {}, {}
-    local regionArea = nil
     local n = 0
     for _, key in ipairs(keys) do
         local region = owned[key]
@@ -391,7 +390,7 @@ function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carri
             n = n + 1
             gxs[n], gzs[n], polys[n] = gx, gz, pi
             blockeds[n], owners[n] = (region.blocked == true), ownerFarmlandId
-            if regionArea == nil then regionArea = region.area end
+            areas[n] = region.area
 
             local d = polygonDigests[fp]
             if d == nil then
@@ -413,7 +412,7 @@ function ViabilityMask.assembleGroundPlan(regions, resultHash, farmlandId, carri
         regionCount = n,
         regionGX = gxs, regionGZ = gzs, regionPoly = polys,
         regionBlocked = blockeds, regionOwner = owners,
-        regionArea = regionArea,
+        regionAreas = areas,
         polygonFingerprints = polygonFingerprints,
         resultHash = resultHash,
         planContentHash = string.format('%d:', n) .. hashHex(h1, h2),
@@ -447,7 +446,7 @@ function ViabilityMask.regionAt(plan, i)
         if gx == nil then return nil end
         local owner = plan.regionOwner[i]
         return gx .. ':' .. gz, gx, gz, plan.regionBlocked[i] == true, owner,
-            owner == plan.fieldId, plan.polygonFingerprints[plan.regionPoly[i]], plan.regionArea
+            owner == plan.fieldId, plan.polygonFingerprints[plan.regionPoly[i]], plan.regionAreas[i]
     end
     local r = type(plan.regions) == 'table' and plan.regions[i] or nil
     if r == nil then return nil end
