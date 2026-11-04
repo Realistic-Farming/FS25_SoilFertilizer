@@ -6196,7 +6196,13 @@ function HookManager:installSprayerAreaHook()
                 local isAI = false
                 local okAIb, resAIb = pcall(function() return self:getIsAIActive() end)
                 if okAIb and resAIb then isAI = true end
-                if not isAI and self.spec_aiVehicle and self.spec_aiVehicle.isActive then isAI = true end
+                -- #1098: the spec_aiVehicle term is NOT a driving signal and is
+                -- not read here any more. It is absent from the 1.20 engine and
+                -- was true on 1.24 while a player drove manually, which is
+                -- enough to show it cannot decide this. Left in, it fabricated
+                -- usage for an otherwise empty manual pass - measured at 240 L
+                -- - which changes application, not only money. getIsAIActive()
+                -- above already covers the vanilla helper.
                 if not isAI and self.spec_aiJobVehicle and self.spec_aiJobVehicle.job ~= nil then isAI = true end
                 if not isAI and self.spec_cpAIWorker and self.spec_cpAIWorker.isActive then isAI = true end
                 if not isAI and self.cp and self.cp.isActive then isAI = true end
@@ -6928,9 +6934,12 @@ function HookManager:installSprayerAreaHook()
                     local isAI = false
                     local okAI, resAI = pcall(function() return self:getIsAIActive() end)
                     if okAI and resAI then isAI = true end
-                    if not isAI and self.spec_aiVehicle and self.spec_aiVehicle.isActive then
-                        isAI = true
-                    end
+                    -- #1098: same unsupported term, removed here too. The
+                    -- `not isEntered` guard below blocked the one observed
+                    -- case, but it is not what makes the AI test valid: an
+                    -- unoccupied or parked implement leaves this term deciding
+                    -- alone. A guard that happens to cover one case is not a
+                    -- reason to keep a known-wrong inference.
                     if not isAI and self.spec_aiJobVehicle and self.spec_aiJobVehicle.job ~= nil then
                         isAI = true
                     end
@@ -9151,7 +9160,11 @@ function HookManager:installPurchaseRefillHook()
 
         -- 1. Check if AI is active (Standard Helper or Courseplay)
         --
-        -- FS25 vanilla: getIsAIActive() / spec_aiVehicle.isActive / spec_aiJobVehicle.job
+        -- FS25 vanilla: getIsAIActive(), which AIJobVehicle extends
+        -- with `or spec_aiJobVehicle.job ~= nil`. spec_aiVehicle.isActive is
+        -- deliberately NOT consulted: see #1098 below. It is absent from the
+        -- 1.20 engine and was observed true on 1.24 during manual driving,
+        -- so it is not a reliable driving signal.
         -- Courseplay: drives via its own input-injection pipeline and does NOT set the
         -- vanilla AI-job system active.  CP marks itself via spec_cpAIWorker.isActive
         -- (all modern CP versions) and optionally vehicle.cp.isActive (legacy CP builds).
@@ -9163,10 +9176,20 @@ function HookManager:installPurchaseRefillHook()
         if ok and res then
             isAI = true
         end
-        -- Vanilla Helper (spec fallbacks)
-        if not isAI and vehicle.spec_aiVehicle and vehicle.spec_aiVehicle.isActive then
-            isAI = true
-        end
+        -- Vanilla Helper (spec fallback)
+        --
+        -- #1098: spec_aiVehicle.isActive was read here as a helper signal.
+        -- Two things are established, and no more than these two. In the 1.20
+        -- extract AIVehicle's spec is agentAttachments plus a debug box and
+        -- has no such field, so this read was inert there. In a 1.24 runtime
+        -- it was observed TRUE while a player drove manually, with job=na,
+        -- cp=na, fieldwork=n and the player in the tractor, and billing
+        -- followed. Together those show the field is NOT a reliable driving
+        -- signal. They do NOT establish what it means on 1.24, and no claim
+        -- about that is made here. getIsAIActive() above is the engine's own
+        -- accessor and already covers the vanilla helper, including the job
+        -- term AIJobVehicle adds to it, so nothing legitimate is lost by not
+        -- guessing from this spec.
         if not isAI and vehicle.spec_aiJobVehicle and vehicle.spec_aiJobVehicle.job ~= nil then
             isAI = true
         end
@@ -9231,9 +9254,200 @@ function HookManager:installPurchaseRefillHook()
     -- SoilDrainVehicle all reach the chain that was there. Prices and identity are
     -- read from the manager at CALL time (V12a's wrapper half), never captured, so
     -- a product that resolved after install is billable.
+    -- ===============================================================
+    -- #1098 BUY-DECISION DIAGNOSTIC. Disabled by default; one line per
+    -- session. Set HookManager.DIAG1098.enabled = true to arm it.
+    --
+    -- It answers the one question offline work cannot: when the F196 layer
+    -- decides to bill, WHICH term made the predicate true, and was anybody
+    -- driving. Each flag is recorded separately rather than collapsed into
+    -- one boolean, because "AI was active" is what is already in doubt.
+    -- ===============================================================
+    HookManager.DIAG1098 = HookManager.DIAG1098 or {
+        enabled      = false,  -- set true to arm
+        fired        = false,
+        armVehicleId = nil,    -- optional: only this vehicle id
+        armProduct   = nil,    -- optional: only this fill type index
+    }
+
+    --- Tri-state renderer. nil means the predicate could NOT be read and is
+    --- reported as "na"; it is never collapsed into "n". Vanilla
+    --- getIsSprayerExternallyFilled returns the rootVehicle TABLE on success,
+    --- so anything that is neither nil nor false counts as y.
+    function HookManager.DIAG1098.flag(value)
+        if value == nil then return "na" end
+        if value == false then return "n" end
+        return "y"
+    end
+
+    --- Sample a predicate EXACTLY ONCE. Returns nil when the function is
+    --- absent or raises, so unknown stays distinguishable from false.
+    function HookManager.DIAG1098.sample(target, name)
+        if type(target) ~= "table" or type(target[name]) ~= "function" then
+            return nil
+        end
+        local ok, res = pcall(target[name], target)
+        if not ok then return nil end
+        return res
+    end
+
+    --- A number or "na". Never a fabricated 0.
+    function HookManager.DIAG1098.num(value)
+        if type(value) ~= "number" then return "na" end
+        return string.format("%.2f", value)
+    end
+
+    --- Farm balance, read-only, nil when it cannot be read.
+    function HookManager.DIAG1098.balance(farmId)
+        if g_currentMission == nil or farmId == nil then return nil end
+        local ok, res = pcall(function()
+            if g_currentMission.getMoney ~= nil then
+                return g_currentMission:getMoney(farmId)
+            end
+            local fm = g_farmManager
+            local farm = fm and fm.getFarmById and fm:getFarmById(farmId)
+            if farm and farm.getBalance then return farm:getBalance() end
+            return nil
+        end)
+        if not ok or type(res) ~= "number" then return nil end
+        return res
+    end
+
+    --- Tank level for one fill unit, read-only, nil when unreadable.
+    function HookManager.DIAG1098.tank(vehicle, fillUnitIndex)
+        if type(vehicle) ~= "table"
+           or type(vehicle.getFillUnitFillLevel) ~= "function" then
+            return nil
+        end
+        local ok, res = pcall(vehicle.getFillUnitFillLevel, vehicle,
+                              fillUnitIndex)
+        if not ok or type(res) ~= "number" then return nil end
+        return res
+    end
+
+    --- Observed money delta, or nil when either end could not be read.
+    function HookManager.DIAG1098.deltaMoney(farmId, before)
+        if type(before) ~= "number" then return nil end
+        local after = HookManager.DIAG1098.balance(farmId)
+        if type(after) ~= "number" then return nil end
+        return after - before
+    end
+
+    --- Observed tank delta, or nil when either end could not be read.
+    function HookManager.DIAG1098.deltaTank(vehicle, fillUnitIndex, before)
+        if type(before) ~= "number" then return nil end
+        local after = HookManager.DIAG1098.tank(vehicle, fillUnitIndex)
+        if type(after) ~= "number" then return nil end
+        return after - before
+    end
+
+    --- Raw AI spec flags for ONE vehicle table. Returns nil per flag when
+    --- the spec is absent, so "absent" stays distinguishable from "false".
+    --- Used for the implement AND for the root, because
+    --- Vehicle:getIsAIActive recurses to the attacher: without the root's
+    --- flags a towed sprayer logs aiActive=y with job=na and the term that
+    --- made the predicate true goes unnamed.
+    function HookManager.DIAG1098.rawFlags(v)
+        local job, cpM, cpL, aiv = nil, nil, nil, nil
+        if type(v) == "table" then
+            if v.spec_aiJobVehicle ~= nil then
+                job = v.spec_aiJobVehicle.job ~= nil
+            end
+            if v.spec_cpAIWorker ~= nil then
+                cpM = v.spec_cpAIWorker.isActive == true
+            end
+            if v.cp ~= nil then cpL = v.cp.isActive == true end
+            if v.spec_aiVehicle ~= nil then
+                aiv = v.spec_aiVehicle.isActive == true
+            end
+        end
+        return job, cpM, cpL, aiv
+    end
+
+    --- Is this the decision we were aimed at? Both filters are optional and
+    --- nil by default, in which case the first tokened decision wins.
+    function HookManager.DIAG1098.isTarget(vehicle, rawType)
+        local D = HookManager.DIAG1098
+        if D.armVehicleId ~= nil then
+            local id = type(vehicle) == "table" and vehicle.id or nil
+            if id ~= D.armVehicleId then return false end
+        end
+        -- armProduct is a RAW fill-type-index filter, identical on both
+        -- branches. It was ambiguous while the two sites passed different
+        -- values for the same parameter.
+        if D.armProduct ~= nil and rawType ~= D.armProduct then
+            return false
+        end
+        return true
+    end
+
+    --- One line, once, at the decision. plannedCharge is what the code
+    --- INTENDED to bill; moneyObs and tankObs are measured before and after
+    --- and are the only fields that evidence what actually happened.
+    function HookManager.DIAG1098.record(vehicle, path, product, rawType,
+                                         billed, plannedCharge, moneyObs,
+                                         tankObs)
+        local D = HookManager.DIAG1098
+        if not D.enabled or D.fired then return end
+        -- Filter on the RAW fill type, which is the engine's own call
+        -- argument and means the same thing on both branches. `product` may
+        -- be the resolved custom index on the billed path and the raw index
+        -- on the delegated one, so filtering on it meant two different
+        -- things depending on which branch ran.
+        if not D.isTarget(vehicle, rawType) then return end
+        D.fired = true
+        local root = type(vehicle) == "table" and vehicle.rootVehicle or nil
+
+        -- Each predicate sampled ONCE.
+        local extFill   = D.sample(vehicle, "getIsSprayerExternallyFilled")
+        local aiActive  = D.sample(vehicle, "getIsAIActive")
+        local fieldwork = D.sample(root, "getIsFieldWorkActive")
+        local entSelf   = D.sample(vehicle, "getIsEntered")
+        local entRoot   = D.sample(root, "getIsEntered")
+
+        -- Raw flags for BOTH sides. nil when the spec is absent, so absent
+        -- stays distinguishable from false.
+        local job, cpM, cpL, aiv = D.rawFlags(vehicle)
+        local rJob, rCpM, rCpL, rAiv = D.rawFlags(root)
+        local rootAi = D.sample(root, "getIsAIActive")
+
+        print(string.format(
+            "[1098-BUY] path=%s veh=%s root=%s product=%s rawType=%s "
+            .. "billed=%s extFill=%s aiActive=%s "
+            .. "job=%s aiVehActive=%s cpModern=%s cpLegacy=%s "
+            .. "rootAiActive=%s rootJob=%s rootAiVehActive=%s "
+            .. "rootCpModern=%s rootCpLegacy=%s "
+            .. "fieldwork=%s enteredSelf=%s enteredRoot=%s "
+            .. "plannedCharge=%s moneyObs=%s tankObs=%s",
+            tostring(path),
+            tostring(type(vehicle) == "table" and vehicle.id or "na"),
+            tostring(type(root) == "table" and root.id or "na"),
+            tostring(product), tostring(rawType), D.flag(billed),
+            D.flag(extFill), D.flag(aiActive),
+            D.flag(job), D.flag(aiv), D.flag(cpM), D.flag(cpL),
+            D.flag(rootAi), D.flag(rJob), D.flag(rAiv),
+            D.flag(rCpM), D.flag(rCpL),
+            D.flag(fieldwork), D.flag(entSelf), D.flag(entRoot),
+            D.num(plannedCharge), D.num(moneyObs), D.num(tankObs)))
+    end
+
     local function makeFillUnitWrapper(predecessor)
         return function(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
             local token = type(vehicle) == "table" and vehicle._sfF196DrainToken or nil
+            -- #1098 (824): sample the BEFORE values once, only when armed,
+            -- so the observed deltas below are measurements rather than
+            -- expectations. Reads only; nil when unreadable.
+            local diag1098Money0, diag1098Tank0, diag1098Farm = nil, nil, nil
+            if token ~= nil and HookManager.DIAG1098.enabled then
+                pcall(function()
+                    local D = HookManager.DIAG1098
+                    diag1098Farm = (farmId and farmId > 0) and farmId
+                        or (type(vehicle) == "table" and vehicle.ownerFarmId)
+                        or nil
+                    diag1098Money0 = D.balance(diag1098Farm)
+                    diag1098Tank0 = D.tank(vehicle, fillUnitIndex)
+                end)
+            end
             if token ~= nil and HookManager.drainTokenMatches(token, fillUnitIndex, fillLevelDelta, fillTypeIndex) then
                 vehicle._sfF196DrainToken = nil   -- consumed, billed or not
                 -- [SF-73] the actual physical litres of a target dose are the magnitude of
@@ -9263,11 +9477,42 @@ function HookManager:installPurchaseRefillHook()
                     if sf73Cycle ~= nil and TargetApplication ~= nil then
                         TargetApplication.recordApplied(sf73Cycle, fillLevelDelta)
                     end
+                    -- #1098: the billed decision. plannedCharge is what this
+                    -- branch INTENDED to bill; the observed deltas are
+                    -- measured, because the addMoney above is inside a pcall
+                    -- that can fail and skipping the predecessor is an
+                    -- expectation rather than a measurement. The whole
+                    -- recorder runs under pcall so no diagnostic failure can
+                    -- reach the billing path.
+                    if HookManager.DIAG1098.enabled then
+                        pcall(function()
+                            local D = HookManager.DIAG1098
+                            D.record(vehicle, "f196-billed", resolved,
+                                     fillTypeIndex, true, -cost,
+                                     D.deltaMoney(diag1098Farm,
+                                                  diag1098Money0),
+                                     D.deltaTank(vehicle, fillUnitIndex,
+                                                 diag1098Tank0))
+                        end)
+                    end
                     return fillLevelDelta
                 end
                 local applied = predecessor(vehicle, farmId, fillUnitIndex, fillLevelDelta, fillTypeIndex, toolType, fillPositionData)
                 if sf73Cycle ~= nil and TargetApplication ~= nil then
                     TargetApplication.recordApplied(sf73Cycle, applied)
+                end
+                -- #1098: a tokened delta that was NOT billed. Recording this
+                -- too means a trace that shows nothing is a trace that never
+                -- reached the layer, rather than one that chose not to bill.
+                if HookManager.DIAG1098.enabled then
+                    pcall(function()
+                        local D = HookManager.DIAG1098
+                        D.record(vehicle, "f196-delegated", fillTypeIndex,
+                                 fillTypeIndex, false, 0,
+                                 D.deltaMoney(diag1098Farm, diag1098Money0),
+                                 D.deltaTank(vehicle, fillUnitIndex,
+                                             diag1098Tank0))
+                    end)
                 end
                 return applied
             end
