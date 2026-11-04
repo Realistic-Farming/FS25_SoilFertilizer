@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Rate burn now needs an established crop under the boom, and its N drain scales with the product's N content (#1143).
+- Added build rate steps 2.5x-4.0x (indices 21-24) for low-N P/K/lime products; the HUD rate bar spans more steps (#1143).
+- N leaching now varies by N source (blended per field); K/P rain leach reduced (#1143).
+
 ## [2.6.0.3] - 2026-10-15
 
 > **This is not a final release.** It gives everyone, testers and players, new or returning, everything we have built so far, so nobody has to wait on an old version any longer. The Realistic Farming suite is far from done: we are still building and expanding every mod, and completing it could take months, possibly a year. Expect changes and rough edges along the way, and please report anything that looks wrong.

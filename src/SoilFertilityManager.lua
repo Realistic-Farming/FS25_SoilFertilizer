@@ -832,7 +832,11 @@ function SoilFertilityManager:onSprayerRateUpInput()
     if not vehicle then return end
     local rm = self.sprayerRateManager
     if rm then
-        local newIdx = rm:cycleUp(vehicle.id)
+        -- P/K/lime products may climb into the >2.0x build steps
+        -- (the HUD's per-frame cached fill type is the product of the sprayer the HUD shows)
+        local hudFt = self.soilHUD and self.soilHUD._cachedFillType
+        local buildOk = (hudFt ~= nil and SoilConstants.allowsBuildRate(hudFt.name)) or false
+        local newIdx = rm:cycleUp(vehicle.id, buildOk)
         SoilLogger.debug("Rate UP input: vehicle %d, new index %d (multiplier %.2f)",
             vehicle.id, newIdx, rm:getMultiplier(vehicle.id))
         if SoilNetworkEvents_SendSprayerRate then
