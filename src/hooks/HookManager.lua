@@ -6576,7 +6576,7 @@ function HookManager:installSprayerAreaHook()
                     local entry = SoilConstants.FERTILIZER_PROFILES[fillType.name]
                     if fertResult and entry and (entry.N or entry.P or entry.K) and
                        rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
-                        soilSys:applyBurnEffect(fId, rateMultiplier)
+                        soilSys:applyBurnEffect(fId, rateMultiplier, fillType.name)  -- + product name
                     end
                     -- CD-14 heat scorch: called UNCONDITIONALLY, BESIDE the burn
                     -- branch, never inside the FERTILIZER_PROFILES N/P/K guard
@@ -6805,7 +6805,7 @@ function HookManager:installSprayerAreaHook()
                                                     end
                                                     if (not isFert2 or fertResult2)
                                                             and rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
-                                                        soilSys:applyBurnEffect(fId2, rateMultiplier)
+                                                        soilSys:applyBurnEffect(fId2, rateMultiplier, ftName)  -- + product name
                                                     end
                                                     -- CD-14 heat scorch beside the burn branch (see applySingle);
                                                     -- RSF-F196 V7 gates it for a fertilizer product only.

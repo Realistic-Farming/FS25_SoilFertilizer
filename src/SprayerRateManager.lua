@@ -70,10 +70,17 @@ end
 
 --- Cycle rate up by one step. Returns the new index.
 ---@param vehicleId number
+---@param buildRateOk boolean|nil true lets a P/K/lime product climb into the appended >2.0x build steps; nil/false stops at the upstream 2.0x ceiling
 ---@return number newIndex
-function SprayerRateManager:cycleUp(vehicleId)
+function SprayerRateManager:cycleUp(vehicleId, buildRateOk)
     local steps = SoilConstants.SPRAYER_RATE.STEPS
-    local newIdx = math.min(self:getIndex(vehicleId) + 1, #steps)
+    local ceiling = #steps
+    if not buildRateOk then
+        ceiling = math.min(ceiling, SoilConstants.SPRAYER_RATE.BUILD_FIRST_INDEX - 1)
+    end
+    local newIdx = math.min(self:getIndex(vehicleId) + 1, ceiling)
+    -- never lower a rate already above the ceiling (e.g. product swapped while at 4x)
+    newIdx = math.max(newIdx, math.min(self:getIndex(vehicleId), #steps))
     self.vehicleRates[vehicleId] = newIdx
     return newIdx
 end

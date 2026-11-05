@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Rate burn now needs an established crop under the boom, and its N drain scales with the product's N content (#1143).
+- Added build rate steps 2.5x-4.0x (indices 21-24) for low-N P/K/lime products; the HUD rate bar spans more steps (#1143).
+- N leaching now varies by N source (blended per field); K/P rain leach reduced (#1143).
+
 ### Fixed
 - Overlap Prevention could permanently block a still-needed product after switching products, once the previous product had already finished covering the field (#1145).
 
