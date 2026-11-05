@@ -436,8 +436,10 @@ SoilConstants.PH_NORMALIZATION = {
 SoilConstants.RAIN = {
     LEACH_BASE_FACTOR = 0.00000008,  -- base leach per dt per rainScale (÷12 for scale adjustment)
     NITROGEN_MULTIPLIER = 5,         -- nitrogen leaches most (mobile nutrient)
-    POTASSIUM_MULTIPLIER = 2,        -- potassium moderate leaching
-    PHOSPHORUS_MULTIPLIER = 0.5,     -- phosphorus binds to soil (least mobile)
+    -- upstream: K = 2, P = 0.5. Halved/quartered so a preseason
+    -- P/K build holds for years like real soil; N is unchanged (still the mobile one).
+    POTASSIUM_MULTIPLIER = 1,        -- potassium moderate leaching
+    PHOSPHORUS_MULTIPLIER = 0.25,    -- phosphorus binds to soil (least mobile)
     PH_ACIDIFICATION = 0.1,          -- rain acidification multiplier
     MIN_RAIN_THRESHOLD = 0.1,        -- minimum rainScale to trigger effects
 
@@ -458,6 +460,32 @@ SoilConstants.RAIN = {
     -- (0.018); SF-side tunable, so it stays decoupled from SCS internals.
     IRRIGATION_RATE_LEACH_REF  = 0.018,  -- irrigation rate (per-hour gain) that counts as full-intensity irrigation
 }
+
+-- Relative N leach rate by N source (1.0 = upstream behaviour).
+-- A field's blended multiplier (field.nLeachMult) moves toward the source of each N
+-- addition, weighted by N points added, and scales the N leach only. Sources not
+-- listed count as 1.0.
+SoilConstants.N_SOURCE_LEACH = {
+    ANHYDROUS = 0.50,  -- ammonium held in the retention band, nitrifies slowly
+    UREA = 0.90, LIQUID_UREA = 0.90,
+    AMS = 0.80, LIQUID_AMS = 0.80,
+    MAP = 0.70, LIQUID_MAP = 0.70, DAP = 0.70, LIQUID_DAP = 0.70,
+    UAN28 = 1.00, UAN32 = 1.00, LIQUIDFERTILIZER = 1.00, FERTILIZER = 1.00,
+    AN = 1.20,         -- half nitrate: mobile on contact
+    MANURE = 0.60, LIQUIDMANURE = 0.70, DIGESTATE = 0.70, COMPOST = 0.50,
+    BIOSOLIDS = 0.60, CHICKEN_MANURE = 0.60, PELLETIZED_MANURE = 0.60,
+}
+
+--- May this product use the appended build-rate steps (>2.0x)?
+--- True for P/K/lime-type products with negligible N.
+---@param fillTypeName string|nil
+---@return boolean
+function SoilConstants.allowsBuildRate(fillTypeName)
+    local p = fillTypeName and SoilConstants.FERTILIZER_PROFILES[fillTypeName]
+    if not p or p.pestReduction or p.diseaseReduction then return false end
+    if (p.N or 0) > SoilConstants.SPRAYER_RATE.BUILD_MAX_PRODUCT_N then return false end
+    return (p.P or 0) > 0 or (p.K or 0) > 0 or (p.pH or 0) > 0
+end
 
 -- ========================================
 -- CROP EXTRACTION RATES (per 1,000 liters harvested)
@@ -1063,7 +1091,21 @@ SoilConstants.SPRAYER_RATE = {
         0.60, 0.70, 0.80, 0.90, 1.00,
         1.10, 1.20, 1.30, 1.40, 1.50,
         1.60, 1.70, 1.80, 1.90, 2.00,
+        -- build-rate steps (indices 21-24), APPENDED so every
+        -- existing index/save/network value keeps its meaning. Only reachable for
+        -- P/K/lime-type products (see allowsBuildRate); N products stop at 2.0x.
+        2.50, 3.00, 3.50, 4.00,
     },
+    -- first appended build-rate index, and the highest N points
+    -- (FERTILIZER_PROFILES units) a product may carry and still unlock it. MAP 11,
+    -- DAP 16, POLIFOSKA 5, manures/compost < 4 qualify; STARTER 63, UREA 155, UAN 210+
+    -- do not.
+    BUILD_FIRST_INDEX         = 21,
+    BUILD_MAX_PRODUCT_N       = 20,
+    -- the rate burn's N drain scales by min(1, profile.N / REF),
+    -- so a P/K product (N ~ 0) no longer drains nitrogen. UREA/UAN/AN/ANHYDROUS >= REF
+    -- keep the full drain; AMS/STARTER sit at ~0.65.
+    BURN_N_SCALE_REF          = 100,
     DEFAULT_INDEX             = 10,    -- 1.0x
     BURN_RISK_THRESHOLD       = 1.25,  -- above this: chance of burn
     BURN_GUARANTEED_THRESHOLD = 1.50,  -- at or above this: burn every time
