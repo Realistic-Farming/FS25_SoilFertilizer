@@ -1834,6 +1834,32 @@ function HookManager:installSectionControlHook()
                         local fieldDataRef = soilSysRef and soilSysRef.fieldData
                         local fieldEntry   = (fieldDataRef and vehicleFieldId and vehicleFieldId > 0)
                                             and fieldDataRef[vehicleFieldId] or nil
+
+                        -- #1145: a product switch must clear this field's stale overlap
+                        -- record before the suppression loop below reads it. The ordinary
+                        -- product-change reset (SoilFertilitySystem's #442 clear, inside
+                        -- trackSprayerCoverage) only fires once a tick actually sprays
+                        -- (liters > 0) - but once the previous product finished covering
+                        -- the field, the suppression loop below blocks every section on
+                        -- the new product's very first tick too, so liters stays 0 and
+                        -- that reset never gets the chance to fire: a deadlock with no way
+                        -- out until day change or plowing. Running the same clear here,
+                        -- keyed on the pending fill type alone, breaks it. wap is already
+                        -- populated at this point - this hook runs appended AFTER the
+                        -- vanilla onStartWorkAreaProcessing (Utils.appendedFunction runs
+                        -- oldFunc then newFunc), the same assumption Gate 4 below relies on.
+                        if soilSysRef and fieldEntry
+                           and type(soilSysRef.clearOverlapOnProductChange) == "function" then
+                            local specEarly  = sprayerSelf.spec_sprayer
+                            local wapEarly   = specEarly and specEarly.workAreaParameters
+                            local ftIdxEarly = wapEarly and wapEarly.sprayFillType
+                            local ftEarly    = ftIdxEarly and ftIdxEarly > 0 and g_fillTypeManager
+                                               and g_fillTypeManager:getFillTypeByIndex(ftIdxEarly)
+                            if ftEarly then
+                                soilSysRef:clearOverlapOnProductChange(vehicleFieldId, ftEarly.name)
+                            end
+                        end
+
                         -- MAINTENANCE row 234: the overlap record, not the 10 m cells.
                         local overlapRecord = fieldEntry and fieldEntry.sessionOverlapOdo or nil
                         local graceM       = sprayerSelf._sfOverlapGraceM
@@ -2840,6 +2866,26 @@ function HookManager:installOverlapPreventionHook()
 
             -- Keep the last known field ID fresh for headland fallback.
             if fieldEntry then sprayerSelf._sfLastKnownFieldId = vehicleFieldId end
+
+            -- #1145: this is the gate the report's own log matched ("[OverlapPrev]
+            -- suppressed 12 sections"). A product switch must clear this field's
+            -- stale coverage/overlap state before coveredCells/coverage below read
+            -- it, for the same reason as HookManager's other overlap gate
+            -- (installSectionControlHook): the ordinary product-change reset
+            -- (SoilFertilitySystem's #442 clear, inside trackSprayerCoverage) needs
+            -- liters > 0 to fire, but once the previous product finished covering the
+            -- field, this gate suppresses every section on the new product's very
+            -- first tick too (coverageComplete below reads true from the OLD
+            -- product's sessionCoverageFraction), so liters stays 0 and that reset
+            -- never gets the chance to fire - a deadlock with no way out until day
+            -- change or plowing.
+            if soilSys and fieldEntry and type(soilSys.clearOverlapOnProductChange) == "function" then
+                local ftEarly = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+                if ftEarly then
+                    soilSys:clearOverlapOnProductChange(vehicleFieldId, ftEarly.name)
+                end
+            end
+
             local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells
             -- If no cells have been stamped yet this session, nothing to suppress.
             -- Clear any stale suppression so sections don't stay locked.
