@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - N leaching now varies by N source (blended per field); K/P rain leach reduced (#1143).
 
 ### Fixed
+- Reuse the game's distance texture aliases for Soil fill types, reducing repeated texture-limit errors at startup (#1138).
+- When Pumps N' Hoses adds separated manure, share the base manure far-distance texture while keeping the DLC's fill type and near material intact.
 - Overlap Prevention could permanently block a still-needed product after switching products, once the previous product had already finished covering the field (#1145).
 
 ## [2.6.0.3] - 2026-10-15
