@@ -208,6 +208,11 @@ function SoilFertilitySystem.new(settings)
     -- [SG2-4c-3] Soil's `soil.groundCondition` property for StockGuard's SG-1: registered
     -- after the coordinator arms, withdrawn at unload or when a condition owner stands down.
     self.groundConditionProperty = GroundConditionProperty and GroundConditionProperty.new() or nil
+    -- Organic Origin Property: Soil's `harvestOrganicOriginV1` StockGuard SG-1
+    -- producer (MD-16's organic premium). Independent of the ground-condition
+    -- family: registered as soon as StockGuard's handle exists, not gated on the
+    -- coordinator arming.
+    self.organicOriginProperty = OrganicOriginProperty and OrganicOriginProperty.new(self.hookManager) or nil
     -- [SF-26] SPATIAL SCOUTING. The walked mask: per-farm, per-field walked
     -- cells that reveal the trouble's pattern where the player walked, on foot.
     -- Armed after the value maps initialize; its own bridges register in
@@ -364,6 +369,11 @@ function SoilFertilitySystem:initialize()
     if self.groundConditionProperty and self.groundConditionCoordinator then
         self.groundConditionProperty:register(self.groundConditionCoordinator, g_currentMission)
     end
+    -- Register `harvestOrganicOriginV1` with StockGuard when it published its mission
+    -- handle. Only needs StockGuard itself, not the ground-condition coordinator.
+    if self.organicOriginProperty then
+        self.organicOriginProperty:register(g_currentMission)
+    end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.
     -- RELEASE GATE: Read the Dirt (the walked mask + the kneel + the handful read)
@@ -462,6 +472,9 @@ function SoilFertilitySystem:delete()
     -- [SG2-4c-3] Withdraw the property before the layers it reads go.
     if self.groundConditionProperty then
         self.groundConditionProperty:withdraw("unload")
+    end
+    if self.organicOriginProperty then
+        self.organicOriginProperty:withdraw("unload")
     end
     self.hookManager:uninstallAll()
     if self.layerSystem then
@@ -5980,7 +5993,10 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
 
                 local leachFactor = drive * baseFactor * scsMoistureMult
                 if leachFactor > 0 then
-                    field.nitrogen   = math.max(limits.MIN, field.nitrogen   - (leachFactor * rain.NITROGEN_MULTIPLIER))
+                    -- N loses at the field's blended source rate
+                    -- (anhydrous slow ... AN fast); 1.0 = upstream when no source recorded.
+                    local nLeach = leachFactor * rain.NITROGEN_MULTIPLIER * (field.nLeachMult or 1.0)
+                    field.nitrogen   = math.max(limits.MIN, field.nitrogen   - nLeach)
                     field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
                     field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
                     -- [SF-79] pH acidification goes through the positional writer.
@@ -6004,7 +6020,7 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                         if SpatialNutrients and SpatialNutrients.ENABLED
                            and field._snBands and #field._snBands > 1 then
                             SpatialNutrients:queueBandedDelta(self, fieldId, field,
-                                "nitrogen",  -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                                "nitrogen",  -nLeach)
                             SpatialNutrients:queueBandedDelta(self, fieldId, field,
                                 "potassium", -(leachFactor * rain.POTASSIUM_MULTIPLIER))
                             -- pH rides the same banded distribution downward.
@@ -6015,7 +6031,7 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                             self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
                             self:_vmFlushFieldDeltas(fieldId, field)
                         else
-                            self:_vmQueueFieldDelta(field, "nitrogen",   -(leachFactor * rain.NITROGEN_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "nitrogen",   -nLeach)
                             self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
                             self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
                             self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
@@ -6575,7 +6591,18 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
         end
 
         local tunFert = getTuningMult(self.settings, "tuningFertilizerEfficiency", "RATE_MULT")
+        -- blend the field's N-source leach multiplier toward this
+        -- product, weighted by the N points actually added (after the 100 cap).
+        local nBefore = field.nitrogen
         if entry.N then field.nitrogen   = math.min(limits.MAX, field.nitrogen   + entry.N * factor * tunFert) end
+        do
+            local nAdded = field.nitrogen - nBefore
+            local srcMult = SoilConstants.N_SOURCE_LEACH and SoilConstants.N_SOURCE_LEACH[fillType.name]
+            if nAdded > 0 and srcMult then
+                local old = field.nLeachMult or 1.0
+                field.nLeachMult = (nBefore * old + nAdded * srcMult) / (nBefore + nAdded)
+            end
+        end
         if entry.P then field.phosphorus = math.min(limits.MAX, field.phosphorus + entry.P * factor * tunFert) end
         if entry.K then field.potassium  = math.min(limits.MAX, field.potassium  + entry.K * factor * tunFert) end
         -- [SF-79] pH is NOT mutated as a field scalar here. The positional writer
@@ -7074,6 +7101,32 @@ local function _soilApplyCappedReduction(dailyTable, fieldId, proposedRed, maxDa
     local clamped = math.min(proposedRed, remaining)
     entry.applied = entry.applied + clamped
     return clamped
+end
+
+--- #1145: clear this field's overlap record (and session coverage) the moment a
+--- product switch is detected, independent of whether a tick has sprayed anything
+--- yet. The existing #442 reset below (inside trackSprayerCoverage) needs liters > 0
+--- to fire, but Overlap Prevention can suppress every section before that ever
+--- happens, once the previous product already finished covering the field - a
+--- deadlock with no way out until day change or plowing. HookManager's overlap gate
+--- calls this first, from the pending fill type alone, so the switch can never block
+--- on its own stale coverage. sessionLastProduct is deliberately left untouched: the
+--- #442 check below still needs to see the OLD name once liters > 0, so it reruns
+--- this same reset (now a no-op) and then writes the new name itself, same as always.
+---@param fieldId number
+---@param fillTypeName string
+function SoilFertilitySystem:clearOverlapOnProductChange(fieldId, fillTypeName)
+    local field = self.fieldData[fieldId]
+    if not field then return end
+    if not fillTypeName or not field.sessionLastProduct or fillTypeName == field.sessionLastProduct then
+        return
+    end
+    field.sessionCoverageHa       = 0
+    field.sessionCoverageFraction = 0
+    field.sessionCoverageCells    = {}
+    field.sessionOverlapOdo, field.sessionOverlapBy = nil, nil
+    field._geometricCoverageOwner = nil
+    field.sprayTrailPts           = nil
 end
 
 --- Track sprayer coverage using liters consumed per tick as a proxy for area sprayed.
@@ -7889,11 +7942,51 @@ end
 --- (soil is tracked per field, not per zone, and yield is field-average by design),
 --- but metering by duration makes the *magnitude* proportional to the over-applied
 --- area for a given boom, so a small/brief overlap no longer craters the field.
+--- Is there a burnable (established, uncut) crop under the sprayer?
+--- Same verdict the lime/organic amendment burn uses (isAmendmentBurnRisk). Cached per
+--- game tick because applyBurnEffect runs once per boom section. True when the ground
+--- cannot be read, so a failed lookup never silently removes the upstream burn.
+---@param field table
+---@return boolean
+function SoilFertilitySystem:_burnCropEstablishedAtSpray(field)
+    local now = (g_currentMission and g_currentMission.time) or 0
+    if field._burnCropCheckTime == now then return field._burnCropCheckResult end
+
+    local result = true
+    local spx, spz = self._lastSprayX, self._lastSprayZ
+    if spx and spz and FieldState and FruitType then
+        local ok, fs = pcall(function()
+            local s = FieldState.new()
+            s:update(spx, spz)
+            return s
+        end)
+        if ok and fs then
+            if fs.fruitTypeIndex ~= nil and fs.fruitTypeIndex ~= FruitType.UNKNOWN then
+                result = self:isAmendmentBurnRisk(fs.fruitTypeIndex, fs.growthState)
+            else
+                result = false
+            end
+        end
+    end
+    field._burnCropCheckTime   = now
+    field._burnCropCheckResult = result
+    return result
+end
+
 ---@param fieldId number
 ---@param rateMultiplier number The actual rate multiplier used (e.g. 1.5)
-function SoilFertilitySystem:applyBurnEffect(fieldId, rateMultiplier)
+---@param fillTypeName string|nil product name, scales the N drain by the product's N content
+function SoilFertilitySystem:applyBurnEffect(fieldId, rateMultiplier, fillTypeName)
     local field = self.fieldData[fieldId]
     if not field then return end
+
+    -- A rate burn needs a leaf canopy to scorch. On bare, cut or
+    -- seedling-stage ground a heavy P/K/N pass is just a build application, so it
+    -- neither burns nor opens a burn pass. Unknown crop state keeps upstream behaviour.
+    if not self:_burnCropEstablishedAtSpray(field) then
+        field._lastBurnTickTime = nil
+        return
+    end
 
     local burnCfg = SoilConstants.SPRAYER_RATE
     local limits  = SoilConstants.NUTRIENT_LIMITS
@@ -7930,6 +8023,13 @@ function SoilFertilitySystem:applyBurnEffect(fieldId, rateMultiplier)
     end
 
     -- ── This tick's slice, clamped to the remaining per-pass budget ───────────
+    -- N drain scales with the product's N content (potash/MAP ~ 0,
+    -- urea/UAN/AN/anhydrous = full). pH drop is left as upstream.
+    local prof = fillTypeName and SoilConstants.FERTILIZER_PROFILES[fillTypeName]
+    if prof then
+        fullN = fullN * math.min(1.0, (prof.N or 0) / (burnCfg.BURN_N_SCALE_REF or 100))
+    end
+
     local frac   = math.min(1.0, dt / fullMs)
     local phDrop = math.min(fullPh * frac, math.max(0.0, fullPh - (field._burnPassPh or 0)))
     local nDrain = math.min(fullN  * frac, math.max(0.0, fullN  - (field._burnPassN  or 0)))
@@ -8672,6 +8772,10 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
             if (field.hybridBlockedUntilDay or 0) > 0 then
                 setXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay", field.hybridBlockedUntilDay)
             end
+            -- blended N-source leach multiplier (server-side only, not synced)
+            if field.nLeachMult and math.abs(field.nLeachMult - 1.0) > 0.001 then
+                setXMLFloat(xmlFile, fieldKey .. "#nLeachMult", field.nLeachMult)
+            end
             -- CD-9: Serialize per-MOA resistance as comma-separated mode:score pairs
             if field.resistance then
                 local parts = {}
@@ -8845,6 +8949,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
             end)(),
             lastFungicide = getXMLString(xmlFile, fieldKey .. "#lastFungicide"),
             hybridBlockedUntilDay = getXMLInt(xmlFile, fieldKey .. "#hybridBlockedUntilDay"),
+            nLeachMult = getXMLFloat(xmlFile, fieldKey .. "#nLeachMult"),   -- 
             -- CD-9: Deserialize per-MOA resistance from comma-separated mode:score pairs
             resistance = (function()
                 local rt = {}

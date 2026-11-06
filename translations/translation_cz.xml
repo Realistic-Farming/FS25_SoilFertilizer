@@ -606,6 +606,8 @@
     <e k="sf_notify_lime_crop_body" v="Pole %d: Vápno na rostoucí plodině - výnos -80%% při sklizni!" eh="9174b3ef" />
     <e k="sf_notify_om_crop_title" v="Varování ohledně úpravy" eh="33228c86" />
     <e k="sf_notify_om_crop_body" v="Pole %d: Organická hmota na rostoucí plodině - výnos -20%% při sklizni." eh="8a78f46a" />
+    <e k="sf_notify_organic_at_risk_title" v="Varování ohledně bio rizika" eh="7bbbeca0" />
+    <e k="sf_notify_organic_at_risk_body" v="Pole %d: %s není schváleno pro ekologické zemědělství - použití poruší certifikaci" eh="1f9f927e" />
 
     <!-- ======================================================
          SETTINGS PANEL - CATEGORIES & SECTION HEADERS

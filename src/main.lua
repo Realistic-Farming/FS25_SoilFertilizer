@@ -181,6 +181,10 @@ source(modDirectory .. "src/ground/GroundMovementCarrier.lua")
 -- [SG2-4c-3] Soil's `soil.groundCondition` property for StockGuard. After the coordinator
 -- and the carrier, whose combine and off-ground ageing it reuses.
 source(modDirectory .. "src/ground/GroundConditionProperty.lua")
+-- Organic Origin Property: Soil's `harvestOrganicOriginV1` producer for StockGuard
+-- SG-1 (MD-16's organic premium). Independent of the ground-condition family; only
+-- needs the hook manager, already loaded above.
+source(modDirectory .. "src/OrganicOriginProperty.lua")
 -- [RSF-F211 part 2a] The Baler collection: the pickup frame's producer, the chamber and
 -- overflow accounts, the bale binding. After the carrier, whose handler it extends.
 source(modDirectory .. "src/ground/BalerCollection.lua")

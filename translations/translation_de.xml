@@ -594,6 +594,8 @@
     <e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="9174b3ef" />
     <e k="sf_notify_om_crop_title" v="Warnung Bodenverbesserung" eh="33228c86" />
     <e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="8a78f46a" />
+    <e k="sf_notify_organic_at_risk_title" v="Warnung Bio-Risiko" eh="7bbbeca0" />
+    <e k="sf_notify_organic_at_risk_body" v="Feld %d: %s ist nicht bio-zertifiziert - die Anwendung verstösst gegen die Zertifizierung" eh="1f9f927e" />
 
     <e k="sf_panel_cat_sim" v="Spielmechanik" eh="4f502b57" />
     <e k="sf_panel_cat_sim_desc" v="Verändere den Einfluss von Feuchtigkeit, Niederschlag und den Jahreszeiten auf deine Böden." eh="3c584cdb" />

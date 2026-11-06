@@ -614,6 +614,11 @@ function HookManager:installAll(soilSystem)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Organic AT-RISK advisory warning (OM-219): must install after the hook above so
+    -- it stacks on top of the already-wrapped Sprayer.onEndWorkAreaProcessing.
+    local organicAtRiskOk = self:installOrganicAtRiskWarningHook()
+    if organicAtRiskOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Field ownership changes
     local ownershipOk = self:installOwnershipHook()
     if ownershipOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -1834,6 +1839,32 @@ function HookManager:installSectionControlHook()
                         local fieldDataRef = soilSysRef and soilSysRef.fieldData
                         local fieldEntry   = (fieldDataRef and vehicleFieldId and vehicleFieldId > 0)
                                             and fieldDataRef[vehicleFieldId] or nil
+
+                        -- #1145: a product switch must clear this field's stale overlap
+                        -- record before the suppression loop below reads it. The ordinary
+                        -- product-change reset (SoilFertilitySystem's #442 clear, inside
+                        -- trackSprayerCoverage) only fires once a tick actually sprays
+                        -- (liters > 0) - but once the previous product finished covering
+                        -- the field, the suppression loop below blocks every section on
+                        -- the new product's very first tick too, so liters stays 0 and
+                        -- that reset never gets the chance to fire: a deadlock with no way
+                        -- out until day change or plowing. Running the same clear here,
+                        -- keyed on the pending fill type alone, breaks it. wap is already
+                        -- populated at this point - this hook runs appended AFTER the
+                        -- vanilla onStartWorkAreaProcessing (Utils.appendedFunction runs
+                        -- oldFunc then newFunc), the same assumption Gate 4 below relies on.
+                        if soilSysRef and fieldEntry
+                           and type(soilSysRef.clearOverlapOnProductChange) == "function" then
+                            local specEarly  = sprayerSelf.spec_sprayer
+                            local wapEarly   = specEarly and specEarly.workAreaParameters
+                            local ftIdxEarly = wapEarly and wapEarly.sprayFillType
+                            local ftEarly    = ftIdxEarly and ftIdxEarly > 0 and g_fillTypeManager
+                                               and g_fillTypeManager:getFillTypeByIndex(ftIdxEarly)
+                            if ftEarly then
+                                soilSysRef:clearOverlapOnProductChange(vehicleFieldId, ftEarly.name)
+                            end
+                        end
+
                         -- MAINTENANCE row 234: the overlap record, not the 10 m cells.
                         local overlapRecord = fieldEntry and fieldEntry.sessionOverlapOdo or nil
                         local graceM       = sprayerSelf._sfOverlapGraceM
@@ -2840,6 +2871,26 @@ function HookManager:installOverlapPreventionHook()
 
             -- Keep the last known field ID fresh for headland fallback.
             if fieldEntry then sprayerSelf._sfLastKnownFieldId = vehicleFieldId end
+
+            -- #1145: this is the gate the report's own log matched ("[OverlapPrev]
+            -- suppressed 12 sections"). A product switch must clear this field's
+            -- stale coverage/overlap state before coveredCells/coverage below read
+            -- it, for the same reason as HookManager's other overlap gate
+            -- (installSectionControlHook): the ordinary product-change reset
+            -- (SoilFertilitySystem's #442 clear, inside trackSprayerCoverage) needs
+            -- liters > 0 to fire, but once the previous product finished covering the
+            -- field, this gate suppresses every section on the new product's very
+            -- first tick too (coverageComplete below reads true from the OLD
+            -- product's sessionCoverageFraction), so liters stays 0 and that reset
+            -- never gets the chance to fire - a deadlock with no way out until day
+            -- change or plowing.
+            if soilSys and fieldEntry and type(soilSys.clearOverlapOnProductChange) == "function" then
+                local ftEarly = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+                if ftEarly then
+                    soilSys:clearOverlapOnProductChange(vehicleFieldId, ftEarly.name)
+                end
+            end
+
             local coveredCells = fieldEntry and fieldEntry.sessionCoverageCells
             -- If no cells have been stamped yet this session, nothing to suppress.
             -- Clear any stale suppression so sections don't stay locked.
@@ -6530,7 +6581,7 @@ function HookManager:installSprayerAreaHook()
                     local entry = SoilConstants.FERTILIZER_PROFILES[fillType.name]
                     if fertResult and entry and (entry.N or entry.P or entry.K) and
                        rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
-                        soilSys:applyBurnEffect(fId, rateMultiplier)
+                        soilSys:applyBurnEffect(fId, rateMultiplier, fillType.name)  -- + product name
                     end
                     -- CD-14 heat scorch: called UNCONDITIONALLY, BESIDE the burn
                     -- branch, never inside the FERTILIZER_PROFILES N/P/K guard
@@ -6759,7 +6810,7 @@ function HookManager:installSprayerAreaHook()
                                                     end
                                                     if (not isFert2 or fertResult2)
                                                             and rateMultiplier > SoilConstants.SPRAYER_RATE.BURN_RISK_THRESHOLD then
-                                                        soilSys:applyBurnEffect(fId2, rateMultiplier)
+                                                        soilSys:applyBurnEffect(fId2, rateMultiplier, ftName)  -- + product name
                                                     end
                                                     -- CD-14 heat scorch beside the burn branch (see applySingle);
                                                     -- RSF-F196 V7 gates it for a fertilizer product only.
@@ -7052,6 +7103,88 @@ function HookManager:installSprayerAreaHook()
     )
     self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing")
     SoilLogger.info("[OK] Sprayer/Spreader hook installed (Sprayer.onEndWorkAreaProcessing)")
+    return true
+end
+
+-- =========================================================
+-- HOOK 2b: Organic AT-RISK advisory warning (OM-219)
+-- =========================================================
+--- A pre-breach HUD warning: equipment loaded with a non-approved input that is
+--- actively working a field whose organic state is TRANSITION or CERTIFIED gets a
+--- throttled warning the moment the field resolves under it. Advisory only - this
+--- NEVER blocks, cancels or alters the application; onInputApplied (HOOK 2 above) stays
+--- the real consequence if the warning is ignored. No new persisted state.
+---
+--- A SEPARATE Utils.appendedFunction on the same Sprayer.onEndWorkAreaProcessing entry
+--- point, rather than new logic threaded into HOOK 2's body: HOOK 2 gates on
+--- self.isServer because crediting nutrients is server-authoritative, but this warning
+--- must show on whichever client is actually driving the equipment. No new server round
+--- trip is needed - the field's organic state is already synced to every peer and the
+--- loaded fill type is already known locally to its own client. Reuses the SAME cached
+--- field lookup (HookManager:getFieldIdAtWorldPosition) and the SAME fill-type
+--- resolution (SoilUtils.resolveSprayerFillTypeIndex) HOOK 2 uses, so this is not a
+--- parallel geofence.
+---@return boolean success True if hook installed successfully
+function HookManager:installOrganicAtRiskWarningHook()
+    if not Sprayer or type(Sprayer.onEndWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("Could not install organic AT-RISK warning hook - Sprayer.onEndWorkAreaProcessing not available")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    local original = Sprayer.onEndWorkAreaProcessing
+    Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
+        original,
+        function(self, dt, hasProcessed)
+            if not g_SoilFertilityManager or not g_SoilFertilityManager.organic
+                or not g_SoilFertilityManager.soilSystem
+                or not g_SoilFertilityManager.settings or not g_SoilFertilityManager.settings.enabled then
+                return
+            end
+
+            local spec = self.spec_sprayer
+            if not spec or not spec.workAreaParameters then return end
+            local wap = spec.workAreaParameters
+
+            -- Must be genuinely working this frame, not just parked on a field with the
+            -- implement off - mirrors the turnedOn/isActive signal HOOK 2 trusts.
+            local wapActive = wap.isActive == true
+            if not wapActive and self.getIsTurnedOn ~= nil and not self:getIsTurnedOn() then return end
+
+            local fillTypeIndex = SoilUtils.resolveSprayerFillTypeIndex(self, wap.sprayFillType)
+            if not fillTypeIndex or fillTypeIndex <= 0 then
+                self._sfAtRiskArmKey = nil  -- nothing loaded: re-arm for the next load
+                return
+            end
+
+            local x, _, z = getWorldTranslation(self.rootNode)
+            if not x then return end
+            local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
+            if not fieldId or fieldId <= 0 then
+                self._sfAtRiskArmKey = nil  -- off-field: re-arm for the next entry
+                return
+            end
+
+            -- Edge-triggered: fire once per (field, loaded product) combination, never
+            -- every tick while stationary. Re-arms on field exit (above) or when the
+            -- loaded fill type changes (the key below carries fillTypeIndex too).
+            local armKey = fieldId .. ":" .. fillTypeIndex
+            if armKey == self._sfAtRiskArmKey then return end
+            self._sfAtRiskArmKey = armKey
+
+            local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+            if not fillType then return end
+
+            if g_SoilFertilityManager.organic:isFieldAtRisk(fieldId, fillType.name) then
+                g_SoilFertilityManager.soilSystem:showNotification(
+                    g_i18n:getText("sf_notify_organic_at_risk_title"),
+                    string.format(g_i18n:getText("sf_notify_organic_at_risk_body"), fieldId, fillType.name))
+            end
+        end
+    )
+    self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing (organic AT-RISK warning)")
+    SoilLogger.info("[OK] Organic AT-RISK warning hook installed (Sprayer.onEndWorkAreaProcessing)")
     return true
 end
 
