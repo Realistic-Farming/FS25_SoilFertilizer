@@ -208,6 +208,11 @@ function SoilFertilitySystem.new(settings)
     -- [SG2-4c-3] Soil's `soil.groundCondition` property for StockGuard's SG-1: registered
     -- after the coordinator arms, withdrawn at unload or when a condition owner stands down.
     self.groundConditionProperty = GroundConditionProperty and GroundConditionProperty.new() or nil
+    -- Organic Origin Property: Soil's `harvestOrganicOriginV1` StockGuard SG-1
+    -- producer (MD-16's organic premium). Independent of the ground-condition
+    -- family: registered as soon as StockGuard's handle exists, not gated on the
+    -- coordinator arming.
+    self.organicOriginProperty = OrganicOriginProperty and OrganicOriginProperty.new(self.hookManager) or nil
     -- [SF-26] SPATIAL SCOUTING. The walked mask: per-farm, per-field walked
     -- cells that reveal the trouble's pattern where the player walked, on foot.
     -- Armed after the value maps initialize; its own bridges register in
@@ -364,6 +369,11 @@ function SoilFertilitySystem:initialize()
     if self.groundConditionProperty and self.groundConditionCoordinator then
         self.groundConditionProperty:register(self.groundConditionCoordinator, g_currentMission)
     end
+    -- Register `harvestOrganicOriginV1` with StockGuard when it published its mission
+    -- handle. Only needs StockGuard itself, not the ground-condition coordinator.
+    if self.organicOriginProperty then
+        self.organicOriginProperty:register(g_currentMission)
+    end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.
     -- RELEASE GATE: Read the Dirt (the walked mask + the kneel + the handful read)
@@ -462,6 +472,9 @@ function SoilFertilitySystem:delete()
     -- [SG2-4c-3] Withdraw the property before the layers it reads go.
     if self.groundConditionProperty then
         self.groundConditionProperty:withdraw("unload")
+    end
+    if self.organicOriginProperty then
+        self.organicOriginProperty:withdraw("unload")
     end
     self.hookManager:uninstallAll()
     if self.layerSystem then
