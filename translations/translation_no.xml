@@ -600,6 +600,8 @@
 		<e k="sf_notify_lime_crop_body" v="[EN] Field %d: Lime on growing crop - yield -80%% at harvest!" eh="75217c5a" />
 		<e k="sf_notify_om_crop_title" v="[EN] Amendment Warning" eh="33228c86" />
 		<e k="sf_notify_om_crop_body" v="[EN] Field %d: Organic matter on growing crop - yield -20%% at harvest." eh="5f47bb88" />
+		<e k="sf_notify_organic_at_risk_title" v="[EN] Organic Risk Warning" eh="7bbbeca0" />
+		<e k="sf_notify_organic_at_risk_body" v="[EN] Field %d: %s is not organic-approved - applying it will breach certification" eh="1f9f927e" />
 
     <!-- Settings Panel -->
     <e k="sf_panel_cat_sim" v="Simulering" eh="4f502b57" />

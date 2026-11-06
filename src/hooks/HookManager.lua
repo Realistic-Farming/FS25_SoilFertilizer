@@ -614,6 +614,11 @@ function HookManager:installAll(soilSystem)
     local sprayerAreaOk = self:installSprayerAreaHook()
     if sprayerAreaOk then successCount = successCount + 1 else failCount = failCount + 1 end
 
+    -- Organic AT-RISK advisory warning (OM-219): must install after the hook above so
+    -- it stacks on top of the already-wrapped Sprayer.onEndWorkAreaProcessing.
+    local organicAtRiskOk = self:installOrganicAtRiskWarningHook()
+    if organicAtRiskOk then successCount = successCount + 1 else failCount = failCount + 1 end
+
     -- Field ownership changes
     local ownershipOk = self:installOwnershipHook()
     if ownershipOk then successCount = successCount + 1 else failCount = failCount + 1 end
@@ -7098,6 +7103,88 @@ function HookManager:installSprayerAreaHook()
     )
     self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing")
     SoilLogger.info("[OK] Sprayer/Spreader hook installed (Sprayer.onEndWorkAreaProcessing)")
+    return true
+end
+
+-- =========================================================
+-- HOOK 2b: Organic AT-RISK advisory warning (OM-219)
+-- =========================================================
+--- A pre-breach HUD warning: equipment loaded with a non-approved input that is
+--- actively working a field whose organic state is TRANSITION or CERTIFIED gets a
+--- throttled warning the moment the field resolves under it. Advisory only - this
+--- NEVER blocks, cancels or alters the application; onInputApplied (HOOK 2 above) stays
+--- the real consequence if the warning is ignored. No new persisted state.
+---
+--- A SEPARATE Utils.appendedFunction on the same Sprayer.onEndWorkAreaProcessing entry
+--- point, rather than new logic threaded into HOOK 2's body: HOOK 2 gates on
+--- self.isServer because crediting nutrients is server-authoritative, but this warning
+--- must show on whichever client is actually driving the equipment. No new server round
+--- trip is needed - the field's organic state is already synced to every peer and the
+--- loaded fill type is already known locally to its own client. Reuses the SAME cached
+--- field lookup (HookManager:getFieldIdAtWorldPosition) and the SAME fill-type
+--- resolution (SoilUtils.resolveSprayerFillTypeIndex) HOOK 2 uses, so this is not a
+--- parallel geofence.
+---@return boolean success True if hook installed successfully
+function HookManager:installOrganicAtRiskWarningHook()
+    if not Sprayer or type(Sprayer.onEndWorkAreaProcessing) ~= "function" then
+        SoilLogger.warning("Could not install organic AT-RISK warning hook - Sprayer.onEndWorkAreaProcessing not available")
+        return false
+    end
+
+    local hookMgrRef = self
+
+    local original = Sprayer.onEndWorkAreaProcessing
+    Sprayer.onEndWorkAreaProcessing = Utils.appendedFunction(
+        original,
+        function(self, dt, hasProcessed)
+            if not g_SoilFertilityManager or not g_SoilFertilityManager.organic
+                or not g_SoilFertilityManager.soilSystem
+                or not g_SoilFertilityManager.settings or not g_SoilFertilityManager.settings.enabled then
+                return
+            end
+
+            local spec = self.spec_sprayer
+            if not spec or not spec.workAreaParameters then return end
+            local wap = spec.workAreaParameters
+
+            -- Must be genuinely working this frame, not just parked on a field with the
+            -- implement off - mirrors the turnedOn/isActive signal HOOK 2 trusts.
+            local wapActive = wap.isActive == true
+            if not wapActive and self.getIsTurnedOn ~= nil and not self:getIsTurnedOn() then return end
+
+            local fillTypeIndex = SoilUtils.resolveSprayerFillTypeIndex(self, wap.sprayFillType)
+            if not fillTypeIndex or fillTypeIndex <= 0 then
+                self._sfAtRiskArmKey = nil  -- nothing loaded: re-arm for the next load
+                return
+            end
+
+            local x, _, z = getWorldTranslation(self.rootNode)
+            if not x then return end
+            local fieldId = hookMgrRef:getFieldIdAtWorldPosition(x, z, true)
+            if not fieldId or fieldId <= 0 then
+                self._sfAtRiskArmKey = nil  -- off-field: re-arm for the next entry
+                return
+            end
+
+            -- Edge-triggered: fire once per (field, loaded product) combination, never
+            -- every tick while stationary. Re-arms on field exit (above) or when the
+            -- loaded fill type changes (the key below carries fillTypeIndex too).
+            local armKey = fieldId .. ":" .. fillTypeIndex
+            if armKey == self._sfAtRiskArmKey then return end
+            self._sfAtRiskArmKey = armKey
+
+            local fillType = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
+            if not fillType then return end
+
+            if g_SoilFertilityManager.organic:isFieldAtRisk(fieldId, fillType.name) then
+                g_SoilFertilityManager.soilSystem:showNotification(
+                    g_i18n:getText("sf_notify_organic_at_risk_title"),
+                    string.format(g_i18n:getText("sf_notify_organic_at_risk_body"), fieldId, fillType.name))
+            end
+        end
+    )
+    self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing (organic AT-RISK warning)")
+    SoilLogger.info("[OK] Organic AT-RISK warning hook installed (Sprayer.onEndWorkAreaProcessing)")
     return true
 end
 
