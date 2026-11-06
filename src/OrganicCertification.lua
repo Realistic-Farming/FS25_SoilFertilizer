@@ -158,6 +158,22 @@ function OrganicCertification:isApprovedInput(fillTypeName)
     return SoilConstants.ORGANIC.APPROVED_INPUTS[fillTypeName] == true
 end
 
+--- AT-RISK check (OM-219): is a non-approved input about to be a breach on this
+-- field? Advisory only - the caller decides what to do with the answer (a HUD
+-- warning); this never writes state and never alters an application. Reuses the
+-- exact classification onInputApplied already reads (isApprovedInput +
+-- getFieldOrganicState); no new compliance rule.
+-- @param fieldId       field id
+-- @param fillTypeName  upper-case fill type name of the loaded input
+-- @return boolean
+function OrganicCertification:isFieldAtRisk(fieldId, fillTypeName)
+    if self:isApprovedInput(fillTypeName) then return false end
+    local status = self:getFieldOrganicState(fieldId)
+    if not status then return false end
+    return status.state == SoilConstants.ORGANIC.STATE_TRANSITION
+        or status.state == SoilConstants.ORGANIC.STATE_CERTIFIED
+end
+
 -- ---------------------------------------------------------
 -- Read API (consumed by market / livestock / tablet, other repos)
 -- ---------------------------------------------------------

@@ -592,6 +592,8 @@
     <e k="sf_notify_lime_crop_body" v="Champ %d : de la chaux a été appliquée sur une culture en croissance - rendement réduit de 80 %% à la récolte !" eh="9174b3ef" />
     <e k="sf_notify_om_crop_title" v="Avertissement d'amendement" eh="33228c86" />
     <e k="sf_notify_om_crop_body" v="Champ %d : un amendement organique a été appliqué sur une culture en croissance - rendement réduit de 20 %% à la récolte." eh="8a78f46a" />
+    <e k="sf_notify_organic_at_risk_title" v="Avertissement de risque biologique" eh="7bbbeca0" />
+    <e k="sf_notify_organic_at_risk_body" v="Champ %d : %s n'est pas autorisé en agriculture biologique - l'appliquer fera perdre la certification" eh="1f9f927e" />
 
     <!-- ======================================================
          PANNEAU DES PARAMÈTRES - CATÉGORIES & EN-TÊTES DE SECTION
