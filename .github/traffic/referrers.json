@@ -9149,18 +9149,18 @@
   "2026-11-07": [
     {
       "referrer": "aocr.org",
-      "count": 1294,
-      "uniques": 1247
+      "count": 1297,
+      "uniques": 1249
     },
     {
       "referrer": "Google",
-      "count": 693,
-      "uniques": 451
+      "count": 706,
+      "uniques": 459
     },
     {
       "referrer": "github.com",
-      "count": 414,
-      "uniques": 183
+      "count": 431,
+      "uniques": 190
     },
     {
       "referrer": "Bing",
@@ -9170,17 +9170,17 @@
     {
       "referrer": "youtube.com",
       "count": 57,
-      "uniques": 44
+      "uniques": 45
     },
     {
       "referrer": "realisticfarming.com",
-      "count": 42,
-      "uniques": 36
+      "count": 47,
+      "uniques": 39
     },
     {
       "referrer": "kingmods.net",
-      "count": 34,
-      "uniques": 26
+      "count": 36,
+      "uniques": 27
     },
     {
       "referrer": "DuckDuckGo",
@@ -9189,13 +9189,13 @@
     },
     {
       "referrer": "l.facebook.com",
-      "count": 21,
+      "count": 19,
       "uniques": 8
     },
     {
       "referrer": "search.brave.com",
-      "count": 14,
-      "uniques": 10
+      "count": 13,
+      "uniques": 9
     }
   ]
 }
