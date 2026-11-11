@@ -17,24 +17,26 @@
 -- through SGOperations.lua's interpretDestination/settleOperation, always
 -- synchronously inside the same native call StockGuard's own capture wraps
 -- (SGHarvestCapture.lua's cut/drain brackets, SGGroundObserver.lua's mower
--- brackets). Confirmed against FS25_StockGuard's origin/development: neither
--- `context` nor `contributions` (nor `destinations`) carry a field id, a
--- world position, or a reference to the acting vehicle anywhere in
--- StockGuard's own data shapes - grepped SGOperations.lua, SGHarvestCapture.lua,
--- SGCutState.lua and SGGroundObserver.lua, all confirmed absent. StockGuard
--- exposes no reverse lookup from a destination's carrierId back to the
--- vehicle that produced it either.
+-- brackets).
 --
--- FIELD RESOLUTION, best available (see the PR body for the full writeup):
--- transform has no vehicle to read a position from, so this falls back to
--- `g_currentMission.controlledVehicle`, gated to a vehicle that is actually
--- doing fieldwork (spec_combine, spec_mower or spec_cutter present). This is
--- a single-player-biased stand-in: it is WRONG whenever the harvesting
--- vehicle is not the one a human is sitting in (a hired worker, an AI
--- contract, any dedicated server). When no such vehicle is available the
--- property is honestly UNKNOWN rather than guessed - never a fabricated 0
--- or 1. A real fix needs StockGuard to carry the vehicle or its position
--- through capture, which this file cannot do from the producer side alone.
+-- FIELD RESOLUTION, from the birth's own place. StockGuard's capture reads
+-- where the cut happened inside the native call and names it in the cut's
+-- outcomeEvidence as vehiclePosition { x, y, z, vehicleId }: the header's
+-- root node (else the combine's) on the combine cut, the mower's on the
+-- Mower cut (FS25_StockGuard PR #75, SGNativeAdapters.vehiclePositionOf).
+-- SG-1 hands that evidence to this transform as
+-- context.report.outcomeEvidence (SGOperations.lua _settle), so the field is
+-- the one under that place, whoever drives: a player, a hired worker, or a
+-- dedicated server where nobody sits in the vehicle.
+--
+-- No place, no field: when the evidence names no place (a StockGuard older
+-- than #75, or a vehicle whose position did not read) the property is
+-- honestly UNKNOWN, never a fabricated 0 or 1. There is deliberately no
+-- fallback to a player's vehicle. The first build read
+-- `g_currentMission.controlledVehicle`, which FS25 never assigns (no
+-- assignment anywhere in the decompiled dataS/scripts; the engine reads
+-- `player:getCurrentVehicle()`), and any player-vehicle stand-in would name
+-- the player's field for a hired worker's harvest elsewhere.
 --
 -- COMBINE, for material merged while off the ground (SG-2's weighted-average
 -- rule): fraction = sum(part.amount * part.fraction) / sum(part.amount),
@@ -163,26 +165,25 @@ end
 -- Transform: the birth read
 -- =========================================================
 
---- The best-available position proxy for "the vehicle that just produced
---- this birth" - see the header. nil when no fieldwork vehicle is
---- identifiable; the caller must treat that as UNKNOWN, never as field 0.
-function OrganicOriginProperty:resolveActingVehicle()
-    local vehicle = g_currentMission and g_currentMission.controlledVehicle
-    if type(vehicle) ~= "table" then return nil end
-    if vehicle.spec_combine == nil and vehicle.spec_mower == nil and vehicle.spec_cutter == nil then
-        return nil
-    end
-    return vehicle
+--- Where StockGuard's capture says this birth happened: the x and z of
+--- context.report.outcomeEvidence.vehiclePosition (see the header). nil when
+--- the evidence names no finite place; the caller treats that as UNKNOWN,
+--- never as field 0.
+---@return number|nil x, number|nil z
+function OrganicOriginProperty.birthPosition(context)
+    local report = type(context) == "table" and context.report or nil
+    local evidence = type(report) == "table" and report.outcomeEvidence or nil
+    local p = type(evidence) == "table" and evidence.vehiclePosition or nil
+    if type(p) ~= "table" or not isFinite(p.x) or not isFinite(p.z) then return nil, nil end
+    return p.x, p.z
 end
 
---- The field id under the best-available vehicle/position proxy, or nil
---- when none can be resolved (honestly unknown, not a guess).
-function OrganicOriginProperty:resolveFieldId()
+--- The field id under the birth's own place, or nil when there is none
+--- (honestly unknown, not a guess).
+function OrganicOriginProperty:resolveFieldId(context)
     if self.hookManager == nil then return nil end
-    local vehicle = self:resolveActingVehicle()
-    if vehicle == nil or vehicle.rootNode == nil then return nil end
-    local ok, x, _, z = pcall(getWorldTranslation, vehicle.rootNode)
-    if not ok or not isFinite(x) or not isFinite(z) then return nil end
+    local x, z = OOP.birthPosition(context)
+    if x == nil then return nil end
     return self.hookManager:getFieldIdAtWorldPosition(x, z)
 end
 
@@ -191,7 +192,7 @@ function OrganicOriginProperty:transform(context, contributions, destinations)
     local d = type(destinations) == "table" and destinations[1] or nil
     local amount = type(d) == "table" and d.amount or nil
     local unit = type(d) == "table" and d.unit or nil
-    local fieldId = self:resolveFieldId()
+    local fieldId = self:resolveFieldId(context)
     if fieldId == nil then
         return OrganicOriginProperty.record(nil, amount, unit, 0)
     end

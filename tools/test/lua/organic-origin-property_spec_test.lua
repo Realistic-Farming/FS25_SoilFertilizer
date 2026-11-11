@@ -10,9 +10,11 @@
 -- no coordinator and no day cursors, so the rows exercise the module
 -- directly: a recorder of StockGuard's mission handle for registration, and
 -- the spec's own callbacks called with dots exactly as SGOperations.lua
--- calls them. What is explicitly NOT proved here: the real-world accuracy of
--- resolveFieldId's vehicle/position proxy against a live, multi-vehicle
--- harvest - that needs an in-game instrumented pass (see the PR body).
+-- calls them. The field comes from the birth's own place, which StockGuard's
+-- capture names in the cut's evidence (FS25_StockGuard #75); the TRANSFORM rows
+-- hand that evidence in as SG-1's settle context carries it. What is NOT proved
+-- here: StockGuard's own reading of the place (its SG2-3a and SG2-5c group V
+-- bars) or a live harvest in game.
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/OrganicOriginProperty.lua
 
@@ -195,46 +197,78 @@ group("COMBINE", function()
 end)
 
 group("TRANSFORM", function()
-    -- T1-T3: resolveActingVehicle's gate.
-    local noVehicle = world()
-    T.eq("T1 no controlledVehicle at all: no vehicle resolved", tostring(noVehicle:resolveActingVehicle()), "nil")
-
-    local office = world({ vehicle = {} })
-    T.eq("T2 a controlled vehicle doing no fieldwork (no combine/mower/cutter spec) is not trusted",
-        tostring(office:resolveActingVehicle()), "nil")
-
-    local fieldVehicle = { spec_combine = {}, rootNode = 1 }
-    local combineVehicle = world({ vehicle = fieldVehicle })
-    T.ok("T3 a controlled combine is trusted as the acting vehicle", combineVehicle:resolveActingVehicle() == fieldVehicle)
-
-    -- T4-T6: transform()'s field read, with a stubbed hookManager/organic.
+    -- The birth's place, as StockGuard's capture names it in the cut's own evidence
+    -- (FS25_StockGuard #75): context.report.outcomeEvidence.vehiclePosition.
+    local function ctxAt(x, z, path)
+        return { operationId = "op1", operationKind = "BIRTH",
+                 report = { outcomeEvidence = { nativePath = path or "COMBINE_CUT", vehiclePosition = { x = x, y = 2, z = z, vehicleId = "vehicle:header" } } } }
+    end
+    local OUT = { { amount = 25, unit = "LITRE" } }
     local certified = { getFieldOrganicState = function(_self, fieldId) return { certified = fieldId == 42 } end }
-    local certProp = world({ vehicle = fieldVehicle, fieldIdFn = function() return 42 end, organic = certified })
-    local t1 = certProp:transform(OPCTX, {}, { { amount = 25, unit = "LITRE" } })
-    T.eq("T4 a resolved field that is certified: fraction 1, KNOWN", brief(t1), "KNOWN/1/25of25/LITRE")
+    -- Field 42 east of x = 100, field 7 west of it; every lookup is recorded with the place it was given.
+    local asked = {}
+    local function fieldAt(_hm, x, z)
+        asked[#asked + 1] = tostring(x) .. "," .. tostring(z)
+        if type(x) ~= "number" then return nil end
+        return x > 100 and 42 or 7
+    end
 
-    local notCertProp = world({ vehicle = fieldVehicle, fieldIdFn = function() return 7 end, organic = certified })
-    local t2 = notCertProp:transform(OPCTX, {}, { { amount = 25, unit = "LITRE" } })
-    T.eq("T5 a resolved field that is not certified: fraction 0, KNOWN", brief(t2), "KNOWN/0/25of25/LITRE")
+    local prop = world({ fieldIdFn = fieldAt, organic = certified })
+    asked = {}
+    local t1 = prop:transform(ctxAt(137.5, -12.75), {}, OUT)
+    T.eq("T1 the cut's place is on a certified field: fraction 1, KNOWN, and the field lookup was given exactly that place",
+        brief(t1) .. "|" .. table.concat(asked, ";"), "KNOWN/1/25of25/LITRE|137.5,-12.75")
 
-    local untrackedProp = world({ vehicle = fieldVehicle, fieldIdFn = function() return 99 end })
-    local t3 = untrackedProp:transform(OPCTX, {}, { { amount = 25, unit = "LITRE" } })
-    T.eq("T6 StockGuard present but OrganicCertification unreachable: defaults to conventional (0), never a guessed 1",
+    asked = {}
+    local t2 = prop:transform(ctxAt(10, 208.25, "GROUND_MOWER_CUT"), {}, OUT)
+    T.eq("T2 the Mower's cut on a conventional field: fraction 0, KNOWN", brief(t2) .. "|" .. table.concat(asked, ";"), "KNOWN/0/25of25/LITRE|10,208.25")
+
+    local untracked = world({ fieldIdFn = fieldAt })
+    local t3 = untracked:transform(ctxAt(137.5, -12.75), {}, OUT)
+    T.eq("T3 StockGuard present but OrganicCertification unreachable: defaults to conventional (0), never a guessed 1",
         brief(t3), "KNOWN/0/25of25/LITRE")
 
-    -- T7: no acting vehicle resolvable at all - honestly UNKNOWN, never fabricated.
-    local unresolved = world({ fieldIdFn = function() return 42 end, organic = certified })
-    local t4 = unresolved:transform(OPCTX, {}, { { amount = 25, unit = "LITRE" } })
-    T.eq("T7 no acting vehicle resolvable: UNKNOWN, not a fabricated 0 or 1", brief(t4), "UNKNOWN/0/0of25/LITRE")
+    -- No place, no field: honestly UNKNOWN, and the lookup is never asked to guess.
+    asked = {}
+    local older = { operationId = "op1", operationKind = "BIRTH", report = { outcomeEvidence = { nativePath = "COMBINE_CUT" } } }
+    local t4 = prop:transform(older, {}, OUT)
+    local t5 = prop:transform({ operationId = "op1", operationKind = "BIRTH" }, {}, OUT)
+    local t5b = prop:transform(nil, {}, OUT)
+    T.eq("T4 the evidence names no place (a StockGuard older than #75), no report at all, or no context: UNKNOWN each time, and no field lookup",
+        brief(t4) .. "|" .. brief(t5) .. "|" .. brief(t5b) .. "|" .. #asked, "UNKNOWN/0/0of25/LITRE|UNKNOWN/0/0of25/LITRE|UNKNOWN/0/0of25/LITRE|0")
+    local t6a = prop:transform(ctxAt(0 / 0, 5), {}, OUT)
+    local t6b = prop:transform(ctxAt(137.5, math.huge), {}, OUT)
+    local t6c = prop:transform({ report = { outcomeEvidence = { vehiclePosition = { x = "137.5", z = 5 } } } }, {}, OUT)
+    T.eq("T5 a place that is not a finite x and z (NaN, infinite, a string) is no place: UNKNOWN, no field lookup",
+        brief(t6a) .. "|" .. brief(t6b) .. "|" .. brief(t6c) .. "|" .. #asked, "UNKNOWN/0/0of25/LITRE|UNKNOWN/0/0of25/LITRE|UNKNOWN/0/0of25/LITRE|0")
 
-    -- T8: no hook manager at all (defensive).
-    local noHm = world({ vehicle = fieldVehicle, noHookManager = true })
-    local t5 = noHm:transform(OPCTX, {}, { { amount = 25, unit = "LITRE" } })
-    T.eq("T8 no hook manager wired: UNKNOWN", brief(t5), "UNKNOWN/0/0of25/LITRE")
+    local outside = world({ fieldIdFn = function() return nil end, organic = certified })
+    T.eq("T6 a place outside every field: UNKNOWN", brief(outside:transform(ctxAt(137.5, -12.75), {}, OUT)), "UNKNOWN/0/0of25/LITRE")
 
-    T.eq("T9 every resolved result above validates",
-        table.concat({ tostring(OOP.validate(t1)), tostring(OOP.validate(t2)), tostring(OOP.validate(t3)), tostring(OOP.validate(t4)) }, "/"),
-        "true/true/true/true")
+    -- A player's vehicle is never read: the place in the evidence is the only source.
+    local playerCombine = { spec_combine = {}, rootNode = { x = 500, z = 0 } }
+    local seated = world({ vehicle = playerCombine, fieldIdFn = fieldAt, organic = certified })
+    g_localPlayer = { getCurrentVehicle = function() return playerCombine end }
+    asked = {}
+    local t7a = seated:transform(older, {}, OUT)
+    local t7b = seated:transform(ctxAt(10, 0), {}, OUT)
+    g_localPlayer = nil
+    T.eq("T7 a player sitting in a combine on a certified field changes nothing: with no place in the evidence the birth is UNKNOWN, with a place on field 7 it is field 7's 0",
+        brief(t7a) .. "|" .. brief(t7b) .. "|" .. table.concat(asked, ";"), "UNKNOWN/0/0of25/LITRE|KNOWN/0/25of25/LITRE|10,0")
+    T.eq("T8 the acting-vehicle stand-in is gone from the module", tostring(OOP.resolveActingVehicle), "nil")
+
+    local noHm = world({ noHookManager = true, organic = certified })
+    T.eq("T9 no hook manager wired: UNKNOWN", brief(noHm:transform(ctxAt(137.5, -12.75), {}, OUT)), "UNKNOWN/0/0of25/LITRE")
+
+    -- Through the registered spec, called with dots as SGOperations calls it.
+    local reg = world({ fieldIdFn = fieldAt, organic = certified })
+    reg:register(g_currentMission)
+    local t10 = spec().transform(ctxAt(137.5, -12.75), {}, OUT)
+    T.eq("T10 the registered spec's transform reads the same place", brief(t10), "KNOWN/1/25of25/LITRE")
+
+    T.eq("T11 every result above validates",
+        table.concat({ tostring(OOP.validate(t1)), tostring(OOP.validate(t2)), tostring(OOP.validate(t3)), tostring(OOP.validate(t4)), tostring(OOP.validate(t10)) }, "/"),
+        "true/true/true/true/true")
 end)
 
 group("DISCLOSURE", function()
