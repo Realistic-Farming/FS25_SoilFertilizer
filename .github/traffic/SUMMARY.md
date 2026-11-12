@@ -1,7 +1,7 @@
 # Repository Traffic Dashboard
 
-**Last updated:** 2026-11-09T18:34:36Z
-**Days tracked:** 178 | **Download snapshots:** 1930 (hourly)
+**Last updated:** 2026-11-12T18:48:02Z
+**Days tracked:** 179 | **Download snapshots:** 1939 (hourly)
 
 ---
 
@@ -11,10 +11,10 @@
 
 | Metric | 14-Day Total | Unique |
 |--------|-------------|--------|
-| Page Views | 4863 | 2566 |
-| Git Clones | 1002 | 440 |
+| Page Views | 4481 | 2329 |
+| Git Clones | 1026 | 453 |
 
-> **Engagement:** 1.8 pages per visitor (14-day avg)
+> **Engagement:** 1.9 pages per visitor (14-day avg)
 
 ---
 
@@ -30,9 +30,9 @@
 
 ![Conversion](charts/conversion.png)
 
-> **14-day conversion:** 8630 of 2566 visitors cloned or downloaded (**336.3%**)
+> **14-day conversion:** 8696 of 2329 visitors cloned or downloaded (**373.3%**)
 >
-> Unique cloners: 440 | Release downloads: 8190
+> Unique cloners: 453 | Release downloads: 8243
 
 ---
 
@@ -42,9 +42,9 @@
 
 | Channel | Count |
 |---------|-------|
-| Zip Downloads | 8190 |
-| Git Clones (14-day) | 1002 |
-| **Total Acquisitions** | **9192** |
+| Zip Downloads | 8243 |
+| Git Clones (14-day) | 1026 |
+| **Total Acquisitions** | **9269** |
 
 ---
 
@@ -54,16 +54,16 @@
 
 | Source | Views | Unique |
 |--------|-------|--------|
-| aocr.org | 1297 | 1249 |
-| Google | 604 | 384 |
-| github.com | 455 | 188 |
-| Bing | 73 | 51 |
-| youtube.com | 51 | 41 |
-| kingmods.net | 38 | 28 |
-| realisticfarming.com | 37 | 32 |
-| DuckDuckGo | 20 | 9 |
-| l.facebook.com | 14 | 5 |
-| farmwithmike.itch.io | 13 | 13 |
+| aocr.org | 1179 | 1145 |
+| Google | 536 | 336 |
+| github.com | 445 | 189 |
+| Bing | 64 | 48 |
+| kingmods.net | 42 | 30 |
+| youtube.com | 40 | 34 |
+| realisticfarming.com | 32 | 29 |
+| search.brave.com | 17 | 12 |
+| DuckDuckGo | 16 | 7 |
+| farmwithmike.itch.io | 14 | 14 |
 
 ---
 
@@ -73,7 +73,7 @@
 
 | Metric | Current |
 |--------|---------|
-| Stars | 116 |
+| Stars | 118 |
 | Forks | 17 |
 | Watchers | 11 |
 
@@ -83,16 +83,16 @@
 
 | Page | Views | Unique |
 |------|-------|--------|
-| `/Realistic-Farming/FS25_SoilFertilizer` | 1791 | 846 |
-| `/Realistic-Farming/FS25_SoilFertilizer/releases` | 371 | 209 |
-| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.6.0.3` | 331 | 239 |
-| `/Realistic-Farming/FS25_SoilFertilizer/issues` | 205 | 132 |
-| `/Realistic-Farming/FS25_SoilFertilizer/blob/main/README.md` | 48 | 41 |
-| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v1.0.1.3` | 41 | 26 |
-| `/Realistic-Farming/FS25_SoilFertilizer/wiki/Troubleshooting` | 39 | 39 |
-| `/Realistic-Farming/FS25_SoilFertilizer/discussions` | 39 | 26 |
-| `/Realistic-Farming/FS25_SoilFertilizer/pulls` | 37 | 32 |
-| `/Realistic-Farming/FS25_SoilFertilizer/issues/354` | 28 | 28 |
+| `/Realistic-Farming/FS25_SoilFertilizer` | 1671 | 767 |
+| `/Realistic-Farming/FS25_SoilFertilizer/releases` | 328 | 195 |
+| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v2.6.0.3` | 276 | 207 |
+| `/Realistic-Farming/FS25_SoilFertilizer/issues` | 190 | 119 |
+| `/Realistic-Farming/FS25_SoilFertilizer/discussions` | 40 | 23 |
+| `/Realistic-Farming/FS25_SoilFertilizer/wiki/Troubleshooting` | 38 | 38 |
+| `/Realistic-Farming/FS25_SoilFertilizer/blob/main/README.md` | 36 | 32 |
+| `/Realistic-Farming/FS25_SoilFertilizer/releases/tag/v1.0.1.3` | 32 | 24 |
+| `/Realistic-Farming/FS25_SoilFertilizer/pulls` | 30 | 27 |
+| `/Realistic-Farming/FS25_SoilFertilizer/issues/354` | 29 | 29 |
 
 ---
 
