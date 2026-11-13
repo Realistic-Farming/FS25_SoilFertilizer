@@ -9301,5 +9301,57 @@
       "count": 14,
       "uniques": 14
     }
+  ],
+  "2026-11-13": [
+    {
+      "referrer": "aocr.org",
+      "count": 1179,
+      "uniques": 1145
+    },
+    {
+      "referrer": "Google",
+      "count": 536,
+      "uniques": 336
+    },
+    {
+      "referrer": "github.com",
+      "count": 445,
+      "uniques": 189
+    },
+    {
+      "referrer": "Bing",
+      "count": 64,
+      "uniques": 48
+    },
+    {
+      "referrer": "kingmods.net",
+      "count": 42,
+      "uniques": 30
+    },
+    {
+      "referrer": "youtube.com",
+      "count": 40,
+      "uniques": 34
+    },
+    {
+      "referrer": "realisticfarming.com",
+      "count": 32,
+      "uniques": 29
+    },
+    {
+      "referrer": "search.brave.com",
+      "count": 17,
+      "uniques": 12
+    },
+    {
+      "referrer": "DuckDuckGo",
+      "count": 16,
+      "uniques": 7
+    },
+    {
+      "referrer": "farmwithmike.itch.io",
+      "count": 14,
+      "uniques": 14
+    }
   ]
 }
