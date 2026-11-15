@@ -9,50 +9,40 @@
 -- =============================================================================
 -- READ THIS BEFORE TRUSTING A GREEN RESULT FROM THIS FILE.
 --
--- THIS TEST LOADS ANOTHER REPOSITORY'S WORKING TREE BY RELATIVE PATH. The two
+-- THIS TEST LOADS ANOTHER REPOSITORY'S WORKING TREE BY RELATIVE PATH. The
 -- ../FS25_MarketDynamics entries below are not pinned to a commit, a tag or a
 -- branch. They read whatever that clone happens to be checked out on at the
 -- moment the suite runs. Two people running this at the same time on the same
 -- machine can get different meanings from the same assertions.
 --
--- TODAY THE GREEN IS CORRECT. MarketDynamics main and development apply the
--- pooled OrganicPremium modifier, and so does the MD-16 branch while its md16
--- modules are not loaded: its MarketEngine resolves Md16SaleComponents to nil,
--- takes the "no retirement and no capture" path, and composes exactly as
--- development does. With the sibling clone on development or on the MD-16
--- branch, these assertions describe the behaviour that ships today.
+-- MD-16 MERGED (MarketDynamics #153, 2026-11-06), AND THIS FILE NOW READS IT.
+-- MarketEngine excludes the pooled OrganicPremium modifier BY NAME inside its
+-- composition loop, reading Md16SaleComponents.RETIRED_MODIFIER. So the md16
+-- modules that carry that name are on the load list below, after
+-- MarketEngine.lua, in the order modDesc loads them: Md16Material, then
+-- Md16SaleComponents, which depends on it. Without them MarketEngine composes
+-- as it did before MD-16, and this file was green at a premium the game no
+-- longer pays (21 of 21, 2026-11-11). The "MD-16 retirement is loaded" rows
+-- below fail if they ever drop off the list again.
 --
--- WHAT THE GREEN CANNOT SEE. MD-16 (MarketDynamics PR #153, still a draft)
--- retires OrganicPremium by excluding it BY NAME inside MarketEngine's
--- composition loop, reading Md16SaleComponents.RETIRED_MODIFIER. The load list
--- below does not include the md16 modules, so this file never exercises that
--- retirement. It is blind to MD-16's retired state.
+-- WHAT MOVED, AND ONLY THAT: the market-wide quote for an organic seller is
+-- now the base price, not base * (1 + 0.20 * frac). The direct modifier calls
+-- still return the premium, because the bridge still registers its function
+-- and the exclusion happens at the composition point, not in the function.
+-- The conventional-seller, clamp B and pure-client rows come out the same.
 --
--- IT BECOMES A FALSE GREEN WHEN MD-16 MERGES. From then on modDesc loads the
--- md16 modules in the game and the premium is retired there, while this file,
--- still without them, keeps passing at the premium value.
+-- WHAT THIS FILE DOES NOT COVER. MD-16 pays its replacement per load, at the
+-- sale: MarketDynamics' Md16SalePhase (MarketDynamics #177) reads StockGuard's
+-- record of the sold litres and the harvestOrganicOriginV1 this mod puts on
+-- them. That is proved by MarketDynamics' own sale bar
+-- (MD-16-sale_phase_wiring_spec_test.lua) and in game; it needs StockGuard, so
+-- this Soil-side structural bar does not stand it up.
 --
--- THE TRIPWIRE IS ALREADY CORRECT. The "recalculate moves the price for an
--- organic seller" assertion expects 11.333. With the md16 modules on the load
--- list it fails at 10.0 (observed 2026-09-17 against MD-16 at 6851a19, and it is
--- the only assertion in this file that fails). It is not missing; it is
--- unreachable while md16 is absent from the load list.
---
--- IT CANNOT BE CLOSED FROM THIS SIDE YET. src/md16 does not exist on
--- MarketDynamics development, and a --!load of a missing file fails the whole
--- file, so adding the md16 modules today would break this suite for anyone whose
--- sibling clone is on development.
---
--- SO: WHEN MD-16 MERGES, UPDATE THIS FILE IN THE SAME CYCLE. Add
--- ../FS25_MarketDynamics/src/md16/Md16Material.lua and then
--- ../FS25_MarketDynamics/src/md16/Md16SaleComponents.lua (which depends on it)
--- to the load list after MarketEngine.lua, in the order modDesc loads them, and
--- move the "recalculate moves the price for an organic seller" expectation to
--- the base price. That is the only expectation that moves. The direct modifier
--- calls call the registered function itself, which a composition-point exclusion
--- does not touch, and the conventional-seller, clamp B and pure-client
--- assertions come out the same either way. Merging MD-16 without this update
--- leaves this file green and lying.
+-- THE SIBLING STATES THAT EXIST TODAY ALL WORK: MarketDynamics development
+-- (since #153) and its feat/MD-16-material-sale-value branch both carry
+-- src/md16/Md16Material.lua and Md16SaleComponents.lua. A sibling clone on a
+-- commit from before #153 has no src/md16 and fails this file at load, which
+-- is the honest answer: that MarketDynamics still pays the pooled premium.
 --
 -- ONE MORE CONSEQUENCE OF THE RELATIVE PATH: this file fails outright in any git
 -- worktree that is not sited as a sibling of FS25_MarketDynamics, because the
@@ -60,7 +50,7 @@
 -- seen from a second direction.
 -- =============================================================================
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, ../FS25_MarketDynamics/src/MarketEngine.lua, ../FS25_MarketDynamics/src/OrganicPremiumBridge.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/OrganicCertification.lua, ../FS25_MarketDynamics/src/MarketEngine.lua, ../FS25_MarketDynamics/src/md16/Md16Material.lua, ../FS25_MarketDynamics/src/md16/Md16SaleComponents.lua, ../FS25_MarketDynamics/src/OrganicPremiumBridge.lua
 
 -- ── engine-surface stubs ────────────────────────────────
 MDMLog = { info = function() end, warn = function() end, debug = function() end }
@@ -174,17 +164,24 @@ local engine = MarketEngine.new()
 engine.prices[WHEAT] = { base = 10, volatilityFactor = 1.0, modifiers = {}, current = 10, history = {} }
 g_MarketDynamics.marketEngine = engine
 
--- THIS IS THE TRIPWIRE described in the header. It expects the premium to be
--- applied, which is correct for every shipped MarketDynamics today. Once the md16
--- modules are on the load list it fails with 10.0 against 11.333 (observed
--- against MD-16 at 6851a19). That is correct and is the signal to finish the
--- update. If you are reading this because it just went red, do not "fix" it by
--- keeping the premium value or by taking md16 back off the load list: under MD-16
--- the premium is retired and the expected value is the base, 10.
+-- THE ROW THAT MOVED. Before MD-16 an organic seller's market-wide quote was
+-- 10 * (1 + 0.20 * frac) = 11.333 here. MD-16 retires the pooled premium at
+-- the composition point, so the quote is the base, 10, for every seller. If
+-- this goes back to 11.333, the md16 modules are off the load list or the
+-- retirement no longer names the modifier the bridge registers; do not "fix"
+-- it by restoring the premium value.
+T.ok("premium: MD-16 retirement is loaded from the sibling MarketDynamics",
+    Md16SaleComponents ~= nil and type(MarketEngine.getSaleQuoteComponents) == "function")
+T.eq("premium: MD-16 retires exactly the modifier the bridge registers",
+    Md16SaleComponents and Md16SaleComponents.RETIRED_MODIFIER, OrganicPremiumBridge.MODIFIER_NAME)
 currentFarmId = 1    -- farm with a positive organic share
 engine:_recalculate(WHEAT)
-T.near("premium: recalculate moves the price for an organic seller",
-    engine:getPrice(WHEAT), 10 * (1.0 + 0.20 * frac), 1e-6)
+T.near("premium: recalculate leaves an organic seller's quote at the base (MD-16 retired the pooled premium)",
+    engine:getPrice(WHEAT), 10, 1e-6)
+T.near("premium: and the captured sale components exclude it too",
+    engine:getSaleQuoteComponents(WHEAT) and engine:getSaleQuoteComponents(WHEAT).otherConsumerProduct, 1.0, 1e-9)
+T.near("premium: while the bridge's own function still answers the premium when called",
+    fn({ fillTypeIndex = WHEAT }), 1.0 + 0.20 * frac, 1e-9)
 
 currentFarmId = 2    -- no organic share -> vanilla price
 engine:_recalculate(WHEAT)
