@@ -1,4 +1,5 @@
--- Run from the SoilFertilizer repository root. Engine-independent contract.
+-- Engine-independent contract for the PNH distance texture bridge.
+--!load: src/integrations/PnhDistanceTextureBridge.lua
 local calls = {}
 Utils = {prependedFunction = function(original, before)
     return function(...)
@@ -16,7 +17,7 @@ FillTypeDesc = {
     end,
 }
 
-dofile("src/integrations/PnhDistanceTextureBridge.lua")
+-- The module comes from the --!load line above, so the working directory does not matter.
 local bridge = PnhDistanceTextureBridge
 assert(bridge.install())
 assert(bridge.install()) -- a reload must not add a second wrapper
@@ -64,3 +65,5 @@ assert(not bridge.active)
 assert(FillTypeDesc.addDistanceTexture(pnh, constr, 65) == "original-result")
 assert(calls[8].kind == "original")
 print("PNH distance texture bridge: mission rearm assertions passed")
+-- A failed assert above ends the run with a Lua error, so reaching here means all held.
+T.ok("PNH distance texture bridge contract holds from the harness's own working directory", true)
