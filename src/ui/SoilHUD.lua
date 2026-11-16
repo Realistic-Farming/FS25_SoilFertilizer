@@ -286,7 +286,7 @@ function SoilHUD:enterEditMode()
     -- Also freeze vehicle camera via spec_cameraSystem (handles in-vehicle camera orbit)
     self.savedVehicleCamRotX = nil
     self.savedVehicleCamRotY = nil
-    local cv = g_currentMission and g_currentMission.controlledVehicle
+    local cv = SoilUtils.getLocalPlayerVehicle()
     if cv and cv.spec_cameraSystem then
         local ac = cv.spec_cameraSystem.activeCamera
         if ac then
@@ -866,7 +866,7 @@ function SoilHUD:update(dt)
         -- Setting ac.rotX/Y alone isn't enough - VehicleCamera calls setRotation(rotateNode)
         -- BEFORE our update runs (APPEND hook), so we must re-apply to the actual scene node.
         if self.savedVehicleCamRotX ~= nil then
-            local cv = g_currentMission and g_currentMission.controlledVehicle
+            local cv = SoilUtils.getLocalPlayerVehicle()
             if cv and cv.spec_cameraSystem then
                 local ac = cv.spec_cameraSystem.activeCamera
                 if ac then

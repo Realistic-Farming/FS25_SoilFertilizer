@@ -389,3 +389,9 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 
 - [x] Soil's harvestOrganicOriginV1 decides whether newly harvested material is organic from the field it came from. It looked for that field under the vehicle a player was sitting in, through a mission field FS25 never fills in, so the property read unknown almost everywhere and could never work on a dedicated server or for a hired worker. With StockGuard #75 the cut itself names where it happened (the header's position, or the mower's), and Soil reads the field under that place, whoever is driving. When StockGuard names no place (an older StockGuard), the harvest stays honestly unknown, never a guess.
 - The in-game check is the TESTING row for this PR. Design origin MD-16 chain (organic-origin-property-BUILD-BRIEF.md), FAST TRACK dedi-server coverage correction, Tyson's word via Desk 2026-11-07.
+
+## 2026-11-16 (Fred (via Desk)): the player's vehicle is read from the player, not from a mission field the engine never sets (MAINTENANCE row 326)
+
+- [x] `g_currentMission.controlledVehicle` is never assigned in FS25 (nothing in the 1.24 scripts writes it), so four Soil reads always saw no vehicle. They now ask `SoilUtils.getLocalPlayerVehicle()`, the local player's `getCurrentVehicle()`. Live again: the HUD edit mode's vehicle camera freeze (a player in a tractor who drags the HUD no longer orbits the camera), the `SoilSprayerDebug` console command (it finds the vehicle), and the native FIELD INFO box's position while driving (it asks about where the vehicle is, not the stale player node; the box still falls back to the field it is showing).
+- [x] Five other reads of the old field remain and are left alone: four dead fallbacks behind other sources, and `SoilSettingsGUI.lua:313`, which already falls through to the player's position.
+- The in-game check is the TESTING row for this PR. Design origin none.

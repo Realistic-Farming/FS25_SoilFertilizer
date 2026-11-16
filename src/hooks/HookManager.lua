@@ -7280,12 +7280,16 @@ function HookManager:installNativeFieldInfoHook()
         return nil, nil
     end
 
-    --- Resolves the world (x, z) the player is currently associated with - controlled
-    --- vehicle first (covers driving/standing-in), then the on-foot player root node.
-    --- Mirrors the proven SoilWorkYieldBonus:getPlayerPositionXZ() priority order exactly.
+    --- Resolves the world (x, z) the player is currently associated with - the vehicle the
+    --- local player is in first (covers driving/standing-in), then the on-foot player root node.
+    --- Mirrors the proven SoilWorkYieldBonus:getPlayerPositionXZ() priority order. The vehicle
+    --- is asked of the player (SoilUtils.getLocalPlayerVehicle): g_currentMission.controlledVehicle
+    --- is never assigned in FS25, so the old read always fell through to the root node, which
+    --- is not where the vehicle is while driving.
     local function getPlayerOrVehiclePositionXZ()
-        if g_currentMission ~= nil and g_currentMission.controlledVehicle ~= nil then
-            local x, z = getVehiclePositionXZ(g_currentMission.controlledVehicle)
+        local vehicle = SoilUtils.getLocalPlayerVehicle()
+        if vehicle ~= nil then
+            local x, z = getVehiclePositionXZ(vehicle)
             if x ~= nil then return x, z end
         end
 
