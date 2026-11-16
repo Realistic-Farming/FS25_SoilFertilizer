@@ -163,7 +163,7 @@ function SoilHUD.new(soilSystem, settings)
     self.savedCamRotX = nil
     self.savedCamRotY = nil
     self.savedCamRotZ = nil
-    -- Vehicle camera freeze (spec_cameraSystem path)
+    -- Vehicle camera freeze (the driven vehicle's active VehicleCamera)
     self.savedVehicleCamRotX = nil
     self.savedVehicleCamRotY = nil
 
@@ -283,16 +283,13 @@ function SoilHUD:enterEditMode()
             end
         end
     end
-    -- Also freeze vehicle camera via spec_cameraSystem (handles in-vehicle camera orbit)
+    -- Also freeze the vehicle camera of the vehicle the player is in (handles in-vehicle camera orbit)
     self.savedVehicleCamRotX = nil
     self.savedVehicleCamRotY = nil
-    local cv = SoilUtils.getLocalPlayerVehicle()
-    if cv and cv.spec_cameraSystem then
-        local ac = cv.spec_cameraSystem.activeCamera
-        if ac then
-            self.savedVehicleCamRotX = ac.rotX
-            self.savedVehicleCamRotY = ac.rotY
-        end
+    local ac = SoilUtils.getLocalPlayerVehicleCamera()
+    if ac then
+        self.savedVehicleCamRotX = ac.rotX
+        self.savedVehicleCamRotY = ac.rotY
     end
     SoilLogger.debug("[SoilHUD] Edit mode ON")
 end
@@ -866,16 +863,14 @@ function SoilHUD:update(dt)
         -- Setting ac.rotX/Y alone isn't enough - VehicleCamera calls setRotation(rotateNode)
         -- BEFORE our update runs (APPEND hook), so we must re-apply to the actual scene node.
         if self.savedVehicleCamRotX ~= nil then
-            local cv = SoilUtils.getLocalPlayerVehicle()
-            if cv and cv.spec_cameraSystem then
-                local ac = cv.spec_cameraSystem.activeCamera
-                if ac then
-                    ac.rotX = self.savedVehicleCamRotX
-                    ac.rotY = self.savedVehicleCamRotY
-                    local node = ac.rotateNode or ac.cameraNode
-                    if node and setRotation then
-                        pcall(setRotation, node, self.savedVehicleCamRotX, self.savedVehicleCamRotY, 0)
-                    end
+            local ac = SoilUtils.getLocalPlayerVehicleCamera()
+            if ac then
+                ac.rotX = self.savedVehicleCamRotX
+                ac.rotY = self.savedVehicleCamRotY
+                local node = ac.rotateNode or ac.cameraNode
+                if node and setRotation then
+                    -- The camera applies its own rotZ with rotX and rotY (VehicleCamera.lua:228).
+                    pcall(setRotation, node, self.savedVehicleCamRotX, self.savedVehicleCamRotY, ac.rotZ or 0)
                 end
             end
         end

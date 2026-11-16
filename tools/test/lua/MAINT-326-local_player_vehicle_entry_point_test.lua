@@ -4,12 +4,13 @@
 -- THE DEFECT. FS25 never assigns g_currentMission.controlledVehicle (nothing in the 1.24 scripts
 -- writes it; the engine asks the player, player:getCurrentVehicle(), as in
 -- DensityMapHeightManager.lua:633). Four Soil sites read it, so each always saw "no vehicle":
---   * SoilHUD:enterEditMode and SoilHUD:update, the vehicle camera freeze of the HUD's edit mode,
---     so a player in a tractor who dragged the HUD still orbited the camera;
+--   * SoilHUD:enterEditMode and SoilHUD:update, the vehicle camera freeze of the HUD's edit mode, which
+--     also read a spec the game does not have (spec_cameraSystem; the camera is the Enterable's
+--     getActiveCamera()), so a player in a tractor who dragged the HUD still orbited the camera;
 --   * main.lua's SoilSprayerDebug console command, which could never find a vehicle;
 --   * the native FIELD INFO hook's position helper, which fell through to the player's root node,
 --     not where the vehicle is while driving.
--- All four now ask SoilUtils.getLocalPlayerVehicle().
+-- All four now ask the player: SoilUtils.getLocalPlayerVehicle(), and for the camera getLocalPlayerVehicleCamera().
 --
 -- ENTRY-POINT BAR. Each group enters where production does. H: SoilHUD:enterEditMode and
 -- SoilHUD:update on a real SoilHUD.new. D: SoilSprayerDebug, taken from main.lua's own text and
@@ -66,26 +67,33 @@ local function rotationsOn(node)
 end
 
 -- =========================================================
--- H: the HUD's edit mode freezes the vehicle camera of the vehicle the player is in
+-- H: the HUD's edit mode freezes the camera of the vehicle the player is in
 -- =========================================================
+-- A driven vehicle is an Enterable and answers getActiveCamera() with its VehicleCamera
+-- (Enterable.lua:1128); FS25 has no spec_cameraSystem (it appears nowhere in the 1.24 scripts).
+-- The camera keeps rotX, rotY, rotZ and rotateNode and re-applies them to its node each frame
+-- (VehicleCamera.lua:174-175, :228).
+local function vehicleWith(camera)
+  return { getActiveCamera = function() return camera end }
+end
+
 group("H", function()
-  local vehicle = { spec_cameraSystem = { activeCamera = { rotX = 0.4, rotY = 1.2, rotateNode = 77 } } }
-  g_localPlayer = playerIn(vehicle)
+  local camera = { rotX = 0.4, rotY = 1.2, rotZ = 0.1, rotateNode = 77 }
+  g_localPlayer = playerIn(vehicleWith(camera))
   local hud = SoilHUD.new({}, { hudPosition = 1 })
   hud:enterEditMode()
   T.eq("H1 [reached] a player in a vehicle enters the HUD's edit mode: the active camera's rotation is saved",
     tostring(hud.savedVehicleCamRotX) .. "/" .. tostring(hud.savedVehicleCamRotY), "0.4/1.2")
 
   -- The player orbits the camera with the mouse; the next HUD update must put it back.
-  local ac = vehicle.spec_cameraSystem.activeCamera
-  ac.rotX, ac.rotY = 0.9, 2.5
+  camera.rotX, camera.rotY = 0.9, 2.5
   ROTATIONS = {}
   hud:update(16)
   T.eq("H2 NAMED [entry point]: the update restores the camera's rotation and pushes it to the camera's node",
-    ac.rotX .. "/" .. ac.rotY .. "/" .. rotationsOn(77), "0.4/1.2/1")
-  T.eq("H3 and what it pushed is the saved pair with no roll",
+    camera.rotX .. "/" .. camera.rotY .. "/" .. rotationsOn(77), "0.4/1.2/1")
+  T.eq("H3 and what it pushed is the saved pair with the camera's own roll, as the camera applies it",
     (function() for _, r in ipairs(ROTATIONS) do if r.node == 77 then return r.x .. "/" .. r.y .. "/" .. r.z end end return "none" end)(),
-    "0.4/1.2/0")
+    "0.4/1.2/0.1")
 
   g_localPlayer = playerIn(nil)
   local hudFoot = SoilHUD.new({}, { hudPosition = 1 })
@@ -104,7 +112,11 @@ group("H", function()
   g_localPlayer = playerIn({})
   local hudBare = SoilHUD.new({}, { hudPosition = 1 })
   hudBare:enterEditMode()
-  T.eq("H6 a vehicle with no camera system saves nothing", tostring(hudBare.savedVehicleCamRotX), "nil")
+  g_localPlayer = playerIn(vehicleWith(nil))
+  local hudNoCam = SoilHUD.new({}, { hudPosition = 1 })
+  hudNoCam:enterEditMode()
+  T.eq("H6 a vehicle that is not Enterable, and an Enterable with no active camera, save nothing",
+    tostring(hudBare.savedVehicleCamRotX) .. "/" .. tostring(hudNoCam.savedVehicleCamRotX), "nil/nil")
 
   -- A player whose state getter raises, or that has none, reads as no vehicle and never raises.
   g_localPlayer = { getCurrentVehicle = function() error("state machine") end }
@@ -116,6 +128,13 @@ group("H", function()
   T.eq("H7 a getter that raises, and a player with no getter, read as no vehicle without raising",
     tostring(okRaise) .. "/" .. tostring(hudRaise.savedVehicleCamRotX) .. "/" .. tostring(okNoGetter) .. "/" .. tostring(hudNoGetter.savedVehicleCamRotX),
     "true/nil/true/nil")
+
+  -- An Enterable whose camera getter raises reads as no camera.
+  g_localPlayer = playerIn({ getActiveCamera = function() error("camera") end })
+  local hudCamRaise = SoilHUD.new({}, { hudPosition = 1 })
+  local okCamRaise = pcall(function() hudCamRaise:enterEditMode() end)
+  T.eq("H8 a vehicle whose camera getter raises reads as no camera without raising",
+    tostring(okCamRaise) .. "/" .. tostring(hudCamRaise.savedVehicleCamRotX), "true/nil")
 end)
 
 -- =========================================================

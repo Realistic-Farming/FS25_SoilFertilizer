@@ -404,6 +404,6 @@
 
 ## 2026-11-16 (Fred (via Desk)): the player's vehicle read from the player (MAINTENANCE row 326)
 
-- [x] `SoilUtils.getLocalPlayerVehicle()`; used by `SoilHUD:enterEditMode` and `SoilHUD:update`, `SoilSprayerDebug` (`src/main.lua`) and the native FIELD INFO hook's position helper (`HookManager`). Bar `MAINT-326-local_player_vehicle_entry_point_test.lua` (18 rows; development fails 8).
+- [x] `SoilUtils.getLocalPlayerVehicle()` and `SoilUtils.getLocalPlayerVehicleCamera()` (the vehicle's `getActiveCamera()`; FS25 has no `spec_cameraSystem`); used by `SoilHUD:enterEditMode` and `SoilHUD:update`, `SoilSprayerDebug` (`src/main.lua`) and the native FIELD INFO hook's position helper (`HookManager`). Bar `MAINT-326-local_player_vehicle_entry_point_test.lua` (19 rows; development fails 8).
 - [ ] The five remaining `controlledVehicle` reads (`SoilSettingsGUI.lua:313`, `:1658`, `:1857`, `SoilHUD.lua:1341`, `SoilSettingsPanel.lua:1326`) are benign or dead fallbacks; retire them when those files are next touched.
 - [~] In game (owed): the TESTING row for this PR.
