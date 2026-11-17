@@ -31,6 +31,9 @@
 --   H  a crop-protection product (the direct route, no fertilizer profile)
 --   I  the drain names the arguments native names: the tank's own fill type, the unload info of the
 --      active spray type (or the default index)
+--   J  the one-time diagnostic line: a sprayer whose pass the game counted inactive while Soil
+--      credited product writes ONE log line naming each work area's spray-type slot (once per
+--      sprayer model, at most three per session, no player folder), and never blocks the drain
 --   U  UNIT rows, not entry-point: the guards the entry path cannot reach (a client, a mark that is
 --      not a usable number)
 --
@@ -231,6 +234,108 @@ group("U guards the entry path cannot reach (UNIT rows, not entry-point)", funct
   local va = sprayer(5, { active = true })
   local okA = HookManager.drainCreditedLitres(va)
   T.eq("U4 a mark is cleared even when the game drained (no drain is added, none is left behind)", tostring(okA) .. "/" .. tostring(va._sfCreditedLitersThisTick), "false/nil")
+end)
+
+group("J the one-time diagnostic line", function()
+  local lines = {}
+  local realInfo = SoilLogger.info
+  SoilLogger.info = function(msg, ...)
+    local ok, s = pcall(string.format, tostring(msg), ...)
+    lines[#lines + 1] = ok and s or tostring(msg)
+  end
+  local function diag()
+    local out = {}
+    for _, l in ipairs(lines) do
+      if l:find("[#1154 diag]", 1, true) then out[#out + 1] = l end
+    end
+    return out
+  end
+  local function reset() lines = {} HookManager._sf1154DiagSeen = nil end
+
+  -- A sprayer on the 1.25 pattern: its one work area is bound to slot 1, which lists only
+  -- FERTILIZER, while the tank holds LIQUIDFERTILIZER, so the slot (and the work area) is inactive.
+  local function diagWorld(cfg, opts)
+    opts = opts or {}
+    local w = newWorld()
+    local v = w.vehicle
+    v.configFileName = cfg
+    local slots = { { fillTypes = { "FERTILIZER" } }, { fillTypes = { "FERTILIZER", "LIQUIDFERTILIZER" } } }
+    -- a slot list the line cannot render (a non-string entry makes table.concat raise inside the line)
+    if opts.badSlot then slots[1] = { fillTypes = { {} } } end
+    v.spec_sprayer.sprayTypes = slots
+    if opts.noSlot then
+      v.spec_workArea.workAreas[1].sprayType = nil
+    else
+      v.spec_workArea.workAreas[1].sprayType = 1
+    end
+    v.getIsSprayTypeActive = function(_, slot)
+      for _, name in ipairs(slot.fillTypes) do
+        if name == PSW.FT.LIQUIDFERTILIZER.name then return true end
+      end
+      return false
+    end
+    v.getIsWorkAreaActive = opts.raising and function() error("boom") end or function(self, wa)
+      local slot = wa.sprayType and slots[wa.sprayType] or nil
+      if slot ~= nil and not self:getIsSprayTypeActive(slot) then return false end
+      return true
+    end
+    return w
+  end
+
+  reset()
+  local w = diagWorld("C:/Users/someone/Documents/My Games/FarmingSimulator2025/mods/FS25_Foo/boom.xml")
+  w:setActive(false)
+  w:tick(10, w:cells(1, 1))
+  local got = diag()
+  T.eq("J0 [reached] an inactive pass that Soil credited writes exactly one diagnostic line", #got, 1)
+  local line = got[1] or ""
+  T.ok("J1 the line names the sprayer model, the tank's product and the litres credited",
+    line:find("FS25_Foo/boom.xml", 1, true) ~= nil and line:find("tank holds LIQUIDFERTILIZER", 1, true) ~= nil
+      and line:find("10.0000 L credited", 1, true) ~= nil)
+  T.ok("J2 NAMED: and for the work area, the slot it is bound to, the fill types that slot lists, and that both are inactive",
+    line:find("wa1 slot=1 {FERTILIZER} slotActive=false areaActive=false", 1, true) ~= nil and line:find("slots=2", 1, true) ~= nil)
+  T.ok("J3 the line carries no player folder", line:find("someone", 1, true) == nil and line:find("Users", 1, true) == nil
+    and line:find("Documents", 1, true) == nil)
+  w:tick(10, w:cells(2, 2))
+  T.eq("J4 a second inactive tick on the same sprayer writes nothing more", #diag(), 1)
+
+  reset()
+  local wActive = diagWorld("mods/FS25_Active/boom.xml")
+  wActive:setActive(true)
+  wActive:tick(10, wActive:cells(1, 1))
+  T.eq("J5 a pass the game counted active writes no line", #diag(), 0)
+
+  reset()
+  for i = 1, 4 do
+    local wi = diagWorld("mods/FS25_Model" .. i .. "/boom.xml")
+    wi:setActive(false)
+    wi:tick(10, wi:cells(1, 1))
+  end
+  T.eq("J6 four different sprayer models write three lines, the session cap", #diag(), HookManager.DRAIN_DIAG_MAX)
+
+  reset()
+  local wRaise = diagWorld("mods/FS25_Raise/boom.xml", { raising = true })
+  wRaise:setActive(false)
+  wRaise:tick(10, wRaise:cells(1, 1))
+  local rl = diag()[1] or ""
+  T.ok("J7 a work-area check that raises still writes the line, with that part unknown", rl:find("areaActive=na", 1, true) ~= nil)
+  T.eq("J8 NAMED: and the tank still gives up the credited litres", wRaise:drop(), 10)
+
+  reset()
+  local wNo = diagWorld("mods/FS25_NoSlot/boom.xml", { noSlot = true })
+  wNo:setActive(false)
+  wNo:tick(10, wNo:cells(1, 1))
+  T.ok("J9 a work area with no slot binding says so", (diag()[1] or ""):find("wa1 slot=nil {no slot} slotActive=na", 1, true) ~= nil)
+
+  reset()
+  local wBad = diagWorld("mods/FS25_Bad/boom.xml", { badSlot = true })
+  wBad:setActive(false)
+  wBad:tick(10, wBad:cells(1, 1))
+  T.eq("J10 NAMED: a line that cannot be rendered raises inside the diagnostic, which writes nothing, and the tank still gives up the credited litres",
+    #diag() .. "/" .. wBad:drop(), "0/10")
+
+  SoilLogger.info = realInfo
+  HookManager._sf1154DiagSeen = nil
 end)
 
 PSW.restore()

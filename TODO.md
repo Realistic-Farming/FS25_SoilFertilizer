@@ -413,3 +413,9 @@
 - [x] `HookManager.lua`: `applySingle` counts the litres the credit applied (`sfCreditedLiters`), the area hook hands them on after its closure (`_sfCreditedLitersThisTick`, never for an SF-73 target dose), and `HookManager.drainCreditedLitres` takes them out of the spray vehicle from the drain-token hook's append when `wap.isActive` is false. Bar `SF-1154-credit_without_native_drain_entry_point_test.lua` (29 assertions; development fails 12, 16 of 16 mutants killed).
 - [ ] Engine-side cause on the reporter's sprayer: which spray-type slots its work areas bind (game 1.25.1.0 asks each work area's own slot). Waiting on the reporter's vehicle or his base-game-product test; the root fix (names on every bound slot) only if that confirms it.
 - [~] In game (owed): the TESTING row for this PR, a sprayer pass on 1.25.1.0 with the tank level read before and after.
+
+## 2026-11-17 (Fred (via Desk)): the one-time #1154 diagnostic line
+
+- [x] `HookManager.logInactiveWorkAreasOnce` (called from `drainCreditedLitres`): one `[#1154 diag]` line per sprayer model per session, three at most, naming each spray work area's slot, the slot's listed fill types and whether the slot and the area count as active. Bar rows J0 to J10 in `SF-1154-credit_without_native_drain_entry_point_test.lua` (development fails 7; all mutants killed).
+- [ ] Read the first `[#1154 diag]` line from an affected sprayer, decide whether the root fix (names on every bound slot) is the cause, then build or close the MAINTENANCE row dated 2026-11-17.
+- [~] In game (owed): the TESTING row for this PR.

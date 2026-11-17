@@ -3521,11 +3521,68 @@ function HookManager.drainCreditedLitres(sprayerSelf)
         farmId = sprayerSelf:getOwnerFarmId()
     end
     if farmId == nil then farmId = target.ownerFarmId end
+    pcall(HookManager.logInactiveWorkAreasOnce, sprayerSelf, fillType, credited)
     local okDrain, err = pcall(target.addFillUnitFillLevel, target, farmId, fuIdx, -credited, fillType, ToolType.UNDEFINED, unloadInfo)
     if not okDrain then
         SoilLogger.debug("[#1154] drain of %.4f L failed: %s", credited, tostring(err))
         return false
     end
+    return true
+end
+
+--- #1154 diagnostic: the first time a sprayer model reaches the drain above (the game counted
+--- its pass inactive while Soil credited product), write ONE log line naming, for each of its
+--- spray work areas, the spray-type slot it is bound to, which fill types that slot lists, and
+--- whether the slot and the work area count as active. From game 1.25 a work area asks its OWN
+--- slot, so a work area bound to a slot that does not list the tank's product stays inactive; one
+--- log.txt from an affected player then names the cause without needing the vehicle files. At
+--- most DRAIN_DIAG_MAX lines per session, each sprayer model once. The model is named by the last
+--- two parts of its config path (no player folder). Reads only; never raises into the caller.
+HookManager.DRAIN_DIAG_MAX = 3
+---@param sprayerSelf table the sprayer whose pass was inactive
+---@param tankFillType number the fill type index in the tank
+---@param credited number the litres credited this tick
+---@return boolean logged true when a line was written
+function HookManager.logInactiveWorkAreasOnce(sprayerSelf, tankFillType, credited)
+    local seen = HookManager._sf1154DiagSeen
+    if seen == nil then
+        seen = { count = 0, keys = {} }
+        HookManager._sf1154DiagSeen = seen
+    end
+    if seen.count >= HookManager.DRAIN_DIAG_MAX then return false end
+    local cfg = tostring(sprayerSelf.configFileName or "?")
+    local key = cfg:match("([^/\\]+[/\\][^/\\]+)$") or cfg:match("([^/\\]+)$") or cfg
+    if seen.keys[key] then return false end
+    seen.keys[key] = true
+    seen.count = seen.count + 1
+
+    local ftDef = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(tankFillType)
+    local ftName = ftDef and ftDef.name or tostring(tankFillType)
+    local spec = sprayerSelf.spec_sprayer
+    local slots = spec and spec.sprayTypes
+    local parts = {}
+    local waSpec = sprayerSelf.spec_workArea
+    if type(waSpec) == "table" and type(waSpec.workAreas) == "table" then
+        for i, wa in ipairs(waSpec.workAreas) do
+            if type(wa) == "table" and wa.functionName == "processSprayerArea" and #parts < 6 then
+                local slot = (type(wa.sprayType) == "number" and type(slots) == "table") and slots[wa.sprayType] or nil
+                local names, slotActive = "no slot", "na"
+                if type(slot) == "table" then
+                    names = type(slot.fillTypes) == "table" and table.concat(slot.fillTypes, ",") or "any product"
+                    local okSlot, resSlot = pcall(sprayerSelf.getIsSprayTypeActive, sprayerSelf, slot)
+                    if okSlot then slotActive = tostring(resSlot) end
+                end
+                local areaActive = "na"
+                local okArea, resArea = pcall(sprayerSelf.getIsWorkAreaActive, sprayerSelf, wa)
+                if okArea then areaActive = tostring(resArea) end
+                parts[#parts + 1] = string.format("wa%d slot=%s {%s} slotActive=%s areaActive=%s",
+                    i, tostring(wa.sprayType), names, slotActive, areaActive)
+            end
+        end
+    end
+    SoilLogger.info("[#1154 diag] %s: tank holds %s, %.4f L credited while the game counted the pass inactive; slots=%s; work areas: %s",
+        key, ftName, tonumber(credited) or 0, type(slots) == "table" and tostring(#slots) or "na",
+        #parts > 0 and table.concat(parts, "; ") or "none")
     return true
 end
 
