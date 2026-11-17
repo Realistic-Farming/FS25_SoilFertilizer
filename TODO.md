@@ -401,3 +401,9 @@
 - [x] `src/OrganicOriginProperty.lua`: `birthPosition(context)` reads `context.report.outcomeEvidence.vehiclePosition` (StockGuard #75), finite x and z only; `resolveFieldId(context)` looks up the field there; `resolveActingVehicle` and its `g_currentMission.controlledVehicle` read are gone (no assignment of that field anywhere in the decompiled dataS/scripts).
 - [x] Bar `organic-origin-property_spec_test.lua`, TRANSFORM group T1 to T11 (development fails 6).
 - [~] In game (owed): the TESTING row for this PR, single player and dedicated server, with StockGuard #75.
+
+## 2026-11-16 (Fred (via Desk)): the player's vehicle read from the player (MAINTENANCE row 326)
+
+- [x] `SoilUtils.getLocalPlayerVehicle()` and `SoilUtils.getLocalPlayerVehicleCamera()` (the vehicle's `getActiveCamera()`; FS25 has no `spec_cameraSystem`); used by `SoilHUD:enterEditMode` and `SoilHUD:update`, `SoilSprayerDebug` (`src/main.lua`) and the native FIELD INFO hook's position helper (`HookManager`). Bar `MAINT-326-local_player_vehicle_entry_point_test.lua` (19 rows; development fails 8).
+- [ ] The five remaining `controlledVehicle` reads (`SoilSettingsGUI.lua:313`, `:1658`, `:1857`, `SoilHUD.lua:1341`, `SoilSettingsPanel.lua:1326`) are benign or dead fallbacks; retire them when those files are next touched.
+- [~] In game (owed): the TESTING row for this PR.

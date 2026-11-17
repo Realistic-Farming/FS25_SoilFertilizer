@@ -1271,7 +1271,7 @@ end
 
 -- Debug: dump current vehicle's sprayer spec to diagnose visual effect issues
 function SoilSprayerDebug()
-    local vehicle = g_currentMission and g_currentMission.controlledVehicle
+    local vehicle = SoilUtils.getLocalPlayerVehicle()
     if not vehicle then
         print("[SoilSprayerDebug] No controlled vehicle")
         return

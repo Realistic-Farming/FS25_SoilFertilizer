@@ -6,6 +6,41 @@
 
 SoilUtils = SoilUtils or {}
 
+--- The vehicle the LOCAL player is in (driving or riding), or nil. FS25 has no
+--- g_currentMission.controlledVehicle: nothing in the 1.24 scripts assigns it, so a
+--- read of it is always nil. The engine asks the player instead
+--- (DensityMapHeightManager.lua:633), and so does this. The on-foot state answers nil
+--- (PlayerOnFootStateMachine.lua:67) and a dedicated server has no local player, so
+--- both read as "no vehicle" rather than raising.
+function SoilUtils.getLocalPlayerVehicle()
+    local player = g_localPlayer
+    if player == nil then
+        return nil
+    end
+    local ok, vehicle = pcall(player.getCurrentVehicle, player)
+    if ok then
+        return vehicle
+    end
+    return nil
+end
+
+--- The active VehicleCamera of the vehicle the LOCAL player is in, or nil. FS25 has no
+--- spec_cameraSystem (it appears nowhere in the 1.24 scripts). A driven vehicle is an
+--- Enterable and answers getActiveCamera() (Enterable.lua:1128), a VehicleCamera whose
+--- rotX, rotY, rotZ and rotateNode it re-applies each frame (VehicleCamera.lua:174-175, :228).
+--- A vehicle that is not Enterable, or a getter that raises, reads as no camera.
+function SoilUtils.getLocalPlayerVehicleCamera()
+    local vehicle = SoilUtils.getLocalPlayerVehicle()
+    if vehicle == nil then
+        return nil
+    end
+    local ok, camera = pcall(vehicle.getActiveCamera, vehicle)
+    if ok then
+        return camera
+    end
+    return nil
+end
+
 --- Returns true if the local player has admin rights.
 --- Single-player: always true. Dedicated server console: always true.
 --- Multiplayer client: checks master-user flag.
