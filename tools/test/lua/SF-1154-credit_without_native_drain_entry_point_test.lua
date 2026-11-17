@@ -259,6 +259,11 @@ group("J the one-time diagnostic line", function()
     local w = newWorld()
     local v = w.vehicle
     v.configFileName = cfg
+    if opts.raisingName then
+      v.getFullName = function() error("no name") end
+    else
+      v.getFullName = function() return "Test Sprayer 9000" end
+    end
     local slots = { { fillTypes = { "FERTILIZER" } }, { fillTypes = { "FERTILIZER", "LIQUIDFERTILIZER" } } }
     -- a slot list the line cannot render (a non-string entry makes table.concat raise inside the line)
     if opts.badSlot then slots[1] = { fillTypes = { {} } } end
@@ -294,6 +299,7 @@ group("J the one-time diagnostic line", function()
       and line:find("10.0000 L credited", 1, true) ~= nil)
   T.ok("J2 NAMED: and for the work area, the slot it is bound to, the fill types that slot lists, and that both are inactive",
     line:find("wa1 slot=1 {FERTILIZER} slotActive=false areaActive=false", 1, true) ~= nil and line:find("slots=2", 1, true) ~= nil)
+  T.ok("J1b the line names the sprayer as the game names it", line:find("(Test Sprayer 9000)", 1, true) ~= nil)
   T.ok("J3 the line carries no player folder", line:find("someone", 1, true) == nil and line:find("Users", 1, true) == nil
     and line:find("Documents", 1, true) == nil)
   w:tick(10, w:cells(2, 2))
@@ -333,6 +339,13 @@ group("J the one-time diagnostic line", function()
   wBad:tick(10, wBad:cells(1, 1))
   T.eq("J10 NAMED: a line that cannot be rendered raises inside the diagnostic, which writes nothing, and the tank still gives up the credited litres",
     #diag() .. "/" .. wBad:drop(), "0/10")
+
+  reset()
+  local wNm = diagWorld("mods/FS25_NoName/boom.xml", { raisingName = true })
+  wNm:setActive(false)
+  wNm:tick(10, wNm:cells(1, 1))
+  T.ok("J11 a name lookup that raises still writes the line, unnamed", (diag()[1] or ""):find("(unnamed)", 1, true) ~= nil)
+  T.eq("J12 and the tank still gives up the credited litres", wNm:drop(), 10)
 
   SoilLogger.info = realInfo
   HookManager._sf1154DiagSeen = nil

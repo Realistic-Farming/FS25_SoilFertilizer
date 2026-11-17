@@ -3556,6 +3556,12 @@ function HookManager.logInactiveWorkAreasOnce(sprayerSelf, tankFillType, credite
     seen.keys[key] = true
     seen.count = seen.count + 1
 
+    -- The sprayer's own name (brand and model), so the line reads as a machine and not only a path.
+    local fullName = nil
+    if type(sprayerSelf.getFullName) == "function" then
+        local okName, resName = pcall(sprayerSelf.getFullName, sprayerSelf)
+        if okName and type(resName) == "string" and resName ~= "" then fullName = resName end
+    end
     local ftDef = g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(tankFillType)
     local ftName = ftDef and ftDef.name or tostring(tankFillType)
     local spec = sprayerSelf.spec_sprayer
@@ -3580,8 +3586,8 @@ function HookManager.logInactiveWorkAreasOnce(sprayerSelf, tankFillType, credite
             end
         end
     end
-    SoilLogger.info("[#1154 diag] %s: tank holds %s, %.4f L credited while the game counted the pass inactive; slots=%s; work areas: %s",
-        key, ftName, tonumber(credited) or 0, type(slots) == "table" and tostring(#slots) or "na",
+    SoilLogger.info("[#1154 diag] %s (%s): tank holds %s, %.4f L credited while the game counted the pass inactive; slots=%s; work areas: %s",
+        key, fullName or "unnamed", ftName, tonumber(credited) or 0, type(slots) == "table" and tostring(#slots) or "na",
         #parts > 0 and table.concat(parts, "; ") or "none")
     return true
 end
