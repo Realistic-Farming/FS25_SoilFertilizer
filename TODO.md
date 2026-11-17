@@ -407,3 +407,9 @@
 - [x] `SoilUtils.getLocalPlayerVehicle()` and `SoilUtils.getLocalPlayerVehicleCamera()` (the vehicle's `getActiveCamera()`; FS25 has no `spec_cameraSystem`); used by `SoilHUD:enterEditMode` and `SoilHUD:update`, `SoilSprayerDebug` (`src/main.lua`) and the native FIELD INFO hook's position helper (`HookManager`). Bar `MAINT-326-local_player_vehicle_entry_point_test.lua` (19 rows; development fails 8).
 - [ ] The five remaining `controlledVehicle` reads (`SoilSettingsGUI.lua:313`, `:1658`, `:1857`, `SoilHUD.lua:1341`, `SoilSettingsPanel.lua:1326`) are benign or dead fallbacks; retire them when those files are next touched.
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-17 (Fred (via Desk)): the credited litres leave the tank (#1154)
+
+- [x] `HookManager.lua`: `applySingle` counts the litres the credit applied (`sfCreditedLiters`), the area hook hands them on after its closure (`_sfCreditedLitersThisTick`, never for an SF-73 target dose), and `HookManager.drainCreditedLitres` takes them out of the spray vehicle from the drain-token hook's append when `wap.isActive` is false. Bar `SF-1154-credit_without_native_drain_entry_point_test.lua` (29 assertions; development fails 12, 16 of 16 mutants killed).
+- [ ] Engine-side cause on the reporter's sprayer: which spray-type slots its work areas bind (game 1.25.1.0 asks each work area's own slot). Waiting on the reporter's vehicle or his base-game-product test; the root fix (names on every bound slot) only if that confirms it.
+- [~] In game (owed): the TESTING row for this PR, a sprayer pass on 1.25.1.0 with the tank level read before and after.

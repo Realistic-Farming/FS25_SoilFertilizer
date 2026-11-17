@@ -3453,9 +3453,79 @@ function HookManager:installDrainTokenHook()
         if type(target) == "table" and target._sfF196DrainToken ~= nil then
             target._sfF196DrainToken = nil
         end
+        -- #1154: after native and every other hook, take out of the tank the litres the credit
+        -- applied this tick when the game did not drain them.
+        local okDrain, errDrain = pcall(HookManager.drainCreditedLitres, sprayerSelf)
+        if not okDrain and not hookMgrRef._sf1154DrainErrLogged then
+            hookMgrRef._sf1154DrainErrLogged = true
+            SoilLogger.warning("[#1154] credited-litres drain failed: %s", tostring(errDrain))
+        end
     end)
     self:register(Sprayer, "onEndWorkAreaProcessing", original, "Sprayer.onEndWorkAreaProcessing (F196 V13 drain token)")
     SoilLogger.info("[OK] F196 V13 drain token installed on Sprayer.onEndWorkAreaProcessing")
+    return true
+end
+
+--- #1154: the game drains the spray vehicle only when the sprayer's wap.isActive is true
+--- (Sprayer.lua onEndWorkAreaProcessing), but Soil credits the soil on every tick it sees product
+--- used, active or not (the area hook must not gate on isActive: #764). A tick on which isActive is
+--- false therefore credited nutrients for product that never left the tank. This is the one place
+--- that closes that gap: the litres the credit applied this tick (HookManager's area hook, counted in
+--- applySingle) leave the spray vehicle through the same call native makes, and only when native did
+--- not make it. Server only. Nothing is drained for external fill (buy mode: wap.sprayVehicle is nil),
+--- for a pass the overlap gate refused (it credits nothing), or for a target dose (its litres are
+--- physical already, and the mark is never set for one).
+---@param sprayerSelf table the sprayer whose onEndWorkAreaProcessing just ran
+---@return boolean drained true when litres were taken out
+function HookManager.drainCreditedLitres(sprayerSelf)
+    if type(sprayerSelf) ~= "table" then return false end
+    local credited = sprayerSelf._sfCreditedLitersThisTick
+    if credited == nil then return false end
+    sprayerSelf._sfCreditedLitersThisTick = nil   -- a mark never outlives its tick
+    if type(credited) ~= "number" or credited ~= credited or credited <= 0 or credited == math.huge then
+        return false
+    end
+    local spec = sprayerSelf.spec_sprayer
+    local wap = spec and spec.workAreaParameters
+    if wap == nil or not sprayerSelf.isServer or wap.isActive == true then
+        return false   -- native drained this tick, or this is a client
+    end
+    local target = wap.sprayVehicle
+    local fuIdx = wap.sprayVehicleFillUnitIndex
+    if type(target) ~= "table" or fuIdx == nil then
+        return false   -- external fill (buy mode) or no tank: nothing to take out
+    end
+    -- The product that is physically in that tank: wap.sprayFillType can name another type on a
+    -- multi-tank machine (#708), and a removal must name the unit's own type.
+    local fillType = wap.sprayFillType
+    local okType, tankType = pcall(target.getFillUnitFillType, target, fuIdx)
+    if okType and tankType ~= nil and tankType ~= FillType.UNKNOWN then
+        fillType = tankType
+    end
+    if fillType == nil or fillType == FillType.UNKNOWN then
+        return false
+    end
+    -- The arguments native passes (Sprayer.lua onEndWorkAreaProcessing).
+    local unloadInfo = nil
+    if type(sprayerSelf.getFillVolumeUnloadInfo) == "function" then
+        local unloadInfoIndex = spec.unloadInfoIndex
+        local okSpray, sprayType = pcall(sprayerSelf.getActiveSprayType, sprayerSelf)
+        if okSpray and sprayType ~= nil then
+            unloadInfoIndex = sprayType.unloadInfoIndex
+        end
+        local okInfo, info = pcall(sprayerSelf.getFillVolumeUnloadInfo, sprayerSelf, unloadInfoIndex)
+        if okInfo then unloadInfo = info end
+    end
+    local farmId = nil
+    if type(sprayerSelf.getOwnerFarmId) == "function" then
+        farmId = sprayerSelf:getOwnerFarmId()
+    end
+    if farmId == nil then farmId = target.ownerFarmId end
+    local okDrain, err = pcall(target.addFillUnitFillLevel, target, farmId, fuIdx, -credited, fillType, ToolType.UNDEFINED, unloadInfo)
+    if not okDrain then
+        SoilLogger.debug("[#1154] drain of %.4f L failed: %s", credited, tostring(err))
+        return false
+    end
     return true
 end
 
@@ -6346,6 +6416,12 @@ function HookManager:installSprayerAreaHook()
                 return
             end
 
+            -- #1154: the litres this tick's credit actually applied, counted where the credit is
+            -- made (applySingle) and read after the closure, so the drain that runs after every
+            -- other hook (HookManager.drainCreditedLitres) can take exactly those litres out of
+            -- the tank when the game did not.
+            local sfCreditedLiters = 0
+
             local success, errorMsg = pcall(function()
                 local fillType = g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
                 if not fillType then return end
@@ -6567,7 +6643,12 @@ function HookManager:installSprayerAreaHook()
                     if isFertilizer then
                         if soilSys:onFertilizerApplied(fId, fillTypeIndex, sectionLiters, burnBoomPts) ~= true then
                             fertResult = false
+                        else
+                            sfCreditedLiters = sfCreditedLiters + sectionLiters
                         end
+                    else
+                        -- crop protection with no fertilizer profile: applied directly below
+                        sfCreditedLiters = sfCreditedLiters + sectionLiters
                     end
                     if herbOnlyDirect and soilSys.onHerbicideAppliedDirect then
                         soilSys:onHerbicideAppliedDirect(fId, herbEffectiveness, sectionLiters * herbAreaFraction)
@@ -7098,6 +7179,13 @@ function HookManager:installSprayerAreaHook()
 
             if not success then
                 SoilLogger.error("Sprayer area hook failed: %s", tostring(errorMsg))
+            end
+
+            -- #1154: hand the litres this tick credited to the drain that runs after every other
+            -- hook (installDrainTokenHook's append). A target dose (SF-73) is physical already, and
+            -- a credit that failed credited nothing.
+            if success and sf73Cycle == nil and sfCreditedLiters > 0 then
+                self._sfCreditedLitersThisTick = sfCreditedLiters
             end
         end
     )
