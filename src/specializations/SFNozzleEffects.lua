@@ -653,6 +653,52 @@ function SFNozzleEffects:sfUpdateNozzleEffectsState(sprayerEffects, dt, isTurned
     end
 end
 
+--- #1154: where pass 3 reads the ground for a nozzle standing at (probeX, probeZ).
+--- Pass 3 judges the ground the boom is about to cover. Read on the boom line it read the
+--- strip this pass had just credited: each tick's dose goes into every value-map pixel
+--- whose centre the boom has passed (_nutrientPassStrip), so within a second every probe
+--- read full, every nozzle closed, and a sprayer whose one undivided work area follows the
+--- centre nozzle stopped for good while the credit kept the strip under it full.
+--- It now reads the first value-map pixel whose centre lies ahead of the nozzle, along the
+--- vehicle's heading (the engine's forward, localDirectionToWorld(rootNode, 0, 0, 1)), by at
+--- least PASS3_CENTRE_MARGIN of a pixel: a pixel the pass cannot have credited yet, and
+--- the nearest one, so the decision leads the boom by about one pixel and no more. The
+--- returned point is that pixel's centre, so a caller testing which farmland it is on tests
+--- the ground actually read. With no value-map grid the point is PASS3_LOOKAHEAD_MIN
+--- metres ahead (pass 3 then reads field averages, which no point changes). The nozzle's
+--- own node is not used for the direction: it is the vehicle's i3d node and may be rotated.
+--- Returns nil when there is no heading, so the caller makes no decision rather than fall
+--- back to the credited strip.
+SFNozzleEffects.PASS3_CENTRE_MARGIN = 0.25
+SFNozzleEffects.PASS3_LOOKAHEAD_MIN = 1.0
+function SFNozzleEffects.pass3ReadPoint(vehicle, probeX, probeZ, valueMaps)
+    local root = vehicle and vehicle.rootNode
+    if root == nil or type(localDirectionToWorld) ~= "function" then return nil end
+    local ok, dx, _, dz = pcall(localDirectionToWorld, root, 0, 0, 1)
+    if not ok or type(dx) ~= "number" or type(dz) ~= "number" then return nil end
+    local len = math.sqrt(dx * dx + dz * dz)
+    if len < 1e-6 then return nil end
+    local hx, hz = dx / len, dz / len
+    local grain, terrain = nil, nil
+    if valueMaps ~= nil and type(valueMaps.getGrainMetres) == "function" then
+        grain, terrain = valueMaps:getGrainMetres(), valueMaps.terrainSize
+    end
+    if type(grain) ~= "number" or grain <= 0 or type(terrain) ~= "number" or terrain <= 0 then
+        local d = SFNozzleEffects.PASS3_LOOKAHEAD_MIN
+        return probeX + hx * d, probeZ + hz * d
+    end
+    local half = terrain * 0.5
+    local function centreOf(v) return (math.floor((v + half) / grain) + 0.5) * grain - half end
+    local margin = grain * SFNozzleEffects.PASS3_CENTRE_MARGIN
+    local d = grain * 0.5
+    for _ = 1, 4 do
+        local cx, cz = centreOf(probeX + hx * d), centreOf(probeZ + hz * d)
+        if (cx - probeX) * hx + (cz - probeZ) * hz >= margin then return cx, cz end
+        d = d + grain * 0.5
+    end
+    return centreOf(probeX + hx * d), centreOf(probeZ + hz * d)
+end
+
 -- Per-nozzle decision: returns (isActive, amountScale).
 -- Checks in order: sprayer state → section active → field boundary → See & Spray threshold.
 function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, lastSpeed)
@@ -742,13 +788,22 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
         if sfm3 and sfm3.soilSystem and prof then
             local fieldId3 = nozzleFarmId or spec._sfFieldId
             local fd3 = fieldId3 and sfm3.soilSystem.fieldData[fieldId3]
-            if fd3 then
+            -- #1154: read ahead of the boom (pass3ReadPoint). When there is no heading, or
+            -- the point ahead is off this nozzle's farmland (the end of the field, where it
+            -- would read a neighbour's ground), pass 3 makes no decision and the nozzle
+            -- sprays, as it does without See & Spray.
+            local readX, readZ = SFNozzleEffects.pass3ReadPoint(self, probeX, probeZ, sfm3.soilSystem.valueMaps)
+            if readX ~= nil and nozzleFarmId ~= nil and g_farmlandManager ~= nil then
+                local aheadFarm = g_farmlandManager:getFarmlandIdAtWorldPosition(readX, readZ)
+                if aheadFarm ~= nozzleFarmId then readX = nil end
+            end
+            if fd3 and readX ~= nil then
                 -- REFINED: per-pixel nutrient reads from the value maps at the probe
                 -- position, falling back to field averages for unwritten pixels.
                 local soilSys3 = sfm3.soilSystem
                 local vm3 = (soilSys3.vmAvailable and soilSys3:vmAvailable()) and soilSys3.valueMaps or nil
                 local function vmRead(key)
-                    if vm3 then return vm3:readValueAtWorld(key, probeX, probeZ) end
+                    if vm3 then return vm3:readValueAtWorld(key, readX, readZ) end
                     return nil
                 end
                 local cellN  = vmRead("nitrogen")      or fd3.nitrogen      or 0
