@@ -856,15 +856,26 @@ function HookManager:installAIFruitRequirementGuard()
         return false
     end
 
-    local sizeCache = {}   -- [densityMapId] = resolution in px
+    local sizeCache = {}   -- [densityMapId] = resolution in px, or false once the engine has rejected it
     local reported  = {}   -- [densityMapId] = true once measured and logged
     local groundSize       -- ground-type resolution, measured once
 
+    -- A mapId the engine rejects (invalid type for getDensityMapSize) logs its own
+    -- "invalid type" error on every call, pcall or not: pcall only stops the Lua
+    -- side from propagating, it does not stop the engine's own log line. Caching the
+    -- failure (false, distinct from "never probed") stops this function from calling
+    -- getDensityMapSize again for that mapId, which is the only way to stop the log.
     local function measure(mapId)
         local cached = sizeCache[mapId]
-        if cached ~= nil then return cached end
+        if cached ~= nil then
+            if cached == false then return nil end
+            return cached
+        end
         local ok, size = pcall(getDensityMapSize, mapId)
-        if not ok or size == nil then return nil end
+        if not ok or size == nil then
+            sizeCache[mapId] = false
+            return nil
+        end
         sizeCache[mapId] = size
         return size
     end

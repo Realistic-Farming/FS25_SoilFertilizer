@@ -419,3 +419,9 @@
 - [x] `HookManager.logInactiveWorkAreasOnce` (called from `drainCreditedLitres`): one `[#1154 diag]` line per sprayer model per session, three at most, naming each spray work area's slot, the slot's listed fill types and whether the slot and the area count as active. Bar rows J0 to J12 in `SF-1154-credit_without_native_drain_entry_point_test.lua` (development fails 9; all 16 mutants killed).
 - [ ] Read the first `[#1154 diag]` line from an affected sprayer, decide whether the root fix (names on every bound slot) is the cause, then build or close the MAINTENANCE row dated 2026-11-17.
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-17 (Fred (via Desk)): AI guard reject-once density cache (#1141)
+
+- [x] `src/hooks/HookManager.lua`: `installAIFruitRequirementGuard`'s `measure()` caches a rejected mapId (`false`, distinct from "never probed", also for an engine answer of nil) instead of only caching a successful `getDensityMapSize` read, so a mapId the engine rejects is probed at most once instead of once per AI update tick.
+- [x] Bar `SF1141-aiguard_density_negative_cache_test.lua` (12 assertions; development fails 4) and the mutation script `mutate_sf1141_aiguard.py` (5 mutants).
+- [~] In game (owed): the TESTING row for this PR, Courseplay over already-seeded ground with log.txt read before and after.
