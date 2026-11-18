@@ -592,7 +592,8 @@
     <e k="sf_notify_critical_title" v="Kritieke Zorgwaarschuwing" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Veld %d vereist onmiddellijke aandacht! Urgentie: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Bodemupdate" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Veld %d volledig behandeld met %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Dekkingsdoel van de beurt bereikt: veld %d, %s, %d%% bedekt bij x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Dekkingsdoel van de beurt bereikt: veld %d, %s, ongeveer %d%% bedekt (geschat) bij x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Meststofverbranding" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Veld %d: schade door overdosering (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Bodem Mod: Datasynchronisatieprobleem gedetecteerd. Meld dit als het aanhoudt." eh="1a307946" />

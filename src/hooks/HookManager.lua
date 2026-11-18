@@ -6615,6 +6615,12 @@ function HookManager:installSprayerAreaHook()
                     local cap = sf73Plan.capacity or 0
                     rateMultiplier = (cap > 0) and (liters / cap) or 1.0
                 end
+                -- #1063 part 3 (W3): the rate the player selected, for the pass-coverage
+                -- notice applyFertilizer may show this tick. An SF-73 target cycle's own dose
+                -- rate is not a selection, and those passes skip the notice until W2.
+                -- Cleared after the pcall below, with _sf73TargetField.
+                local _ssRate = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+                if _ssRate then _ssRate._passRateMult = (sf73Cycle == nil) and rateMultiplier or nil end
                 local effectiveLiters = liters
 
                 -- [#1063] The litres per hectare this pass put down, which the litre
@@ -7244,7 +7250,10 @@ function HookManager:installSprayerAreaHook()
             end)
 
             local ssClear = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
-            if ssClear then ssClear._sf73TargetField = nil end
+            if ssClear then
+                ssClear._sf73TargetField = nil
+                ssClear._passRateMult = nil   -- #1063 W3: a rate never outlives its tick
+            end
             if not success and sf73Cycle ~= nil and not sf73Cycle.commitStarted then
                 -- product was spent and the consequence path threw: record the failure
                 -- (target stops, anchor cleared) rather than let the next cycle re-dose

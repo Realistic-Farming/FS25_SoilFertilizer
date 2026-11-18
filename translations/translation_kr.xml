@@ -591,7 +591,8 @@
     <e k="sf_notify_critical_title" v="긴급 관리 경보" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="%d번 필드에 즉각적인 조치가 필요합니다! 긴급도: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="토양 업데이트" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="%d번 필드 처리가 완료되었습니다: %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="패스 커버리지 목표 도달: 필드 %d, %s, %d%% 살포 완료 (x%.2f)" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="패스 커버리지 목표 도달: 필드 %d, %s, 약 %d%% 살포 완료 (추정, x%.2f)" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="비료 피해" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="%d번 필드: 과다 살포 피해 발생 (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="토양 모드: 데이터 동기화 문제가 감지되었습니다. 지속될 경우 보고해 주세요." eh="1a307946" />

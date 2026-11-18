@@ -8,7 +8,8 @@
 --       hectare at 1.0x drains exactly the configured mass;
 --   U2  the one conversion (HookManager.massEquivalent), litres x density;
 --   U3  the four interpretation sites, each driven through its REAL body: the
---       nutrient factor, the fully-treated comparison, the litre-fallback coverage
+--       nutrient factor, the fully-treated comparison (retired for the notice by
+--       #1063 part 3: the notice reads pass coverage, group D), the litre-fallback coverage
 --       (retired by #1063: it now divides litres by the applied L/ha, group E),
 --       and the HUD ghost bar, which must use the same function as the threshold;
 --   U4  passthrough: liquids, base-game FERTILIZER and LIME convert by nothing;
@@ -179,25 +180,61 @@ do
 end
 
 -- =====================================================================
--- GROUP D: U3 site 2, the fully-treated comparison (buffer litres vs kg threshold).
+-- GROUP D: U3 site 2 is retired for the notice (#1063 part 3, W3; Design's answer of
+-- 2026-10-02). The pass-coverage notice reads the CURRENT product's pass coverage and the
+-- rate the sprayer hook hands over (_passRateMult), never the buffer litres against a kg
+-- threshold. getText is stubbed to show the key and the arguments it was given.
 -- =====================================================================
-local function treatedRun(ft, liters)
-  local s = newSys(); local f = newField(s, 1, 2.0)
-  f.coverageFraction = 0.95
+local function noticeRun(ft, liters, sessionCov, opts)
+  opts = opts or {}
+  local s = opts.sys or newSys()
+  local f = (opts.sys and s.fieldData[1]) or newField(s, 1, 2.0)
+  f.sessionLastProduct      = opts.lastProduct or ft.name
+  f.sessionCoverageFraction = sessionCov
+  f._geometricCoverageOwner = opts.cells or nil
+  s._passRateMult           = (opts.rate ~= false) and (opts.rate or 1.0) or nil
+  s._sf73TargetField        = opts.sf73 and 1 or nil
   s:applyFertilizer(1, ft.index, liters, nil)
+  s._passRateMult, s._sf73TargetField = nil, nil
   return s, f
 end
+local savedGetText = g_i18n.getText
+g_i18n.getText = function(_, key) return key .. "|%d|%s|%d|%.2f" end
 do
-  local threshold = 2.0 * BR.UREA.value * THR          -- kg-derived
-  local s1 = treatedRun(FT.UREA, threshold)            -- raw litres == threshold: 0.77 x is short
-  T.eq("U D1: UREA litres equal to the kg threshold are NOT fully treated (0.77 of the mass)", #s1._notices, 0)
-  -- A hair above the exact boundary: (t / 0.77) * 0.77 can land one ulp under t,
-  -- and the site compares with >=. The row is about the conversion, not the ulp.
-  local s2 = treatedRun(FT.UREA, (threshold / 0.77) * (1 + 1e-9))
-  T.eq("U D2: UREA litres whose mass meets the threshold ARE fully treated", #s2._notices, 1)
-  local s3 = treatedRun(FT.FERTILIZER, 2.0 * BR.FERTILIZER.value * THR)
-  T.eq("U D3: FERTILIZER at raw litres == threshold is fully treated, as before", #s3._notices, 1)
+  local oldThreshold = 2.0 * BR.UREA.value * THR          -- the retired kg-derived figure
+  local s1 = noticeRun(FT.UREA, 1.0, 0.95)
+  T.eq("U D1: 90%+ pass coverage is the notice, however few litres went down", #s1._notices, 1)
+  T.eq("U D1b: it names the field, the product, the coverage and the rate, estimated (litre coverage)",
+       s1._notices[1] and s1._notices[1].body, "sf_notify_pass_body_est|1|UREA|95|1.00")
+  local s2 = noticeRun(FT.UREA, oldThreshold * 10, 0.89)
+  T.eq("U D2: below 90% pass coverage there is no notice, however many litres went down", #s2._notices, 0)
+  local s3 = noticeRun(FT.UREA, 1.0, 0.90, { cells = true, rate = 0.5 })
+  T.eq("U D3: boom-cell coverage is not estimated, and the selected rate is the one shown",
+       s3._notices[1] and s3._notices[1].body, "sf_notify_pass_body|1|UREA|90|0.50")
+  local s4 = noticeRun(FT.UREA, 1.0, 0.95, { lastProduct = "COMPOST" })
+  T.eq("U D4: another product's pass coverage is not this product's notice", #s4._notices, 0)
+  local s5 = noticeRun(FT.UREA, 1.0, 0.95, { rate = false })
+  T.eq("U D5: with no rate handed over there is no notice, rather than claim x1.00", #s5._notices, 0)
+  local s6 = noticeRun(FT.UREA, 1.0, 0.95, { sf73 = true })
+  T.eq("U D6: an SF-73 target cycle gets no notice yet (its coverage still counts dose, W2)", #s6._notices, 0)
+  local s7 = noticeRun(FT.INSECTICIDE, 1.0, 0.95)
+  T.eq("U D7: a crop-protection product gets no notice", #s7._notices, 0)
 end
+do
+  -- once per field, product and in-game day
+  local savedEnv = g_currentMission.environment
+  g_currentMission.environment = { currentDay = 11 }
+  local s = noticeRun(FT.UREA, 1.0, 0.95)
+  noticeRun(FT.UREA, 1.0, 1.0, { sys = s })
+  T.eq("U D8: the same product on the same day: one notice", #s._notices, 1)
+  noticeRun(FT.COMPOST, 1.0, 0.95, { sys = s })
+  T.eq("U D9: another product on the same day gets its own", #s._notices, 2)
+  g_currentMission.environment = { currentDay = 12 }
+  noticeRun(FT.UREA, 1.0, 0.95, { sys = s })
+  T.eq("U D10: the next day the same product may say it again", #s._notices, 3)
+  g_currentMission.environment = savedEnv
+end
+g_i18n.getText = savedGetText
 
 -- =====================================================================
 -- GROUP E: U3 site 3, trackSprayerCoverage's litre fallback. RETIRED by #1063:
@@ -281,15 +318,15 @@ do
   T.near("U F5: FERTILIZER ghost is the old arithmetic", bars[1].total - bars[1].fill, expectedGhost(FT.FERTILIZER, 200, 2.0, 50), 1e-9)
 end
 do
-  -- Bar and threshold agree: the buffer whose MASS meets the threshold (a hair
-  -- above the exact boundary, see D2) shows zero ghost here and is fully treated
-  -- at site 2.
+  -- The buffer whose MASS meets the old threshold (a hair above the exact boundary)
+  -- shows zero ghost here (site 4, unchanged). Site 2 is retired for the notice
+  -- (#1063 part 3), so the same buffer alone no longer earns one.
   local exact = ((2.0 * BR.UREA.value * THR) / 0.77) * (1 + 1e-9)
   local ok, _, bars = drawRow(FT.UREA, exact, 2.0, 50)
   T.ok("U F6: row drew at the exact threshold", ok)
   T.near("U F7: zero ghost remaining at the mass threshold", bars[1].total - bars[1].fill, 0, 1e-9)
-  local s = treatedRun(FT.UREA, exact)
-  T.eq("U F8: and site 2 calls the same buffer fully treated", #s._notices, 1)
+  local s = noticeRun(FT.UREA, exact, 0.0)
+  T.eq("U F8: and the notice no longer reads that buffer: no pass coverage, no notice", #s._notices, 0)
 end
 
 -- =====================================================================

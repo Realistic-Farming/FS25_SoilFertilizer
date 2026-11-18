@@ -6810,35 +6810,64 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
 
     field.fertilizerApplied = (field.fertilizerApplied or 0) + liters
 
-    -- Check for "Field fully treated" notification (once per field per day at 90% threshold)
-    -- Skip notification for crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE) -
-    -- they share FERTILIZER_PROFILES entries for pest/disease reduction but are not fertilizers,
-    -- so "fully treated with INSECTICIDE" would be misleading and incorrect.
+    -- #1063 part 3 (W3): the pass-coverage notice (checkPassCoverageNotice below).
+    -- Crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE) share
+    -- FERTILIZER_PROFILES entries for pest/disease reduction but are not fertilizers,
+    -- so they get no notice. An SF-73 target cycle gets none either: its coverage
+    -- still counts dose rather than ground until W2.
     local isCropProtection = (
         (SoilConstants.PEST_PRESSURE    and SoilConstants.PEST_PRESSURE.INSECTICIDE_TYPES    and SoilConstants.PEST_PRESSURE.INSECTICIDE_TYPES[fillType.name])    or
         (SoilConstants.DISEASE_PRESSURE and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES   and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[fillType.name])    or
         (SoilConstants.WEED_PRESSURE    and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES      and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES[fillType.name])
     )
     if not isCropProtection and not sf73 then
-        local baseRateEntry = SoilConstants.SPRAYER_RATE.BASE_RATES[fillType.name] or
-                             SoilConstants.SPRAYER_RATE.BASE_RATES.DEFAULT
-        local targetVolume = areaInHa * baseRateEntry.value
-        local coverageThreshold = targetVolume * SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD
-
-        local minCoverage = SoilConstants.COVERAGE and SoilConstants.COVERAGE.MIN_FULL_CREDIT or 0.70
-        -- RSF-F196 U3 (site 2 of 4): the buffer is litres (U1, unchanged) and the
-        -- threshold is derived from a kg/ha rate, so the litres convert first.
-        if massEquivalent(fillType, field.nutrientBuffer[fillTypeIndex]) >= coverageThreshold and
-           (field.coverageFraction or 0) >= minCoverage then
-            local today = (g_currentMission and g_currentMission.environment and
-                           g_currentMission.environment.currentDay) or 0
-            if not self.fertNotifyShown then self.fertNotifyShown = {} end
-            if self.fertNotifyShown[fieldId] ~= today then
-                self:showNotification(g_i18n:getText("sf_notify_treated_title"), string.format(g_i18n:getText("sf_notify_treated_body"), fieldId, fillType.name))
-                self.fertNotifyShown[fieldId] = today
-            end
-        end
+        self:checkPassCoverageNotice(fieldId, field, fillType)
     end
+end
+
+--- #1063 part 3 (W3; Design's answer of 2026-10-02, section 2): the pass-coverage notice
+--- that replaced "Field %d fully treated with %s".
+---
+--- It fires once per field, product and in-game day, when the CURRENT product's pass
+--- coverage (sessionCoverageFraction, which the product-switch reset of #442 and #1145
+--- keeps to one product) reaches FERTILIZER_COVERAGE_THRESHOLD, at whatever rate the
+--- player chose. It states the coverage and the selected rate, and says "estimated" when
+--- the coverage was worked out from litres rather than counted from boom cells (no
+--- _geometricCoverageOwner). It no longer compares the product's litres with a 1.0x
+--- BASE_RATES dose (RSF-F196 U3 site 2, retired for this notice only), so it never claims
+--- that a full dose went down or that N/P/K needs were met.
+---
+--- The rate is the multiplier the sprayer hook read from the rate manager for this tick
+--- (_passRateMult, set beside that lookup and cleared after the hook's pcall). With no
+--- rate in reach the notice is not shown, rather than claim x1.00.
+---@param fieldId  number
+---@param field    table  self.fieldData[fieldId]
+---@param fillType table  the credited product's fill type
+function SoilFertilitySystem:checkPassCoverageNotice(fieldId, field, fillType)
+    if type(field) ~= "table" or type(fillType) ~= "table" then return end
+    if field.sessionLastProduct ~= fillType.name then return end
+    local rate = self._passRateMult
+    if type(rate) ~= "number" or rate ~= rate or rate <= 0 or rate == math.huge then return end
+    local coverage = field.sessionCoverageFraction or 0
+    local target = SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD or 0.90
+    if coverage < target then return end
+
+    local today = (g_currentMission and g_currentMission.environment and
+                   g_currentMission.environment.currentDay) or 0
+    if type(self.fertNotifyShown) ~= "table" then self.fertNotifyShown = {} end
+    local shown = self.fertNotifyShown[fieldId]
+    if type(shown) ~= "table" or shown.day ~= today then
+        shown = { day = today }
+        self.fertNotifyShown[fieldId] = shown
+    end
+    if shown[fillType.name] then return end
+    shown[fillType.name] = true
+
+    local estimated = not field._geometricCoverageOwner
+    local bodyKey = estimated and "sf_notify_pass_body_est" or "sf_notify_pass_body"
+    local pct = math.floor(math.min(1.0, coverage) * 100 + 0.5)
+    self:showNotification(g_i18n:getText("sf_notify_treated_title"),
+        string.format(g_i18n:getText(bodyKey), fieldId, fillType.title or fillType.name, pct, rate))
 end
 
 -- =========================================================

@@ -599,7 +599,8 @@
     <e k="sf_notify_critical_title" v="Alertă Îngrijire Critică" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Câmpul %d necesită atenție imediată! Urgență: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Actualizare Sol" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Câmpul %d a fost tratat complet cu %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Ținta de acoperire a trecerii atinsă: câmpul %d, %s, %d%% acoperit la x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Ținta de acoperire a trecerii atinsă: câmpul %d, %s, aproximativ %d%% acoperit (estimat) la x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Arsură de Îngrășământ" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Câmpul %d: daune de supra-aplicare (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Mod Sol: s-a detectat o problemă de sincronizare a datelor. Te rugăm să raportezi dacă persistă." eh="1a307946" />

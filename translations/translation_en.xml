@@ -598,7 +598,8 @@
     <e k="sf_notify_critical_title" v="Critical Care Alert" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Field %d requires immediate attention! Urgency: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Soil Update" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Field %d fully treated with %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Pass coverage target reached: field %d, %s, %d%% covered at x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Pass coverage target reached: field %d, %s, about %d%% covered (estimated) at x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Fertilizer Burn" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Field %d: over-application damage (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Data sync issue detected. Please report if this persists." eh="1a307946" />

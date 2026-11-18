@@ -566,7 +566,8 @@
     <e k="sf_notify_critical_title" v="Критическое состояние" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Поле %d требует внимания! Срочность: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Обновление почвы" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Поле %d обработано: %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Целевое покрытие прохода достигнуто: поле %d, %s, покрыто %d%% при x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Целевое покрытие прохода достигнуто: поле %d, %s, покрыто примерно %d%% (оценка) при x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Ожог удобрениями" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Поле %d: урон от передозировки (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Мод: Ошибка синхронизации данных. Сообщите, если повторится." eh="1a307946" />

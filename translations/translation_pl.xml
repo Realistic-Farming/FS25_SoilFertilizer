@@ -592,7 +592,8 @@
     <e k="sf_notify_critical_title" v="Alert pilnej uwagi" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Pole %d wymaga natychmiastowej uwagi! Pilność: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Aktualizacja gleby" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Pole %d w pełni nawiezione produktem %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Osiągnięto docelowe pokrycie przejazdu: pole %d, %s, pokryto %d%% przy x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Osiągnięto docelowe pokrycie przejazdu: pole %d, %s, pokryto około %d%% (szacunkowo) przy x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Przypalenie nawozem" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Pole %d: uszkodzenie przez przedawkowanie (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Wykryto problem z synchronizacją danych. Zgłoś to, jeśli błąd będzie trwał." eh="1a307946" />

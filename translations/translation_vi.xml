@@ -569,7 +569,8 @@
     <e k="sf_notify_critical_title" v="Cảnh báo chăm sóc khẩn cấp" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Cánh đồng %d cần chú ý ngay lập tức! Độ khẩn: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Cập nhật đất" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Cánh đồng %d đã được xử lý đầy đủ với %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Đã đạt mục tiêu độ phủ của lượt: ruộng %d, %s, phủ %d%% ở mức x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Đã đạt mục tiêu độ phủ của lượt: ruộng %d, %s, phủ khoảng %d%% (ước tính) ở mức x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Cháy lá do phân bón" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Cánh đồng %d: thiệt hại do bón quá liều (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Phát hiện lỗi đồng bộ dữ liệu. Hãy báo cáo nếu lỗi này lặp lại." eh="1a307946" />
