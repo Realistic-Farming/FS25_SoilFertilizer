@@ -33,12 +33,18 @@
 --   N    the nutrient credit (N, P, K), fertilizerApplied and the product's buffer
 --        litres: the figures this same bar measured at development 0bb388b7, before
 --        the change (there it fails A-D, P2-P4, K2 and K4, the defect, and passes N)
+--   W3   part 3 (Design's answer of 2026-10-02): the pass-coverage notice. Once per pass at
+--        90% of the current product's pass coverage, at any selected rate (0.5x too, which
+--        the old dose rule never reached), "estimated" on a rig without sections and not on
+--        a sectioned one, the rate the player selected, the shipped English sentence.
+--        Crop protection gets none, and no rate outlives its tick.
 --
 -- What this bar does NOT prove: the engine's own spray-type XML on a real map, the
 -- value-map rasters' rounding on a real map, the HUD (it draws what this bar reads),
--- the "field fully treated" notification (#1063 part 3, a Design question), MP.
+-- MP.
 --
 --!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua
+--!text: translations/translation_en.xml
 
 SoilLogger.debug = function() end
 SoilLogger.info = function() end
@@ -548,4 +554,62 @@ for _, id in ipairs({ "A", "B", "C", "D", "P", "S" }) do
       T.ok(string.format("N %s %s: %s, as at 0bb388b7 (%s)", id, key, tostring(r[key]), tostring(g[key])), near(r[key], g[key], 1e-9))
     end
   end
+end
+
+-- =====================================================================
+-- W3. #1063 part 3: the pass-coverage notice, from the hook to the shipped English
+-- =====================================================================
+-- The shipped English sentences, read from the language file the game loads.
+local EN = {}
+do
+  local xml = (SOURCE_TEXT and SOURCE_TEXT["translations/translation_en.xml"]) or ""
+  for k, v in xml:gmatch('<e k="(sf_notify_[%w_]+)" v="([^"]*)"') do EN[k] = v end
+end
+T.ok("W3.0 [reached] the shipped English carries both notice sentences",
+     EN.sf_notify_pass_body ~= nil and EN.sf_notify_pass_body_est ~= nil)
+T.eq("W3.0b and the dose sentence is gone", EN.sf_notify_treated_body, nil)
+
+-- A whole-field pass through the real hook with the notices caught and the game's English
+-- in getText. Each notice records the pass coverage the check read when it fired.
+local function noticePass(opts)
+  newWorld(opts)
+  local notices = {}
+  W.ss.showNotification = function(_, title, body)
+    notices[#notices + 1] = { title = title, body = body, at = field().sessionCoverageFraction }
+  end
+  local realGetText = g_i18n.getText
+  g_i18n.getText = function(_, k) return EN[k] or k end
+  run(W.v, TICKS)
+  g_i18n.getText = realGetText
+  return notices
+end
+local EST  = "^Pass coverage target reached: field 7, FERTILIZER, about (%d+)%% covered %(estimated%) at x(%d%.%d%d)$"
+local MEAS = "^Pass coverage target reached: field 7, FERTILIZER, (%d+)%% covered at x(%d%.%d%d)$"
+local function promptly(n) return n ~= nil and n.at >= 0.90 - 1e-9 and n.at < 0.90 + 2 / TICKS end
+
+do
+  local n = noticePass({ product = FERT, rate = 1.0 })
+  T.eq("W3.1 FERTILIZER 1.0x without sections: one notice over the whole field", #n, 1)
+  local pct, rate = (n[1] and n[1].body or ""):match(EST)
+  T.ok("W3.2 it reads estimated, names the coverage and x1.00 (" .. tostring(n[1] and n[1].body) .. ")",
+       pct ~= nil and rate == "1.00" and tonumber(pct) == math.floor(n[1].at * 100 + 0.5))
+  T.ok("W3.3 it fired as the pass crossed 90% (" .. tostring(n[1] and n[1].at) .. ")", promptly(n[1]))
+  T.eq("W3.4 under the existing title", n[1] and n[1].title, EN.sf_notify_treated_title)
+  T.eq("W3.5 and the hook left no rate behind", W.ss._passRateMult, nil)
+end
+do
+  local n = noticePass({ product = FERT, rate = 0.5 })
+  local pct, rate = (n[1] and n[1].body or ""):match(EST)
+  T.ok("W3.6 NAMED: half the dose over the whole field still reaches the target, at x0.50 (" .. tostring(n[1] and n[1].body) .. ")",
+       #n == 1 and pct ~= nil and rate == "0.50" and promptly(n[1]))
+end
+do
+  local n = noticePass({ product = FERT, rate = 0.5, vww = true })
+  local pct, rate = (n[1] and n[1].body or ""):match(MEAS)
+  T.ok("W3.7 a sectioned rig counts cells, so the notice is not estimated (" .. tostring(n[1] and n[1].body) .. ")",
+       #n == 1 and pct ~= nil and rate == "0.50" and promptly(n[1]))
+end
+do
+  local n = noticePass({ product = PROP, rate = 0.5 })
+  T.eq("W3.8 crop protection over the whole field: no notice", #n, 0)
 end

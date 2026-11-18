@@ -588,7 +588,8 @@
     <e k="sf_notify_critical_title" v="Kritikus ellátási riasztás" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="A %d mező azonnali figyelmet igényel! Sürgősség: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Talaj frissítés" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="A %d mező teljesen kezelve ezzel: %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Elérte a menet lefedettségi célját: %d. tábla, %s, %d%% lefedve, x%.2f mellett" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Elérte a menet lefedettségi célját: %d. tábla, %s, kb. %d%% lefedve (becsült), x%.2f mellett" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Műtrágya kiégés" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="%d mező: túladagolási kár (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Talaj Mod: Adatszinkronizálási hiba észlelve. Jelentsd, ha továbbra is fennáll." eh="1a307946" />

@@ -599,7 +599,8 @@
     <e k="sf_notify_critical_title" v="Alerta de Cuidados Críticos" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Campo %d requer atenção imediata! Urgência: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Atualização do Solo" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Campo %d totalmente tratado com %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Objetivo de cobertura da passagem atingido: campo %d, %s, %d%% coberto a x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Objetivo de cobertura da passagem atingido: campo %d, %s, cerca de %d%% coberto (estimado) a x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Queimadura por Fertilizante" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Campo %d: danos por sobreaplicação (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Mod Solo: detetado problema de sincronização de dados. Por favor reporte se persistir." eh="1a307946" />

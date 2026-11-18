@@ -590,7 +590,8 @@
     <e k="sf_notify_critical_title" v="緊急ケア警告" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="フィールド %d に即時の対応が必要です！緊急度: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="土壌アップデート" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="フィールド %d は %s で完全に処理されました" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="走行カバー率の目標に到達：圃場 %d、%s、%d%% カバー（x%.2f）" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="走行カバー率の目標に到達：圃場 %d、%s、約 %d%% カバー（推定、x%.2f）" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="肥料焼け" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="フィールド %d: 過剰散布によるダメージ (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="土壌Mod: データ同期の問題を検出しました。続くようであれば報告してください。" eh="1a307946" />

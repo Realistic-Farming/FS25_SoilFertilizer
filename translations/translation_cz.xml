@@ -598,7 +598,8 @@
     <e k="sf_notify_critical_title" v="Upozornění na kritickou péči" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Pole %d vyžaduje okamžitou pozornost! Naléhavost: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Aktualizace půdy" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Pole %d plně ošetřeno pomocí %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Cílové pokrytí přejezdu dosaženo: pole %d, %s, pokryto %d%% při x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Cílové pokrytí přejezdu dosaženo: pole %d, %s, pokryto přibližně %d%% (odhad) při x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Popálení hnojivem" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Pole %d: poškození nadměrnou aplikací (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Zjištěn problém se synchronizací dat. Nahlaste prosím, pokud to přetrvává." eh="1a307946" />

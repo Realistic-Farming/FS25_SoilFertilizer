@@ -425,3 +425,11 @@
 - [x] `src/hooks/HookManager.lua`: `installAIFruitRequirementGuard`'s `measure()` caches a rejected mapId (`false`, distinct from "never probed", also for an engine answer of nil) instead of only caching a successful `getDensityMapSize` read, so a mapId the engine rejects is probed at most once instead of once per AI update tick.
 - [x] Bar `SF1141-aiguard_density_negative_cache_test.lua` (12 assertions; development fails 4) and the mutation script `mutate_sf1141_aiguard.py` (5 mutants).
 - [~] In game (owed): the TESTING row for this PR, Courseplay over already-seeded ground with log.txt read before and after.
+
+## 2026-11-18 (Fred (via Desk)): the pass-coverage notice (#1063 part 3, W3)
+
+- [x] `src/SoilFertilitySystem.lua`: `checkPassCoverageNotice` replaces the dose comparison at the end of `applyFertilizer`. `src/hooks/HookManager.lua`: the area hook hands the selected rate over (`_passRateMult`) and clears it with `_sf73TargetField`. Two new strings, `sf_notify_pass_body` and `sf_notify_pass_body_est`, in all 27 language files; the unused `sf_notify_treated_body` is removed (the title key stays).
+- [x] Bars: group D of `RSF-F196-unit_rule_test.lua` (rewritten for the retired site 2: D1 to D10, and F8), group W3 of `SF-1063-pass_percent_unsectioned_spec_test.lua` (W3.0 to W3.8, from the hook to the shipped English sentence), OBS 9 and 11 of `RSF-F196-unit_rule_fallback_observable_test.lua`. Development fails 14 of them; `mutate_sf1063_w3.py` kills 10 of 10 mutants running only those three files.
+- [ ] W2: AUTO target passes count ground, then take the notice.
+- [ ] The HUD Pass % line says "estimated" on rigs without sections (its own PR).
+- [~] In game (owed): the TESTING row for this PR.

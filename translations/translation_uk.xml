@@ -569,7 +569,8 @@
     <e k="sf_notify_critical_title" v="Критичний стан" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Поле %d потребує негайної уваги! Терміновість: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Оновлення ґрунту" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Поле %d повністю оброблено %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Цільове покриття проходу досягнуто: поле %d, %s, покрито %d%% при x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Цільове покриття проходу досягнуто: поле %d, %s, покрито приблизно %d%% (оцінка) при x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Опік добривами" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Поле %d: пошкодження від надмірної норми (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Помилка синхронізації даних. Повідомте, якщо це повториться." eh="1a307946" />

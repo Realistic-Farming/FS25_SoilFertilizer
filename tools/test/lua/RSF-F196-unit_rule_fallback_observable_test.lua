@@ -8,7 +8,8 @@
 -- prove nothing. So each fallback records that it was taken, and this bar proves
 -- three things: with HookManager present the counters never move; with it absent
 -- they move exactly when the unconverted value is used; and (since #1063 retired
--- site 3, the litre coverage, which used to resolve a name) the coverage resolves
+-- site 3, the litre coverage, which used to resolve a name, and #1063 part 3 retired
+-- site 2, the fully-treated comparison, for the notice) the coverage resolves
 -- no name at all, so its unresolved-name counter never moves.
 --
 --!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
@@ -59,10 +60,10 @@ do
   HookManager = savedHM
   T.ok("OBS 7: applyFertilizer still runs without HookManager (" .. tostring(err) .. ")", ok)
   T.near("OBS 8: but converts by 1, the shape a silent fallback would hide", f.nitrogen - n0, PF.UREA.N * (40 / 1000) / 4.0 * RR * TUN, 1e-9)
-  -- One applyFertilizer call reaches the wrapper TWICE: the nutrient factor and the
-  -- fully-treated comparison. Both fallbacks are counted, so a bar cannot mistake
-  -- "one site converted" for "both did".
-  T.eq("OBS 9: and the fallback is RECORDED, once per site reached (the factor and the fully-treated comparison)", SoilFertilitySystem.unitRuleFallbacks, 2)
+  -- One applyFertilizer call reaches the wrapper ONCE: the nutrient factor. The
+  -- fully-treated comparison was the second site until #1063 part 3 (W3) retired it
+  -- for the notice, which now reads pass coverage and converts nothing.
+  T.eq("OBS 9: and the fallback is RECORDED, once per site reached (the factor; the notice converts nothing since #1063 part 3)", SoilFertilitySystem.unitRuleFallbacks, 1)
 end
 
 -- ── the litre coverage resolves no name since #1063 (site 3 retired) ──
@@ -75,7 +76,7 @@ do
   s:trackSprayerCoverage(1, 100, "UREA", true, 180)
   g_fillTypeManager = saved
   T.eq("OBS 10: no manager: nothing to resolve, nothing counted as unresolved", SoilFertilitySystem.unitRuleUnresolvedNames, nil)
-  T.eq("OBS 11: and NOT as a system fallback (HookManager was present; the count is still the two from OBS 9)", SoilFertilitySystem.unitRuleFallbacks, 2)
+  T.eq("OBS 11: and NOT as a system fallback (HookManager was present; the count is still the one from OBS 9)", SoilFertilitySystem.unitRuleFallbacks, 1)
   s:trackSprayerCoverage(1, 100, "NOT_A_FILL_TYPE", true, 180)
   T.eq("OBS 12: a name the manager does not know: still nothing counted", SoilFertilitySystem.unitRuleUnresolvedNames, nil)
   T.near("OBS 12b: and both ticks counted their area from the litres alone", f.coveredAreaHa, 200 / 180, 1e-12)

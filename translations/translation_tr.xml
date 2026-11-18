@@ -570,7 +570,8 @@
     <e k="sf_notify_critical_title" v="Kritik Bakım Uyarısı" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Tarla %d acil müdahale gerektiriyor! Aciliyet: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Toprak Güncellemesi" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Tarla %d tamamen %s ile tedavi edildi" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Geçiş kapsama hedefine ulaşıldı: tarla %d, %s, %%%d kaplandı, oran x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Geçiş kapsama hedefine ulaşıldı: tarla %d, %s, yaklaşık %%%d kaplandı (tahmini), oran x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Gübre Yanması" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Tarla %d: aşırı uygulama hasarı (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Toprak Modu: Veri senkronizasyon sorunu algılandı. Bu devam ederse lütfen bildirin." eh="1a307946" />

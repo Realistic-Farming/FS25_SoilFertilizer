@@ -569,7 +569,8 @@
     <e k="sf_notify_critical_title" v="Alerta de cuidado crítico" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="¡El campo %d requiere atención inmediata! Urgencia: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Actualización del suelo" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Campo %d totalmente tratado con %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Objetivo de cobertura de la pasada alcanzado: campo %d, %s, %d%% cubierto a x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Objetivo de cobertura de la pasada alcanzado: campo %d, %s, aproximadamente %d%% cubierto (estimado) a x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Quemadura por abono" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Campo %d: daño por sobre-aplicación (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Error de sincronización. Infórmalo si persiste." eh="1a307946" />

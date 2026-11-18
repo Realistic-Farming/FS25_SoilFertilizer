@@ -569,7 +569,8 @@
     <e k="sf_notify_critical_title" v="Kritisk alarm" eh="3f981d0c" />
     <e k="sf_notify_critical_body" v="Mark %d kræver øjeblikkelig opmærksomhed! Hastegrad: %d%%" eh="171246aa" />
     <e k="sf_notify_treated_title" v="Jordopdatering" eh="4633156e" />
-    <e k="sf_notify_treated_body" v="Mark %d fuldt behandlet med %s" eh="585aa9b7" />
+    <e k="sf_notify_pass_body" v="Dækningsmål for passagen nået: mark %d, %s, %d%% dækket ved x%.2f" eh="4560b693" />
+    <e k="sf_notify_pass_body_est" v="Dækningsmål for passagen nået: mark %d, %s, ca. %d%% dækket (anslået) ved x%.2f" eh="14708dfd" />
     <e k="sf_notify_burn_title" v="Gødningssvidning" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Mark %d: Skade fra overdosering (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Jordmod: Datasynkroniseringsfejl. Rapportér venligst hvis dette fortsætter." eh="1a307946" />

@@ -1047,11 +1047,12 @@ SoilConstants.ZONE = {
 -- ========================================
 -- FERTILIZER COVERAGE TRACKING (v2)
 -- ========================================
--- A fertilizer pass requires MIN_FULL_CREDIT fraction of the field to be
--- physically covered before the "fully treated" notification fires.
+-- MIN_FULL_CREDIT is the daily coverage at which the HUD's coverage line turns
+-- good. The pass-coverage notice reads SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD
+-- (#1063 part 3).
 -- Coverage is tracked per-field daily via the cell grid shared with ZONE.
 SoilConstants.COVERAGE = {
-    MIN_FULL_CREDIT = 0.70,  -- 70% of field cells must be visited for full-treated notification
+    MIN_FULL_CREDIT = 0.70,  -- 70% daily coverage: the HUD's coverage line turns good
     PROTECTION_THRESHOLD = 0.80,  -- 80% session coverage required before crop-protection "active" status is granted (issue #441)
 }
 
@@ -1136,7 +1137,7 @@ SoilConstants.SPRAYER_RATE = {
     SCORCH_PH_DROP_CERTAIN     = 0.30,  -- max pH lost over a full scorch pass at/above certainT
     SCORCH_N_DRAIN_RISK        = 5.0,   -- max N drained over a full scorch pass in the risk band (scaled by excess)
     SCORCH_N_DRAIN_CERTAIN     = 12.0,  -- max N drained over a full scorch pass at/above certainT
-    FERTILIZER_COVERAGE_THRESHOLD = 0.90, -- % field coverage needed before nutrients are credited (V1.6 Realism Update)
+    FERTILIZER_COVERAGE_THRESHOLD = 0.90, -- current-product pass coverage at which the pass-coverage notice fires (#1063 part 3)
 
     -- Reference application rates at 1.0x (step 10) per fill type.
     -- unit = "liquid" → value in L/ha;  unit = "dry" → value in kg/ha.
