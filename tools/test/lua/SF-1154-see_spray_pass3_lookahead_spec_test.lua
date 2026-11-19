@@ -404,4 +404,18 @@ do
   drive(v, 4)
   T.eq("B7 a chemical with no target ahead: the message says no target was found", notes[1] and notes[1].body, "sf_ss_closed_notarget")
 end
+do
+  newWorld()
+  bands({ { 1, 15 } })                                   -- a long full patch, z 0 to 16
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -6, 0, 1, true
+  local v = newSprayer()
+  local notes = catch(v, true)
+  drive(v, 14)                                           -- boom to z = 1, over the patch
+  for _ = 1, 3 do                                        -- the boom stays closed while 90 s pass
+    g_time = g_time + SFNozzleEffects.SS_MESSAGE_GAP_MS
+    frame(v)
+  end
+  T.ok("B3b [reached] still closed over the long patch", not areaActive(v))
+  T.eq("B3c one closing, one message, however long it lasts (the gap is not what limits it)", #notes, 1)
+end
 g_i18n.getText = savedGetText
