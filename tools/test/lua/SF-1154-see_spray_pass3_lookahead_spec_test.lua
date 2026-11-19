@@ -33,6 +33,9 @@
 --   L5  no heading to read along: no decision, the boom stays open
 --   L6  the credited line 0.4 m ahead of the nozzles, driven in 0.3 m steps: the margin keeps
 --       the read pixel clear of it
+--   U   #1154 follow-up (a), Tyson 2026-11-18: with a fertilizer an undivided boom follows its
+--       nozzles (open while any is open), not the centre alone; chemicals and a real centre
+--       section keep the centre's decision
 --
 -- What this bar does NOT prove: the engine's processSprayerArea, paint and drain (the
 -- work area being active is what lets them run), the credit's own arithmetic, the nozzle
@@ -286,4 +289,43 @@ do
   CREDIT_LEAD = 0
   T.eq("L6.1 the credit 0.4 m ahead of the nozzles: open on every step (first closed at " .. tostring(first) .. ")", area, 0)
   T.eq("L6.2 and every nozzle too", nozzles, 0)
+end
+
+-- =====================================================================
+-- U. Follow-up (a): an undivided boom with a fertilizer follows its nozzles, not the centre alone
+-- =====================================================================
+local INS = { index = 22, name = "INSECTICIDE", title = "Insecticide" }   -- a chemical that also carries a fertilizer profile
+do
+  local base = g_fillTypeManager.getFillTypeByIndex
+  g_fillTypeManager.getFillTypeByIndex = function(m, i) if i == INS.index then return INS end return base(m, i) end
+end
+do
+  newWorld()
+  for z = -19, 23, 2 do setFull(1, z); setFull(-1, z) end      -- full ground along the centre line only
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -21, 0, 1, true
+  local v = newSprayer()
+  drive(v, 4)
+  T.eq("U1 [reached] the centre nozzle reads full ground ahead and closes", v[SPEC].centerActive, false)
+  T.eq("U2 [reached] the outer nozzles read ground that needs the product and stay open",
+       tostring(v[SPEC].sprayerEffects[2].isActive) .. "/" .. tostring(v[SPEC].sprayerEffects[3].isActive), "true/true")
+  T.eq("U3 NAMED: with a fertilizer the undivided work area stays open; the centre alone does not shut the boom", areaActive(v), true)
+end
+do
+  newWorld()
+  for x = -15, 15, 2 do for z = -19, 23, 2 do setFull(x, z) end end
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -21, 0, 1, true
+  local v = newSprayer()
+  drive(v, 4)
+  T.eq("U4 every nozzle reads full ground: the boom closes, as See & Spray intends", areaActive(v), false)
+end
+do
+  local v = newSprayer()
+  v[SPEC].centerActive, v[SPEC].anyNozzleActive = false, true
+  v.spec_sprayer.workAreaParameters.sprayFillType = INS.index
+  T.eq("U5 INSECTICIDE (a See & Spray chemical with a fertilizer profile): the centre still decides an undivided boom", areaActive(v), false)
+  v.spec_sprayer.workAreaParameters.sprayFillType = LF.index
+  v[SPEC].centerSectionIndex = 4
+  T.eq("U6 a sectioned boom's real centre section with a fertilizer: still the centre's decision",
+       SFNozzleEffects.getIsWorkAreaActive(v, function() return true end, { sectionIndex = 4 }), false)
+  T.eq("U7 an undivided work area with a fertilizer while some nozzle is open: open", areaActive(v), true)
 end
