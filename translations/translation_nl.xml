@@ -793,6 +793,8 @@
     <!-- SMART SENSOR PANEL -->
     <!-- SEE AND SPRAY PANEL -->
     <e k="sf_see_spray_panel_title" v="ZIE &amp; SPROEI" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray heeft alle doppen gesloten: de grond vooruit heeft al genoeg van dit product." eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray heeft alle doppen gesloten: geen doel gevonden op de grond vooruit." eh="b40c5615" />
     <e k="sf_see_spray_pest"        v="Plaag" />
     <e k="sf_see_spray_disease"     v="Ziekte" />
     <e k="sf_see_spray_weed"        v="Onkruid" />

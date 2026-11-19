@@ -819,6 +819,8 @@
          SEE & SPRAY PANEL
          ====================================================== -->
     <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray a fermé toutes les buses : le sol devant contient déjà assez de ce produit." eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray a fermé toutes les buses : aucune cible trouvée sur le sol devant." eh="b40c5615" />
     <e k="sf_see_spray_pest"        v="Pest" />
     <e k="sf_see_spray_disease"     v="Disease" />
     <e k="sf_see_spray_weed"        v="Weed" />
