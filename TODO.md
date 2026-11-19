@@ -440,3 +440,10 @@
 - [x] Bar `SF-1154-see_spray_pass3_lookahead_spec_test.lua` (16 assertions through the real `onUpdate` and `getIsWorkAreaActive`, Soil's value maps at 2 m a pixel); development fails 9 and errors on the missing helper. `mutate_sf1154_pass3.py` kills 6 of 6 on the 4 files that load the specialization.
 - [ ] (a) the centre nozzle and a single work area, for fertilizers; (b) the whole-boom message (Tyson, 2026-11-18).
 - [~] In game (owed): the TESTING row for this PR; the reporter (iXter B18 with See & Spray, x0.60 and x1.00) has offered to test a build.
+
+## 2026-11-19 (Fred (via Desk)): See & Spray, one-piece boom with a fertilizer (#1154 follow-up a)
+
+- [x] `src/specializations/SFNozzleEffects.lua`: `onUpdate` records `spec.anyNozzleActive`; `getIsWorkAreaActive` keeps an undivided work area open for a fertilizer while any nozzle is open; `SFNozzleEffects.isFertilizerFill` (a profile and not a See & Spray chemical).
+- [x] Group U of `SF-1154-see_spray_pass3_lookahead_spec_test.lua` (U1 to U7); development fails U3 and U7. `mutate_sf1154a_undivided.py` kills 5 of 5 on the 4 files that load the specialization.
+- [ ] (b) the whole-boom message.
+- [~] In game (owed): the TESTING row for this PR.

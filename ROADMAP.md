@@ -427,3 +427,10 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [ ] Follow-ups decided by Tyson (2026-11-18, MAINTENANCE rows): with a fertilizer, a closed centre nozzle no longer shuts a whole single-work-area boom; and a message when See & Spray has closed the whole boom.
 - [ ] Known limits: decisions lead the boom by up to about one value-map pixel (2 m on most maps), the grain the maps can tell apart; on a pixel never written pass 3 still reads the field average, which the pass's credit also raises.
 - The in-game check is the TESTING row for this PR. Design origin none (a source-verified fix of See & Spray's stated intent).
+
+## 2026-11-19 (Fred (via Desk)): with a fertilizer, a one-piece See & Spray boom follows its nozzles, not the centre alone (#1154 follow-up a)
+
+- [x] Tyson's decision of 2026-11-18, from the #1154 reporter's suggestion. `SFNozzleEffects:getIsWorkAreaActive` closed a work area with no `sectionIndex` whenever the centre nozzle was closed, and such a work area is the whole boom, so on a one-piece boom the centre nozzle alone shut the sprayer. For a fertilizer (a product with a fertilizer profile that is not one of See & Spray's chemicals) the boom now stays open while any nozzle is open and closes only when every nozzle reads the ground as full. Chemicals, and a real centre section on a sectioned boom, keep the centre's decision.
+- [ ] Known limit: a one-piece boom cannot spray part of its width. With some nozzles open the whole work area is active and the usage scales to the open share of nozzles (`getSprayerUsage`), so the product is spread across the boom at that share rather than placed under the open nozzles.
+- [ ] Follow-up (b), decided the same day: a message when See & Spray has closed the whole boom.
+- The in-game check is the TESTING row for this PR. Design origin none (Tyson's decision).
