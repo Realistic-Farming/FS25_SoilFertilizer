@@ -602,7 +602,7 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     end
 end
 
---- #1154 follow-up (b), Tyson's decision of 2026-11-18: a message when See & Spray has closed
+--- #1154 follow-up (b): a message when See & Spray has closed
 --- the whole boom by its own judgement (every nozzle closed as "full" or "notarget"; a nozzle
 --- closed for any other reason keeps it from counting), so a player knows why nothing is going
 --- down. Once per closing (the boom must reopen before it can say it again), not more often than

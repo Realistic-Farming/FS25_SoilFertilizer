@@ -36,7 +36,7 @@
 --   U   #1154 follow-up (a), Tyson 2026-11-18: with a fertilizer an undivided boom follows its
 --       nozzles (open while any is open), not the centre alone; chemicals and a real centre
 --       section keep the centre's decision
---   B   #1154 follow-up (b), Tyson 2026-11-18: a message when See & Spray itself closes the whole
+--   B   #1154 follow-up (b): a message when See & Spray itself closes the whole
 --       boom, with the reason, once per closing, at most every 30 s, only for the player in the
 --       cab, never for a boundary closing
 --
