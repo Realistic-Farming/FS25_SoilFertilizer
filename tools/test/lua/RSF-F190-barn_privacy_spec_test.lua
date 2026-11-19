@@ -1,6 +1,6 @@
 -- RSF-F190-barn_privacy_spec_test.lua - own-farm dog barn-warning privacy (RSF-F190
--- Implementation brief v1.0, certified; over #1054; Bob's intake
--- Desk Office/Drafts/BOB-INTAKE-RSF-F190-BARN-PRIVACY-2026-10-03.md).
+-- Implementation brief v1.0, certified; over #1054; build intake
+-- of 2026-10-03).
 --
 -- The barn warning belongs only to the actual local player's current farm. Detection may
 -- keep an internal cache of every farm it scans; the HUD and the getter follow the local

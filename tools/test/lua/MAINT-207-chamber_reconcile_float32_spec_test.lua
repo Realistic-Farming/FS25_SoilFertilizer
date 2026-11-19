@@ -151,7 +151,7 @@ end
 
 -- ── StockGuard's mission handle, as a recorder ──────────────────────────────
 -- StockGuard.lua:115-121 (registerProperty, registerConsumer, unregisterOwner), :128 (readMaterial,
--- SGOperations.lua:1631) and 5d's read-only fillUnitStockRef(vehicle, fillUnitIndex) (Bob's Q5). Every
+-- SGOperations.lua:1631) and 5d's read-only fillUnitStockRef(vehicle, fillUnitIndex) (intake Q5). Every
 -- function keeps its arguments and their count; readMaterial answers through the consumer's OWN
 -- resolveReadContext, with the record StockGuard's store holds for the chamber's stock.
 local GP = GroundConditionProperty
@@ -213,7 +213,7 @@ local function rec(ageRaw, wetRaw, litres, knowledge, account)
     return { propertyId = PID, schemaVersion = 1, producerId = "soil", propertyRevision = 0, knowledge = knowledge or "KNOWN",
              knownAmount = litres, basisAmount = litres, amountUnit = "LITRE", payload = { ageRaw = ageRaw, wetnessRaw = wetRaw, ageDay = 100, account = account } }
 end
---- The settle report's evidence, as StockGuard 5d puts it (Bob's Q2): the named leg's account.
+--- The settle report's evidence, as StockGuard 5d puts it (intake Q2): the named leg's account.
 local function evidence(list) return { report = { outcomeEvidence = { [PID] = { collectedAccounts = list } } } } end
 local function ctxOf(opId, list) local c = evidence(list) c.operationId = opId c.operationKind = "TRANSFER" return c end
 local function leg(opId, i, litres, r) return { allocationRef = opId .. ":a" .. i, amount = litres, unit = "LITRE", properties = { [PID] = r } } end
@@ -378,7 +378,7 @@ group("E", function()
     T.eq("E5 the chamber one float32 step away (the smallest change a save can carry at 100 L) is a real change: born unknown",
         reloadedBale(100.37, asFloat32 + 2 ^ -17), "nil")
     -- 110.29 L rounds by 9.2e-7 (float32) and 1e-6 (double), under BC.TOLERANCE on both: a bar at
-    -- that level passes on either head and cannot see the defect (Bob's intake).
+    -- that level passes on either head and cannot see the defect (build intake).
     T.eq("E6 [control] 110.29 L reloads under the tolerance on both readers, so it is 40 on either head and is no bar for this",
         reloadedBale(110.29, f32(110.29)) .. "/" .. reloadedBale(110.29, tonumber("110.290001")), "40/40")
 end)

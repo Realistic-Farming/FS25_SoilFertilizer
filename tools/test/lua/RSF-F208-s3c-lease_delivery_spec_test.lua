@@ -1,6 +1,6 @@
 -- RSF-F208-s3c-lease_delivery_spec_test.lua
 --
--- SG2-4 S3 (Iris's answer 2 of 2026-09-23; Bob's intake of 2026-09-23 with item 3b):
+-- SG2-4 S3 (Iris's answer 2 of 2026-09-23; the build intake of 2026-09-23 with item 3b):
 -- the StockGuard lease path delivers a NATIVE observation and Soil derives its own
 -- Soil cells from the footprint, captures their condition at admit, reads their
 -- whole-cell occupancy itself before and after, and projects through the one
@@ -38,7 +38,7 @@
 --
 -- THE SOURCES RUN IN THE MOD'S OWN ENVIRONMENT (--!env: modenv, run-tests.mjs): the
 -- engine's globals reach them only through __index, as in a game (mods.lua:436-442),
--- and the frame counter is set engine-side (ENGINE.setFrameIndex). Bob's finding on
+-- and the frame counter is set engine-side (ENGINE.setFrameIndex). The review finding on
 -- #1003: the admission's rawget on _G passed here and read nil in a game, so the
 -- frame rule (K4, K6) never fired. Row K0 pins the environment's shape.
 --
@@ -446,7 +446,7 @@ group("D", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- K. A LEASE THAT ENDS UNDELIVERED (Bob's verdict on #1002)
+-- K. A LEASE THAT ENDS UNDELIVERED (the review verdict on #1002)
 -- ══════════════════════════════════════════════════════════════════════════
 group("K", function()
     -- Closed with no delivery: the primitive ran (the material moved) and nobody vouched

@@ -23,7 +23,7 @@
 SoilStateLedgerBridge = SoilStateLedgerBridge or {}
 
 -- Provisional module id. This is the persistence KEY inside the master file, so it
--- must be locked with Claude(A) before any release (a later rename orphans saved
+-- must be locked with Design before any release (a later rename orphans saved
 -- soil data). Matches StateLedger's <Mod>_<Thing> example convention.
 SoilStateLedgerBridge.MODULE_ID = "SoilFertilizer_Soil"
 SoilStateLedgerBridge.SCHEMA    = 1

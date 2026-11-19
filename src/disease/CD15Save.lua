@@ -28,7 +28,7 @@
 -- A save made outside any native save (the console's saveSoilData) carries forward the header
 -- that describes the files on disk, since it rewrites soilData.xml and nothing else.
 --
--- A QUARANTINED session (Desk's ruling on Tyson's word, 2026-10-05, Bob's reading): every save
+-- A QUARANTINED session (ruled 2026-10-05): every save
 -- writes a header marked QUARANTINED with its reason and the original attemptId, no payload and
 -- no images, so the next load stays quarantined. The exits are an administrator deleting the
 -- CD-15 evidence, or step 3's admitted recovery entry (:228). Design is asked before step 2

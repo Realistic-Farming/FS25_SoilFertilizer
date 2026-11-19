@@ -1,6 +1,6 @@
 -- SG2-5d-soil-b_chamber_account_spec_test.lua
 --
--- SG2-5 slice 5d's Soil half (Bob's 5d shape ruling, Q2 and Q4 with its Q5 addendum): with StockGuard
+-- SG2-5 slice 5d's Soil half (the 5d shape ruling, Q2 and Q4 with its Q5 addendum): with StockGuard
 -- framing a square Baler, the chamber's material is StockGuard's carrier and its condition is the
 -- soil.groundCondition record StockGuard's settle stored there.
 --   * Q2: Soil's combine adopts the collected account the settle report names for the leg it
@@ -148,7 +148,7 @@ end
 
 -- ── StockGuard's mission handle, as a recorder ──────────────────────────────
 -- StockGuard.lua:115-121 (registerProperty, registerConsumer, unregisterOwner), :128 (readMaterial,
--- SGOperations.lua:1631) and 5d's read-only fillUnitStockRef(vehicle, fillUnitIndex) (Bob's Q5). Every
+-- SGOperations.lua:1631) and 5d's read-only fillUnitStockRef(vehicle, fillUnitIndex) (intake Q5). Every
 -- function keeps its arguments and their count; readMaterial answers through the consumer's OWN
 -- resolveReadContext, with the record StockGuard's store holds for the chamber's stock.
 local GP = GroundConditionProperty
@@ -210,7 +210,7 @@ local function rec(ageRaw, wetRaw, litres, knowledge, account)
     return { propertyId = PID, schemaVersion = 1, producerId = "soil", propertyRevision = 0, knowledge = knowledge or "KNOWN",
              knownAmount = litres, basisAmount = litres, amountUnit = "LITRE", payload = { ageRaw = ageRaw, wetnessRaw = wetRaw, ageDay = 100, account = account } }
 end
---- The settle report's evidence, as StockGuard 5d puts it (Bob's Q2): the named leg's account.
+--- The settle report's evidence, as StockGuard 5d puts it (intake Q2): the named leg's account.
 local function evidence(list) return { report = { outcomeEvidence = { [PID] = { collectedAccounts = list } } } } end
 local function ctxOf(opId, list) local c = evidence(list) c.operationId = opId c.operationKind = "TRANSFER" return c end
 local function leg(opId, i, litres, r) return { allocationRef = opId .. ":a" .. i, amount = litres, unit = "LITRE", properties = { [PID] = r } } end
@@ -268,7 +268,7 @@ group("E", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- F. EVERY FALLBACK KEEPS SOIL'S OWN CHAMBER ACCOUNT (Bob's Q5)
+-- F. EVERY FALLBACK KEEPS SOIL'S OWN CHAMBER ACCOUNT (intake Q5)
 -- ══════════════════════════════════════════════════════════════════════════
 local function fallback(opts, prepare)
     local v = boot(opts)
@@ -287,7 +287,7 @@ group("F", function()
         fallback({}, function() SG.record = chamberRecord(acct(100, 100, 0, 0, 4000)) W.sys.groundConditionProperty:withdraw("bench") end), "26.063")
     T.eq("F5 NAMED: a record SG-1 qualified (UNAVAILABLE) is not read", fallback({}, function() SG.record = rec(3, 120, 100, "UNAVAILABLE", acct(100, 100, 0, 0, 4000)) end), "26.063")
     T.eq("F6 NAMED: a record whose account fails its own checks is not read", fallback({}, function() SG.record = rec(3, 120, 100, "KNOWN", acct(100, 90, 0, 0, 4000)) end), "26.063")
-    T.eq("F7 NAMED: a record with no account (an unframed round or non-stop chamber, Bob's C4) is not read", fallback({}, function() SG.record = rec(3, 120, 100, "KNOWN", nil) end), "26.063")
+    T.eq("F7 NAMED: a record with no account (an unframed round or non-stop chamber, intake C4) is not read", fallback({}, function() SG.record = rec(3, 120, 100, "KNOWN", nil) end), "26.063")
     T.eq("F8 a stale reference is not read", fallback({}, function() SG.record = chamberRecord(acct(100, 100, 0, 0, 4000)) SG.snapState = "STALE_REFERENCE" end), "26.063")
     T.eq("F9 a lookup that finds no stock is not read", fallback({ noStock = true }, function() SG.record = chamberRecord(acct(100, 100, 0, 0, 4000)) end), "26.063")
     T.eq("F10 a read StockGuard refuses is not read", fallback({}, function() SG.record = chamberRecord(acct(100, 100, 0, 0, 4000)) SG.readState = "DENIED" end), "26.063")
@@ -298,7 +298,7 @@ group("F", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- R. RECONCILE, THEN BIND (Bob's Q5 condition 3)
+-- R. RECONCILE, THEN BIND (intake Q5 condition 3)
 -- ══════════════════════════════════════════════════════════════════════════
 group("R", function()
     local v = boot()
@@ -311,7 +311,7 @@ group("R", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- C. COMBINE ADOPTS THE NAMED LEG'S ACCOUNT, AND ONLY ON ITS FOUR CHECKS (Bob's Q2)
+-- C. COMBINE ADOPTS THE NAMED LEG'S ACCOUNT, AND ONLY ON ITS FOUR CHECKS (intake Q2)
 -- ══════════════════════════════════════════════════════════════════════════
 group("C", function()
     boot()

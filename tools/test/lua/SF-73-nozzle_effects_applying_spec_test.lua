@@ -1,6 +1,6 @@
 -- SF-73-nozzle_effects_applying_spec_test.lua
 --
--- Tyson's DAP report (2026-10-01, Bob's check BOB-CHECK-DAP-FIELD2-REFUSAL): Soil's nozzle
+-- The DAP report of 2026-10-01 (the field-2 DAP check): Soil's nozzle
 -- effects showed spray on a pass SF-73 had refused, with no product going down. The nozzle
 -- visual turned on from turned on, speed, direction and an open section, never from whether
 -- the engine painted. SF-73 truthful UI (b): the visual now also needs the engine's own

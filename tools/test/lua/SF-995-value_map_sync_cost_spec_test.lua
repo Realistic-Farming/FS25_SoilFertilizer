@@ -1,7 +1,7 @@
 -- SF-995-value_map_sync_cost_spec_test.lua
 --
 -- #995, the dedicated-server stutter: the value-map sync's cost per tick, measured.
--- Bob's intake (BOB-INTAKE-SF-995-DEDI-STUTTER-2026-09-23.md): the 5-minute checksum
+-- The build intake of 2026-09-23: the 5-minute checksum
 -- broadcast walked every synced layer's sync grid in ONE tick (getBitVectorMapPoint
 -- once per grid point) on the server and on every client, and re-sent whole layers
 -- because nothing carried a write to the clients. Now SoilValueMaps keeps per-row
@@ -346,7 +346,7 @@ group("P", function()
     T.eq("P10 no request", #requests(since(WIRE.server, s0)), 0)
     -- A write that lands mid-round, after the dirty sets were taken and before that
     -- layer's refresh: this round patches nothing for it, so it must not be checksummed
-    -- this round either (Bob's MAJOR on #1001); the next round carries it, patch and
+    -- this round either (the review's MAJOR on #1001); the next round carries it, patch and
     -- checksum together. Nitrogen and phosphorus take a whole budget each, so the cursor
     -- is two ticks short of potassium when the write lands.
     local KIDX
@@ -500,7 +500,7 @@ end)
 -- ══════════════════════════════════════════════════════════════════════════
 -- M. A LIST BIGGER THAN THE BUDGET: THE WRITE BETWEEN ITS BUILD AND ITS REFRESH
 -- ══════════════════════════════════════════════════════════════════════════
--- Bob's re-look on #1001 at efe143b2: a layer's list is refreshed over several ticks,
+-- The review's re-look on #1001 at efe143b2: a layer's list is refreshed over several ticks,
 -- so a row on it that was not taken (in an audit round, every row) and is written after
 -- the list is built but before its own refresh tick must be left alone too, or the
 -- checksum carries a value no client has. At 64 rows one budget is one layer, so both

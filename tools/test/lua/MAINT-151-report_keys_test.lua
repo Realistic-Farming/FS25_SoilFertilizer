@@ -1,7 +1,7 @@
 --!text: src/ui/SoilHUD.lua, translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
 -- MAINT-151-report_keys_test.lua
 --
--- MAINTENANCE row 151 (FAST TRACK on Tyson's word, 2026-09-26): the Soil HUD's title bar
+-- MAINTENANCE row 151 (FAST TRACK, 2026-09-26): the Soil HUD's title bar
 -- draws g_i18n:getText("sf_report_rec_" .. statusLabel:lower()) with no fallback
 -- (src/ui/SoilHUD.lua, the header block), and the French and Czech files lacked the
 -- sf_report_rec_* keys, so a French or Czech player read the engine's "Missing

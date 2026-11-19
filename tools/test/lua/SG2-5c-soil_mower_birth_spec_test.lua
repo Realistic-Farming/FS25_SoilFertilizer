@@ -1,6 +1,6 @@
 -- SG2-5c-soil_mower_birth_spec_test.lua
 --
--- SG2-5 slice 5c-soil (Bob's 5c ruling of 2026-10-02; SG-2 v2.3 :351, GCC v1.5 section 4 :68
+-- SG2-5 slice 5c-soil (the 5c ruling of 2026-10-02; SG-2 v2.3 :351, GCC v1.5 section 4 :68
 -- and :74, :106 read through :129): Soil's half of StockGuard framing the Mower.
 --   * A drop's contribution may be a BIRTH, { litres, birth = { kind = "MOWER", fillTypeIndex } }.
 --     Soil makes it at the deposit as its own mower carrier does: age raw 1, the fresh-grass
@@ -17,7 +17,7 @@
 -- THE ENTRY-POINT BAR IS GROUP E, TWO-SIDED. Production's world: SoilFertilitySystem.new, the
 -- ground family armed in production's order, the property registered, HookManager:installAll on
 -- a mower the engine builds, WorkArea's order through ENGINE.tick. The same pass runs through
--- Soil alone and with a StockGuard stand-in framing the mower as Bob's 5c ruling shapes it, in
+-- Soil alone and with a StockGuard stand-in framing the mower as the 5c ruling shapes it, in
 -- both wrap orders, and the deposit must read the same. The stand-in is NOT StockGuard's code
 -- (StockGuard 5c is unbuilt). It reaches Soil only through what production publishes:
 --   * the admission table, read through SoilFertilityManager.getCapabilities at revision 2;
@@ -204,7 +204,7 @@ local function stamps(seen)
 end
 
 -- ══════════════════════════════════════════════════════════════════════════
--- THE STOCKGUARD STAND-IN (StockGuard 5c's half, as Bob's 5c ruling shapes it; header)
+-- THE STOCKGUARD STAND-IN (StockGuard 5c's half, as the 5c ruling shapes it; header)
 -- ══════════════════════════════════════════════════════════════════════════
 local SG = {}
 local function sgReset()

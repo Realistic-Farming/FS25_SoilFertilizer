@@ -1,8 +1,8 @@
 -- MAINT-234-overlap_record_spec_test.lua
 --
--- MAINTENANCE row 234 (Tyson's option (a)): overlap prevention reads its own finer record.
+-- MAINTENANCE row 234 (option (a)): overlap prevention reads its own finer record.
 --
--- THE DEFECT THIS PINS (development 54407c80; aussieyoda, SF-1032; Bob's correction to his
+-- THE DEFECT THIS PINS (development 54407c80; aussieyoda, SF-1032; the corrected
 -- green-square trace): both overlap checks (overlap prevention, and the field-boundary
 -- control's copy) switched a whole section off when the 10 m session cell under its tip had
 -- been stamped by an earlier pass. A cell is stamped whole when any part of a boom sweep
@@ -57,7 +57,7 @@ end
 -- by running this bar against that commit's src): the cell keys, pass %'s inputs other than
 -- the ha figures, the daily cell count and the trail are unchanged.
 --
--- #1098 (Desk follow-up, 2026-10-14): coverage now counts 2 m cells (markOverlapCells,
+-- #1098 (follow-up, 2026-10-14): coverage now counts 2 m cells (markOverlapCells,
 -- OVERLAP_CELL_AREA_HA = 0.0004 ha/cell), not the old whole 10 m cell (0.01 ha/cell)
 -- markBoomCells used to credit. sessionHa/coveredHa are measured, not carried over from
 -- 54407c80: this same two-lane drive's real 2 m sweep gives 0.3280 ha (820 distinct 2 m

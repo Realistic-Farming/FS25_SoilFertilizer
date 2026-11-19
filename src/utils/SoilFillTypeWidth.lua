@@ -107,11 +107,11 @@ end
 --- there is nothing to say. Pure: it formats, it never prints, so applyFloor and
 --- this stay two functions the bench drives for real.
 ---
---- WHY THE "ALREADY" LINE EXISTS (Tyson's ruling, 2026-09-22). When another mod
+--- WHY THE "ALREADY" LINE EXISTS (ruled 2026-09-22). When another mod
 --- has raised the width first, applyFloor returns false and used to say nothing,
 --- so a log alone could not show whether the floor was in force. It cost an
 --- evening: a tester's log with no "raised" line read as a possible miss until
---- FS25_ProductionStorageControl was found setting 10 before us. On Tyson's own
+--- FS25_ProductionStorageControl was found setting 10 before us. On one test
 --- machine Realistic Livestock does the same. Now exactly one of the two lines
 --- prints on every load where the width is readable: "raised" when this mod did
 --- it, "already" when it found the floor satisfied. "At SoilFertilizer load"

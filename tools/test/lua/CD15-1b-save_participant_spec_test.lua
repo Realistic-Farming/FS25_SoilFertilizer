@@ -1,6 +1,6 @@
 -- CD15-1b-save_participant_spec_test.lua
 --
--- CD-15 step 1b (Bob's intake BOB-INTAKE-CD15-1B-1C-2026-10-05, Part 1): the local disease save
+-- CD-15 step 1b (build intake of 2026-10-05, Part 1): the local disease save
 -- participant. The header in the selected backend (soilData.xml, or StateLedger's block), the one
 -- soilDisease.xml payload frozen at the end of the career chain with every distinct fruit and haulm
 -- image named for the same-call prepare, the completion in the FINAL directory, and the restore that

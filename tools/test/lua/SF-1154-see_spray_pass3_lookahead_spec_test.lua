@@ -33,7 +33,7 @@
 --   L5  no heading to read along: no decision, the boom stays open
 --   L6  the credited line 0.4 m ahead of the nozzles, driven in 0.3 m steps: the margin keeps
 --       the read pixel clear of it
---   U   #1154 follow-up (a), Tyson 2026-11-18: with a fertilizer an undivided boom follows its
+--   U   #1154 follow-up (a): with a fertilizer an undivided boom follows its
 --       nozzles (open while any is open), not the centre alone; chemicals and a real centre
 --       section keep the centre's decision
 --   B   #1154 follow-up (b): a message when See & Spray itself closes the whole

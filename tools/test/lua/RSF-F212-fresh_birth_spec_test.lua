@@ -25,7 +25,7 @@
 --
 -- THE SOURCES RUN IN THE MOD'S OWN ENVIRONMENT (--!env: modenv, run-tests.mjs): the
 -- engine's globals reach them only through __index, as in a game (mods.lua:436-442).
--- Bob's finding on #1003 at 043f11f1: a rawget on _G passed here and read nil in a
+-- The review finding on #1003 at 043f11f1: a rawget on _G passed here and read nil in a
 -- game, so the stamp never landed. Row E3 pins the environment's shape.
 --
 --!env: modenv

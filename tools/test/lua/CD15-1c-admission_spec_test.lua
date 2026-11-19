@@ -1,6 +1,6 @@
 -- CD15-1c-admission_spec_test.lua
 --
--- CD-15 step 1c (Bob's intakes BOB-INTAKE-CD15-1B-1C-2026-10-05 Part 2 and BOB-INTAKE-CD15-1C-2026-10-06):
+-- CD-15 step 1c (build intakes of 2026-10-05, Part 2, and of 2026-10-06):
 -- candidate discovery and admission, behind the profile gate (brief v1.14 :99-103, :220-222, :239-243),
 -- and #1062's MINOR 2 (onset reads the cell's wetness) and MINOR 3 (spread through membership).
 --

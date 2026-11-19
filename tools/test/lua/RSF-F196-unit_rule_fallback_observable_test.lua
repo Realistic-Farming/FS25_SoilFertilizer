@@ -1,5 +1,5 @@
 -- RSF-F196-unit_rule_fallback_observable_test.lua: the unit rule's degradation paths
--- are observable, never silent (Bob, #976 cold review).
+-- are observable, never silent (#976 cold review).
 --
 -- Every fallback in the unit rule converts by 1, and converting by 1 is the defect
 -- #976 repaired. Production is safe by load order (HookManager before

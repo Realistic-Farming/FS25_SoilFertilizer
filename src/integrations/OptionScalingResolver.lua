@@ -55,7 +55,7 @@ OptionScalingResolver.INTENSITY_MAX     = 2.0
 OptionScalingResolver.INTENSITY_NEUTRAL = 1.0
 
 -- The CANONICAL curve per dial, filled by the ratio pass (BACKLOG-20 v0.2,
--- 2026-07-22, Arissani + ClaudeA). Written directly on this framework's 0..2
+-- 2026-07-22, Design). Written directly on this framework's 0..2
 -- intensity axis: at0 at dial 0 (Relaxed), at1 = 1.0 at dial 1 (Standard =
 -- neutral = identity), at2 at dial 2 (Punishing). A consumer that declares a
 -- value on a dial without supplying its own curve gets the dial's canonical
@@ -91,7 +91,7 @@ function OptionScalingResolver.switchKey(dial) return "switch_" .. dial end
 OptionScalingResolver.PRESET_KEY = "preset"
 
 -- Preset enum values + a coarse difficulty rank for the tuning-tool gate. The
--- authoritative preset set (ratio pass BACKLOG-20, Arissani + ClaudeA 2026-07-22):
+-- authoritative preset set (ratio pass BACKLOG-20, Design 2026-07-22):
 -- four named presets ordered by bite (Relaxed, Standard, Realistic, Punishing)
 -- plus Custom. Standard sits second of four, the 1.0 identity, with two harder
 -- presets above it; the ordering delivers Arissani's "Standard sits lower-middle"

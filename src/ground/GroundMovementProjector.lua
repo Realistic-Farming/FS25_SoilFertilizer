@@ -177,7 +177,7 @@ end
 --- measured on the WHOLE cell. Losing cells feed a pool with their captured
 --- condition; gaining cells draw from it litre-weighted; a gain the pool cannot
 --- explain is unknown; a cell at known whole-zero afterwards is cleared and a
---- partial loss keeps its condition. Contract section 2 (Bob's intake, 2026-09-23):
+--- partial loss keeps its condition. Contract section 2 (build intake, 2026-09-23):
 --- the arriving condition of moved material is the litre-weighted pre-removal
 --- condition of the cells that lost it in the same primitive.
 ---@return table counts { projected, cleared, unavailable, refused }

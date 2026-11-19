@@ -2,12 +2,12 @@
 --
 -- SF-73 section 7, W1a: the HUD's target block, the host's own floor for target
 -- automatic (Implementation v1.1 section 7, the Wizard brief sections 2 and 3, Iris's
--- answer of 2026-10-02 section 1; Bob's intake BOB-INTAKE-W1-SF73-SECTION7-SURFACE).
+-- answer of 2026-10-02 section 1; the W1 build intake).
 -- In the rate panel, under the AUTO header, the block reads the soil system's result
 -- for the sprayer the player sits in and replaces the legacy "Target:" line, which is
 -- built from field info and defaults and cannot stand in for a confirmed footprint.
 --
--- THE ENTRY-POINT BAR is groups E (host) and C (client). E drives Tyson's case, liquid
+-- THE ENTRY-POINT BAR is groups E (host) and C (client). E drives the reported case, liquid
 -- DAP with AUTO on over a cut crop, through the mod's own installers in installAll's
 -- order and WorkArea's tick into TargetApplication's refusal, setResult and publish;
 -- the HUD's own update() and drawSprayerRatePanel then draw what production draws. C
@@ -22,7 +22,7 @@
 -- The language files are the shipped translations, read as text.
 --
 -- Groups:
---   E  host: Tyson's case, the line, the hint, one notice, the layout; denied access
+--   E  host: the reported case, the line, the hint, one notice, the layout; denied access
 --   C  client: the real stream, the line, one notice, expiry, waiting, a failure
 --   P  priming and the pending hold
 --   R  the confirmed outcome and its detail rows, kept through holds, the final
@@ -505,7 +505,7 @@ g_i18n = { texts = {}, hasText = function(_, k) return EN[k] ~= nil end,
 -- The fixture's crops carry their fill type titles, as the engine's fruit types do.
 DESCS[1].fillType = { title = "Wheat" }
 DESCS[2].fillType = { title = "Barley" }
--- Tyson's product: liquid DAP, one of Soil's custom N/P/K products.
+-- The reported product: liquid DAP, one of Soil's custom N/P/K products.
 DECL.LIQUID_DAP = 0.0013
 local DAP = indexOf("LIQUID_DAP")
 local CUT_BARLEY = function() return 2, 9 end     -- the fixture's cut state (getIsCut: s == 9)
@@ -640,7 +640,7 @@ local function deliver(sentStream)
 end
 
 -- =====================================================================
--- E. THE ENTRY-POINT BAR, host: Tyson's case (BOB-CHECK-DAP-FIELD2-REFUSAL). Liquid
+-- E. THE ENTRY-POINT BAR, host: the reported case (the field-2 DAP check). Liquid
 --    DAP with AUTO on over a cut crop. The mod's own installers in installAll's order,
 --    WorkArea's tick through the real usage hook into TA's refusal, setResult and
 --    publish; then the HUD's own update() and drawSprayerRatePanel. Nothing in the

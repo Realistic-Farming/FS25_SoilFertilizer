@@ -1,6 +1,6 @@
 -- MAINT-106-store_floor_before_add_spec_test.lua
 --
--- MAINTENANCE row 106 (Bob's widened intake, 2026-09-24; origin SF-49 store code).
+-- MAINTENANCE row 106 (widened build intake, 2026-09-24; origin SF-49 store code).
 -- The two aimed-delta paths of SoilValueMaps ran their edge pass AFTER the add:
 --   (a) a negative band floored only at the RAW_MIN edge, so the dry pass (floorTo the
 --       EMC ceiling) took a pixel a few raw above the floor below it, and from raw

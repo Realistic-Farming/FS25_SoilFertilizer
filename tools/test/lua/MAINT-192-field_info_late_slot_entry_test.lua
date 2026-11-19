@@ -1,5 +1,5 @@
 -- MAINT-192-field_info_late_slot_entry_test.lua: MAINTENANCE row 192, Soil's rows in the
--- native FIELD INFO box (Bob's intake, Drafts/BOB-INTAKE-MAINT192-FIELDINFO-LATE-SLOT-2026-10-01.md).
+-- native FIELD INFO box (build intake of 2026-10-01).
 --
 -- The defect: the "late" row group was bound to PlayerHUDUpdater.fieldAddFruit, an FS22 name
 -- no FS25 build has, so the late rows (Amend. burn risk; Drilling, the SF-30 advisory) never
@@ -36,7 +36,7 @@
 --      rows on both sides of the crop rows, Amend. burn risk and Drilling after it and
 --      before the weed and field-action rows, no row drawn twice, Fertilized suppressed,
 --      no warning
---   C  English, a cut crop (Tyson's case): no native yield row, so Soil's "Yield" row
+--   C  English, a cut crop (the reported case): no native yield row, so Soil's "Yield" row
 --      shows in the late block; no row drawn twice
 --   R  Russian texts, a growing crop: the yield and Fertilized rows still match by key
 --

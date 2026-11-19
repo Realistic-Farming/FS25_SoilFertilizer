@@ -119,7 +119,7 @@ local function run()
   if not ok then error(out, 0) end
   return out
 end
---- Tyson's ruling 2026-09-23: refund = drained x the fill type's SHOP price x 0.5.
+--- Ruling of 2026-09-23: refund = drained x the fill type's SHOP price x 0.5.
 local function refundFor(idx, liters)
   return liters * 0.5 * (prices[nameOf(idx)] or 0)
 end
@@ -261,7 +261,7 @@ do
 end
 
 -- =====================================================================
--- GROUP I (Tyson's ruling 2026-09-23, a plain fix): the refund basis is the fillTypes.xml
+-- GROUP I (ruling of 2026-09-23, a plain fix): the refund basis is the fillTypes.xml
 -- SHOP price read through the manager at call time, at the existing 50%; an unpriced
 -- product refunds 0 and says so; a redefined price is the one used; no price table of
 -- the command's own remains. Entry point: the real consoleCommandDrainVehicle, prices
@@ -311,7 +311,7 @@ do
 end
 
 -- =====================================================================
--- GROUP J (Bob's review of #990): the production world. Every name the command drains
+-- GROUP J (review of #990): the production world. Every name the command drains
 -- (its legacy list, read from the source, plus HookManager.DRY_PRODUCT_NAMES) must have a
 -- POSITIVE economy pricePerLiter in the real fillTypes.xml, or the ruling refunds 0 for
 -- it; and every price this fixture gives a drained product must equal the real XML, so a

@@ -11,7 +11,7 @@
 -- middle of the boom lies inside it and a boom-wide work area holds a switched-off
 -- edge section in it. Both were stamped as sprayed.
 --
--- "Off" is Tyson's Option B (2026-10-06): the state a section had before Soil's own
+-- "Off" is Option B (2026-10-06): the state a section had before Soil's own
 -- per-tick section logic ran, as the section state preserver saves it. The player's
 -- width, the engine and another mod (a section-control mod writing section.isActive
 -- before the tick) count; Soil's own See & Spray, Smart Sensor, overlap and boundary

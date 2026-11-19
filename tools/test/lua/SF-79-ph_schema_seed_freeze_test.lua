@@ -26,7 +26,7 @@
 -- the engine's XML functions (in-game row), and anything about seeding the map itself
 -- (the seeding item, which consumes the seed this item originates).
 --
--- Group I is the transition bar Bob's cold review on #982 asked for: with StateLedger
+-- Group I is the transition bar the cold review on #982 asked for: with StateLedger
 -- delivering a block, loadSoilData runs ONLY applySoilStateTable, and every ledger
 -- snapshot written before #982 lacks sf79PHSchema. So on that path "absent" is not
 -- "unmarked"; the root marker of the soilData.xml safety copy is the proof, read by

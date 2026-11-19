@@ -1,7 +1,7 @@
 -- SG2-5d-soil_collected_read_spec_test.lua
 --
--- SG2-5 slice 5d-soil (SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; Bob's G2
--- ruling as amended 2026-10-02, and his G3 ruling): Soil's half of the leased collection read.
+-- SG2-5 slice 5d-soil (SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; the G2
+-- ruling as amended 2026-10-02, and the G3 ruling): Soil's half of the leased collection read.
 --   * a pickup by a collection machine (a Baler or a ForageWagon) captures a COLLECTED snapshot of
 --     its source cells on delivery, before Soil projects it: the litres read at admit, the
 --     condition nothing has changed since (GroundConditionAdmission); a drop, another primitive

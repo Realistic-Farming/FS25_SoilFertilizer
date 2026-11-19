@@ -1,7 +1,7 @@
 -- SG3-3-operation_echo_spec_test.lua
 --
--- SG-3 Part 3, Soil's half (RSF-F215 v1.1, discharging DESIGN-CHECK row 126's WITHHELD echo; Bob's R-15,
--- Desk Office/Drafts/BOB-R15-SG3-PART3-SOIL-BALE-CONDITION-2026-10-08.md): YardLadder echoes the StockGuard
+-- SG-3 Part 3, Soil's half (RSF-F215 v1.1, discharging DESIGN-CHECK row 126's WITHHELD echo; the R-15 note
+-- of 2026-10-08): YardLadder echoes the StockGuard
 -- operation open around a BIRTH, a REBIND and a RETIRE in the listeners' events (YardLadder._openOperationId,
 -- read from g_currentMission.stockGuard.readOpenOperation, delegate-when-present). ADVANCE never carries one.
 --

@@ -1,7 +1,7 @@
 -- CD15-1a-local_grid_spec_test.lua
 --
--- CD-15 step 1a (brief v1.14 :67-135, :216, :222; Bob's intake
--- Drafts/BOB-INTAKE-CD15-STEP1-2026-09-30.md): the schema-1 cell record, the sparse
+-- CD-15 step 1a (brief v1.14 :67-135, :216, :222; the build
+-- intake of 2026-09-30): the schema-1 cell record, the sparse
 -- 32x32 tile store, the geometry and its fingerprint, the CD-15 day clock, the
 -- ratified clean baseline, and the daily local pass with one-hop snapshotted spread
 -- and a 256-cell work bound, beside the old field model.

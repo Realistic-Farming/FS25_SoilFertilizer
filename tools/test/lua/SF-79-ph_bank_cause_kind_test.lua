@@ -1,6 +1,6 @@
 -- SF-79-ph_bank_cause_kind_test.lua: the positional pH sub-step bank keeps its
 -- remainders separate per cause, kind and domain in USE, not only in storage
--- (MAINTENANCE row 72; Bob's cold verdict on #979).
+-- (MAINTENANCE row 72; the cold verdict on #979).
 --
 -- THE DEFECT. _phAddPending stored cause and kind; _phTakePending took every
 -- remainder on the domain regardless, and _phApplyField summed them into whatever

@@ -8,7 +8,7 @@
 --     field's reference point, about 4% of a 6.6 ha field. On Sauge's field, herbicide
 --     over about 80% of it (centre included) left a live strip the read never reached,
 --     so weed risk read 0% for good after protection ran out.
---   * #1049's first head ed7e54d6 (Bob's FAIL, issuecomment-5891383272): a finished read
+--   * #1049's first head ed7e54d6 (the review FAIL, issuecomment-5891383272): a finished read
 --     was kept and returned on later days, so a read taken before a cultivation came back
 --     after the sowing and reported weeds the field no longer had.
 --
@@ -228,7 +228,7 @@ do
 end
 
 -- ══════════════════════════════════════════════════════════
--- S: A READ NEVER OUTLIVES ITS DAY (Bob's BLOCKER on ed7e54d6)
+-- S: A READ NEVER OUTLIVES ITS DAY (the review BLOCKER on ed7e54d6)
 -- ══════════════════════════════════════════════════════════
 do
   -- Weedy, then cultivated (clean map, no crop at the centre), then sown (crop back).

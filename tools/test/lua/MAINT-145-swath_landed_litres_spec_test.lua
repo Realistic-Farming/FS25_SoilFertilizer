@@ -1,7 +1,7 @@
 -- MAINT-145-swath_landed_litres_spec_test.lua
 --
--- MAINTENANCE row 145 (Bob's intake: Desk Office/Drafts/BOB-INTAKE-ROW145-SWATH-LANDED-
--- LITRES-2026-09-25.md). The generic straw birth (noteMaterialAt, when no ground-condition
+-- MAINTENANCE row 145 (build intake of
+-- 2026-09-25). The generic straw birth (noteMaterialAt, when no ground-condition
 -- carrier owns the combine's deposit) gated on processCombineSwathArea's first return, which
 -- is the engine's 1/0 REQUEST flag (Combine.lua:757), so a pass whose tip landed 0 L still
 -- recorded material. It now reads the litres the tip actually dropped, through a

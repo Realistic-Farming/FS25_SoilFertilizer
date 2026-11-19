@@ -329,7 +329,7 @@ group("P", function()
   local later = sys:getScoutReport(2)
   T.eq("P2 and the field reads the same afterwards", tostring(later.discovered), "false")
   -- Once the owner has scouted, the current report is the full truth: a refused door
-  -- must not read it back (Bob, #998).
+  -- must not read it back (review of #998).
   sys:scoutField(2, 2)
   rep, refused = sys:scoutField(2, 1)
   T.eq("P2b a neighbour refused on a field the owner has scouted still gets no report", tostring(rep) .. "/" .. tostring(refused) .. "/" .. tostring(sys:getScoutReport(2).diseaseId), "nil/NO_STANDING/septoria")
@@ -361,7 +361,7 @@ end)
 -- ══════════════════════════════════════════════════════════════════════════
 -- SP. SINGLEPLAYER
 -- ══════════════════════════════════════════════════════════════════════════
--- The reading declared to Design (Bob, #998): a singleplayer farm does not own every
+-- The reading declared to Design (review of #998): a singleplayer farm does not own every
 -- field, and the brief's item 4 gives singleplayer no exemption, so land the farm
 -- has not bought (a field mission's field among it) is refused exactly as the walk
 -- and the kneel already refuse it. Whether singleplayer or an active field mission

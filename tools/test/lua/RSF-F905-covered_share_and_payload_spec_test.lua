@@ -466,7 +466,7 @@ do
 end
 
 do
-  -- Bob's blocker: a farmland carrying TWO parcels. The first-match helper would reject
+  -- The review blocker: a farmland carrying TWO parcels. The first-match helper would reject
   -- every cell on the second parcel and switch the burn off there for good (F347 by
   -- another road). The parcel union admits a cell inside ANY parcel.
   local parcelA = { {x = 0, z = 0}, {x = 2 * CELL, z = 0}, {x = 2 * CELL, z = 2 * CELL}, {x = 0, z = 2 * CELL} }

@@ -1,6 +1,6 @@
 -- SF-73-ghost_bar_target_mode_spec_test.lua
 --
--- Tyson's DAP report (2026-10-01, Bob's check BOB-CHECK-DAP-FIELD2-REFUSAL): the Soil HUD's
+-- The DAP report of 2026-10-01 (the field-2 DAP check): the Soil HUD's
 -- N/P/K ghost bar projected a P gain that SF-73's target plan had refused. The ghost bar
 -- projects field area x BASE_RATES x the rate multiplier, less the buffer; it knows nothing
 -- of the plan. SF-73 Implementation brief v1.1 section 7 (:89): "its old display cannot

@@ -413,7 +413,7 @@ local function paintWhatIfRows(page, entry, tr, clip)
 end
 
 --- Read-only crop rotation card in the TREATMENT strip (Samantha DESIGN CLOSED +
---- George ENGINE ACK 2026-08-08; Tyson eyes-on shot 01).
+--- George ENGINE ACK 2026-08-08; eyes-on shot 01).
 --- Restored after PR #800 landed a tree where the call site survived but this
 --- definition did not, so every TREATMENT refresh was calling a nil value.
 --- Read-only by law: no rotation apply, no SmoothList, no invented crops.
@@ -446,7 +446,7 @@ function RfPdaSoilPanel.refreshRotationCard(page, entry)
 
     -- George: the sampling box sits at the SAME x=850 as this card, so while Col 3 is the
     -- rotation card the sampling chrome must stay hidden or it paints over it. This is the
-    -- likely cause of the orphaned look in Tyson shot 01.
+    -- likely cause of the orphaned look in shot 01.
     -- Vera F1: hiding here is necessary but NOT sufficient - refreshTreatmentPlan re-shows
     -- sampling later in the same refresh whenever sample dates exist, and it runs after us.
     -- Claiming Col 3 is what actually holds; the hide below just makes the claim immediate.

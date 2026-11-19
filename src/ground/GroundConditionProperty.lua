@@ -247,7 +247,7 @@ end
 -- The one reader of these records: the admission's drop (SG2-5 5-0) reads them through it too.
 GroundConditionProperty.componentsOf = componentsOf
 
--- [SG2-5d] THE COLLECTED ACCOUNT (Bob's G3 ruling; SG-2 :344, RSF-F211 :46). On the F211
+-- [SG2-5d] THE COLLECTED ACCOUNT (the G3 ruling; SG-2 :344, RSF-F211 :46). On the F211
 -- collection paths StockGuard stores the account Soil's collected reader returned as an optional
 -- `account` in this payload: carrier litres split into known, unknown and refused, with the known
 -- weighted percent sum kept for later uniform combinations. It travels beside the floor fields.
@@ -280,7 +280,7 @@ local function accountFor(rec, litres)
     return out
 end
 
--- [SG2-5d] THE ACCOUNT FROM THE OPERATION (Bob's 5d ruling, Q2; SG-2 :344, R1). StockGuard
+-- [SG2-5d] THE ACCOUNT FROM THE OPERATION (the 5d ruling, Q2; SG-2 :344, R1). StockGuard
 -- seals a Baler's collection, calls the published readCollectedCondition and stores what it
 -- returns on the receiving stock. SG-1 lets only the owner write this property, so the account
 -- travels in the settle report and this combine adopts it: SG-1 hands every combine
@@ -329,7 +329,7 @@ function GP.adoptedAccount(acc, litres)
              refusedCarrierLitres = 0, knownWeightedPctSum = 0 }
 end
 
--- [SG2-5c] PENDING FRESH LITRES (Bob's 5c ruling, Q1; GCC section 4, SG-2 :351). A mower's
+-- [SG2-5c] PENDING FRESH LITRES (the 5c ruling, Q1; GCC section 4, SG-2 :351). A mower's
 -- fresh output waits in StockGuard's drop-area buffer until it lands, and Soil makes its birth
 -- at that deposit (GroundConditionAdmission, the birth contribution). Until then those litres
 -- are neither known nor unknown: they are a birth that has not happened. In the buffer they
@@ -450,7 +450,7 @@ function GroundConditionProperty:combine(context, contributions, destinationBefo
     return GP.record(payload, total, unit, c ~= nil and c.changeCounter or 0)
 end
 
--- [SG2-5b] THE TEDDER'S HAY CONVERSION (SG-2 v2.3 :296, :652, :684; Bob's 5b ruling, Q3). A Tedder
+-- [SG2-5b] THE TEDDER'S HAY CONVERSION (SG-2 v2.3 :296, :652, :684; the 5b ruling, Q3). A Tedder
 -- pass picks grass windrow up and drops it as dry grass windrow, litre for litre
 -- (Tedder.lua:289-300), and StockGuard settles that pickup as a CONVERT on the profile's basis
 -- NATIVE_HAY_CONVERT_V1. Soil's rule at the tedder is already to carry the pickup's condition
@@ -547,7 +547,7 @@ function GroundConditionProperty:register(coordinator, mission)
     return true, nil
 end
 
--- [SG2-5d] THE BALE BIRTH'S READ OF THE CHAMBER (Bob's 5d ruling, Q4 and Q5). With StockGuard
+-- [SG2-5d] THE BALE BIRTH'S READ OF THE CHAMBER (the 5d ruling, Q4 and Q5). With StockGuard
 -- framing a square Baler, the chamber's material is StockGuard's carrier and its condition is the
 -- soil.groundCondition record StockGuard's settle stored there, with the collected account Soil's
 -- own combine adopted (above); Soil's own chamber account is unknown by construction under a

@@ -15,7 +15,7 @@
 -- registers a route by hand, except group T's one probe route, which says so.
 --
 -- This world has no Sprayer class, so the sprayer gate does not install. The six routes
--- reaching the bought vehicles anyway is Bob's condition 1: the shared wrap needs no
+-- reaching the bought vehicles anyway is review condition 1: the shared wrap needs no
 -- specialization. The gate as one route among them is R8's group E.
 --
 -- Groups:

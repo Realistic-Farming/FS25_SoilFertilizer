@@ -132,7 +132,7 @@ do
   T.eq('getter.capturedNilUntilSF14', mask:_readCapturedEfficiency(7, 0, 0), nil)
 end
 
--- 8. THE MASK ENABLE is default-on (Tyson's ruling) and gates the getters.
+-- 8. THE MASK ENABLE is default-on (ruled) and gates the getters.
 --    [SF-52] The public setEnabled surface is removed; `enabled` remains only as
 --    a private internal circuit-breaker, toggled directly here.
 do

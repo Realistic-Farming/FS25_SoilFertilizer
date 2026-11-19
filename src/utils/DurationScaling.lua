@@ -7,7 +7,7 @@
 -- proportionally fewer on a short 1-day-month save (where 35 absolute days is
 -- ~3 game years, the #639/#740 problem).
 --
--- MECHANISM (Arissani's ruling; Tyson's reference constant):
+-- MECHANISM (Arissani's ruling; the reference constant):
 --     effectiveDays = max(1, round(baseDays * daysPerPeriod / REFERENCE_DPP))
 --
 -- Season length is read from TIME GUARD'S CONTEXT, the suite's single

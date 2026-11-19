@@ -1,6 +1,6 @@
 -- MAINT-248-scs_moisture_handle_spec_test.lua
 --
--- MAINTENANCE row 248 (Bob's fleet sweep row 7): SF-55's moisture blend uses SeasonalCropStress in a
+-- MAINTENANCE row 248 (fleet sweep, row 7): SF-55's moisture blend uses SeasonalCropStress in a
 -- game.
 --
 -- THE DEFECT THIS PINS (development ab39998c): SoilFertilityManager:_blendedWetness01 read SCS

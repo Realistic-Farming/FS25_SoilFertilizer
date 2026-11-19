@@ -10,7 +10,7 @@
 
 SoilTopographyBridge = SoilTopographyBridge or {}
 
--- Provisional module ids (must be locked with Claude(A) before release, the
+-- Provisional module ids (must be locked with Design before release, the
 -- same <Mod>_<Thing> convention as the soil bridges).
 SoilTopographyBridge.LEDGER_MODULE = "SoilFertilizer_Topography"
 SoilTopographyBridge.SYNC_MODULE   = "SoilFertilizer_TopographySync"

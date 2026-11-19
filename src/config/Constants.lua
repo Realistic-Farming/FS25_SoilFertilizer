@@ -39,7 +39,7 @@ SoilConstants.TIMING = {
 --     effectiveDays = max(1, round(baseDays * daysPerPeriod / REFERENCE_DPP))
 -- A save at REFERENCE_DPP days-per-month is unchanged; shorter saves scale down.
 -- REFERENCE_DPP is the days-per-month the shipped duration constants were tuned
--- against (Tyson's ruling, 2026-07-23). Time Guard absent -> the absolute count.
+-- against (ruled 2026-07-23). Time Guard absent -> the absolute count.
 -- EXCLUSIONS (already season-honest, must NOT double-scale): the organic
 -- TRANSITION_YEARS (year-normalised via Time Guard at its own read site,
 -- OrganicCertification:getTransitionDays) and the fallow threshold (multiplied
@@ -339,7 +339,7 @@ SoilConstants.OM_DYNAMICS = {
     -- against daily decay, while a no-till field builds it. Together with the residue
     -- incorporation gains and the no-till daily credit below, the SEASON OM trajectory
     -- ranks direct-drill > strip-till > cultivator > plough (the #738 ruled ordering).
-    -- Magnitudes are XML-configurable and Agronomy-dial-scalable (Tyson's to tune).
+    -- Magnitudes are XML-configurable and Agronomy-dial-scalable (open to tuning).
     OXIDATION = {
         PLOW         = 0.14,  -- was the lone PLOW_OXIDATION_LOSS 0.10; steepened for the gradient
         CULTIVATOR   = 0.06,
@@ -1989,7 +1989,7 @@ SoilConstants.COMPACTION = {
     -- Relief: one pass of a subsoiler, a plow-action tool or a grassland weeder
     -- (isGrasslandWeeder: aerators, sward renovators, #680) sets every 2 m pixel under
     -- its active work areas to 0. A pass already cleared its 10 m cells before the move
-    -- to 2 m, because the relief hooks run every tick (Tyson, 2026-10-15).
+    -- to 2 m, because the relief hooks run every tick (2026-10-15).
     -- Deep grassland sward-lifters (e.g. Latapia 5P1H) ARE built as Cultivator+isSubsoiler,
     -- so the subsoiler pass already relieves them - but as cultivators they destroy the
     -- grass. Tools whose configFileName matches one of these lowercase substrings are treated
@@ -2125,7 +2125,7 @@ SoilConstants.RESISTANCE = {
     -- system punished him identically for a decision he was never offered.
     --
     -- 0.25 gives roughly 80 full-rate passes to saturation against the synthetic's 20.
-    -- Ruled by Tyson 2026-08-01 on Claude(A)'s recommendation. This is the tuning knob:
+    -- Ruled 2026-08-01. This is the tuning knob:
     -- raise it to burn naturals faster, lower it to make them nearer-permanent.
     BUILD_RATE_NATURAL   = 0.25,
     BUILD_RATE_SYNTHETIC = 1.0,

@@ -625,7 +625,7 @@ do
   T.eq("E2b.5 a repeat is held, a new reason under the same state and field logs at once",
        tostring(one) .. "/" .. tostring(two) .. "/" .. tostring(three) .. "/" .. (#lines - before), "true/false/true/2")
   -- A machine switched off while AUTO stays armed: a native-inactive cycle, the machine not
-  -- working, never a target refusal line (Bob's R-15 build note).
+  -- working, never a target refusal line (the R-15 build note).
   W.v.turnedOn = false
   local before6 = #lines
   run(W.v, 3)
@@ -938,7 +938,7 @@ end
 --      session-coverage writer (SoilFertilitySystem:markBoomCells), and the
 --      suppression is the real prepend's own verdict from them.
 -- =====================================================================
--- #1098 (Desk follow-up, 2026-10-14): markBoomCells no longer owns coverage area; the
+-- #1098 (follow-up, 2026-10-14): markBoomCells no longer owns coverage area; the
 -- 2 m overlap record does (markOverlapCells, countArea=true, the real production path
 -- a sectioned pass's area now comes from). Both are real production writers a real
 -- pass calls together: markBoomCells still owns field.sessionCoverageCells (the plain
@@ -1123,8 +1123,8 @@ do
   T.eq("E12.11 and draws nothing", tank(W.v), level0)
 end
 
--- A normal stop: boom down, sprayer on, the vehicle standing still (reading A, Tyson's
--- ruling via Desk 2026-09-26, awaiting Design's confirmation). The re-prime test measures
+-- A normal stop: boom down, sprayer on, the vehicle standing still (reading A, the
+-- ruling of 2026-09-26, awaiting Design's confirmation). The re-prime test measures
 -- travel from the held anchor, so a stand after held travel keeps the hold rather than
 -- re-priming. What must hold: nothing is drawn, the held region does not grow while
 -- standing, and moving on, the closing charge covers only ground swept from the anchor,

@@ -1,7 +1,7 @@
 -- SF-2m-nutrient_whole_pixel_dose_entry_test.lua: one fertilizer pass gives each
 -- pixel one pass's dose of N, P, K and organic matter.
 --
--- THE REPORT (Tyson's screenshot, Soil Layers, Nitrogen): stripes along the
+-- THE REPORT (a screenshot, Soil Layers, Nitrogen): stripes along the
 -- driving direction. Each sprayer tick moves the boom a few centimetres, and a
 -- value-map pixel is about 2 m. paintBoomStrip handed each tick's N/P/K/OM to
 -- addPaintStrip as a delta over that tick's thin quad (or, under 5 cm of travel,
@@ -15,7 +15,7 @@
 -- through a square half a pixel wide inside it. Successive quads tile the pass,
 -- so each pixel gets one dose, for all four keys together.
 --
--- THE ROUNDING ADDENDUM (Tyson, 2026-10-16). addPaintStrip floors its raw delta
+-- THE ROUNDING ADDENDUM (2026-10-16). addPaintStrip floors its raw delta
 -- toward zero, so every pass under-applied by up to one raw step per pixel (P and
 -- K about 14% for compost at 1.0x). _nutrientPassStrip now adds half a raw step
 -- away from zero before the write, turning that floor into round-to-nearest. The
@@ -117,7 +117,7 @@ local function rawDeltaFor(delta, upr)
   return -math.floor(-delta / upr)
 end
 
--- [Tyson 2026-10-16] _nutrientPassStrip now adds half a raw step away from zero
+-- [2026-10-16] _nutrientPassStrip now adds half a raw step away from zero
 -- before the value ever reaches addPaintStrip, turning its floor into round-to-
 -- nearest (SPEC-2b-rounding-addendum.md). This is the HAND expectation for a
 -- pass's dose post-rounding: the same adjustment production makes, then the same
@@ -175,7 +175,7 @@ local function newRaster(rule)
   local vm = { available = true, terrainSize = TERRAIN, rule = rule, polys = 0, calls = {} }
   vm.raw = {}
   for _, k in ipairs(KEYS) do vm.raw[k] = {} end
-  -- [Tyson 2026-10-16] Real defs so _nutrientPassStrip's half-step rounding is
+  -- [2026-10-16] Real defs so _nutrientPassStrip's half-step rounding is
   -- actually exercised, not skipped: minVal/maxVal per SoilValueMaps.lua:50-54.
   function vm:getLayerEntry(layer) local d = DEF[layer]; return d ~= nil and { def = d } or nil end
   function vm:getGrainMetres() return GRAIN end

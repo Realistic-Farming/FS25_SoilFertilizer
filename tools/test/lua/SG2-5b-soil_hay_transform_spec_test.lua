@@ -1,6 +1,6 @@
 -- SG2-5b-soil_hay_transform_spec_test.lua
 --
--- SG2-5 slice 5b-soil (SG-2 v2.3 :296, :652, :684; Bob's 5b ruling, Q3, FAST TRACK): Soil's
+-- SG2-5 slice 5b-soil (SG-2 v2.3 :296, :652, :684; the 5b ruling, Q3, FAST TRACK): Soil's
 -- `soil.groundCondition` transform carries combine's own rule when a Tedder pass converts grass
 -- windrow to dry grass on the profile's basis NATIVE_HAY_CONVERT_V1, so StockGuard's tedder path
 -- keeps the condition Soil's own tedder carrier already carries. Any other basis, or none, stays

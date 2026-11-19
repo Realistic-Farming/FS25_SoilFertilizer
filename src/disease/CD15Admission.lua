@@ -21,12 +21,12 @@
 --             cursor at the actual current monotonic day; no NEW-sow branch, no resistance halving,
 --             no reset stamp, no harvested history.
 --
--- THE PROFILE GATE (:220, :243; Bob's intake, Tyson 2026-09-30 "1c ships answering
+-- THE PROFILE GATE (:220, :243; the build intake, ruled 2026-09-30: "1c ships answering
 -- UNKNOWN_OCCURRENCE"). A KNOWN witness needs a supported native profile that records the worst
 -- synchronous read count and latency. TESTING rows 32 and 33 (the native cell probe) have no
 -- result, so PROFILES is empty in production: discovery returns before its walk (the cursor stays,
 -- no candidate is examined, no pixel is read, nothing is admitted) and the status names
--- UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE (Bob's amended production bar). The procedure is whole and
+-- UNKNOWN_OCCURRENCE:NO_SUPPORTED_PROFILE (the amended production bar). The procedure is whole and
 -- is benched under a bench-only profile.
 --
 -- WHERE IT RUNS. CD15Model:update calls discover with what the day work left of the one 256 bound,
@@ -399,7 +399,7 @@ function A.discover(model, budget)
     if budget <= 0 or model.geometry == nil then return 0 end
     -- No supported profile: no witness can be KNOWN, so nothing could be admitted or become a member;
     -- the walk would be constant cost with no output. Return before it: the cursor stays, and the
-    -- status names the reason (Bob's amended production bar).
+    -- status names the reason (the amended production bar).
     local profile = A.supportedProfile()
     if profile == nil then return 0 end
     local d = stateOf(model, model.discoveryCursor == 0)

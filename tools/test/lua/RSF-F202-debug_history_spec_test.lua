@@ -1,6 +1,6 @@
 --!load: src/utils/Logger.lua
 -- RSF-F202: bounded diagnostic history and truthful export announcement.
--- Ported from the certified bar (Office Tyson/mods/FS25_SoilFertilizer/
+-- Ported from the certified bar (tracking repo, mods/FS25_SoilFertilizer/
 -- RSF-F202-debug_history_spec_test.lua) and re-pointed to the production ring
 -- as the handoff requires: GROUP A now asserts the REPAIRED append (no head
 -- removal, one slot write per append, no history reads), the real-source groups
