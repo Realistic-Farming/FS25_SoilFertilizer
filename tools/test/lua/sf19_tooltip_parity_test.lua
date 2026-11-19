@@ -5,7 +5,7 @@
 -- unscouted patch never leaks through shownDiseasePressure, and the raw
 -- diseasePressure stays ungated for the NPC roll and scouting.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 -- A value-maps mock: readValueAtWorld returns per-key values so the test can
 -- tell whether the positional read won over the field scalar.

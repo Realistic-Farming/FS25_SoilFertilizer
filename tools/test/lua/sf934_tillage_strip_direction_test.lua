@@ -14,7 +14,7 @@
 --   change, missing work line) is additive too - a point-write fallback would keep
 --   the flattening stamp alive on exactly the ticks this bug appears on.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local painted, stamped
 

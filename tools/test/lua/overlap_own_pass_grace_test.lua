@@ -27,7 +27,7 @@
 -- (mega1200L.xml/.i3d): 9 sections, tips at +-3.5/6/9/12 m, an isCenter section with
 -- no node, boom line 0.46 m behind root.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local saved = {
     Sprayer = Sprayer, Utils = Utils, g_fillTypeManager = g_fillTypeManager,

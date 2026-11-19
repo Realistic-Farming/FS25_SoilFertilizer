@@ -58,7 +58,7 @@
 -- boom edge and every lane length a multiple of 2 m), so the fix's own arithmetic can be
 -- checked against a hand-computed real area, not just "looks closer than before".
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/SF-1098-coverage_2m_world.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/SF-1098-coverage_2m_world.lua
 
 local OVERLAP_ON  = { enabled = true, overlapPrevention = true,  fieldBoundaryControl = false, debugMode = false }
 local OVERLAP_OFF = { enabled = true, overlapPrevention = false, fieldBoundaryControl = false, debugMode = false }

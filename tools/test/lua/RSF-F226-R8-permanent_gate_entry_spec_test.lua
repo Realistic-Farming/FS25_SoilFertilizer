@@ -32,7 +32,7 @@
 --   V  the evidence lines: the first-execution line names overlap prevention's state,
 --      and the one-shot flags reset with each install (Bob's MAJOR and MINOR on #1052)
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 SoilLogger.debug = function() end
 SoilLogger.info = function() end

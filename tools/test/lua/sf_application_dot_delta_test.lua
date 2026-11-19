@@ -13,7 +13,7 @@
 -- pH dot and is a MAINTENANCE item), or seeding (none, like the strip: the birth
 -- seeder covers the field polygon and the primitive skips unrecorded pixels).
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local PROFILES = SoilConstants.FERTILIZER_PROFILES
 local RR  = SoilConstants.DIFFICULTY.REPLENISHMENT_MULTIPLIERS[3]   -- settings.replenishmentRate = 3

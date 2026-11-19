@@ -25,7 +25,7 @@
 -- real maps, frame cost, MP delivery, the HUD (Wizard's), or in-game money. The
 -- TESTING row names the live observations.
 --
---!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 SoilLogger.debug = function() end
 local WARN = {}
@@ -368,7 +368,6 @@ local function newWorld(opts)
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, nutrientCycles = true,
                      replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = opts.overlap == true,
                      multiTankApplication = true }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = {
     time = 1000, terrainSize = ENGINE.TERRAIN,
     missionInfo = { helperBuyFertilizer = opts.buy == true, helperSlurrySource = 1, helperManureSource = 1 },
@@ -458,23 +457,16 @@ local function nonZeroDraws()
 end
 
 -- =====================================================================
--- E0. The install sequence and the gate
+-- E0. The install sequence
 -- =====================================================================
 do
-  newWorld({ gate = false })
+  newWorld({})
   T.eq("E0.1 the install sequence ran end to end (" .. table.concat(W.installFailed, " | ") .. ")", #W.installFailed, 0)
   T.ok("E0.2 the usage slot of the live sprayer is the SF-73 owned layer", W.hm:isOwnedLayerWrapper(rawget(W.v, "getSprayerUsage")))
   T.ok("E0.3 the field records exist and froze their baselines at creation",
        TargetApplication.validBaseline(W.ss.fieldData[7]._sf73Baseline))
   T.ok("E0.4 the boundary AI message registered through the manager (the index registry)",
        g_currentMission.aiMessageManager.classObjectToIndex[SoilTargetBoundaryAIMessage] ~= nil)
-  paintCarrier(40, 39.8, 39.8)
-  autoOn(W.v)
-  local before = tank(W.v)
-  run(W.v, 12)
-  T.eq("E0.5 gate LOCKED: AUTO on changes nothing, no target state is opened", W.ss.targetApplication.states[W.v], nil)
-  T.ok("E0.6 gate LOCKED: the tank drains by the non-target actual-speed usage, as before", tank(W.v) < before)
-  T.eq("E0.7 gate LOCKED: no target result exists", W.ss:getApplicationTargetResult(W.v), nil)
 end
 
 -- =====================================================================
@@ -1229,10 +1221,9 @@ for _, R in ipairs({ 6, 3 }) do
 end
 
 -- =====================================================================
--- E13. The crop-need reader behind SF-73's release lock (Design on #1029): while the
--- lock is closed getCropNutrientRelationship answers unavailable (nil), so
--- SeasonalCropStress #215 and DairyCore #69 keep their complete legacy paths; they
--- move to crop windows when SF-73 unlocks. The same switch as target mode.
+-- E13. The crop-need reader (Design on #1029): getCropNutrientRelationship answers a
+-- FIELD_REPORT for a sown field, so SeasonalCropStress #215 and DairyCore #69 move to
+-- crop windows.
 -- =====================================================================
 -- The readers call the public contract through the mission's manager, without
 -- coordinates (production sets mission.soilFertilityManager, main.lua:770).
@@ -1261,30 +1252,11 @@ local function sownWorld(opts)
   return W
 end
 do
-  sownWorld({ gate = false })
-  T.eq("E13.1 wheat is the field's sown crop (the sowing writer ran)", W.ss.fieldData[7].sownCrop, "WHEAT")
-  T.eq("E13.2 LOCKED: the field report is unavailable (nil)", read(7), nil)
-  T.eq("E13.3 LOCKED: the local form is unavailable too", read(7, 0.5, -19.5), nil)
-  T.eq("E13.4 LOCKED: both readers keep their legacy path", readersSwitch(read(7)), false)
-  W.settings.allowsExperimentalSystems = nil
-  T.eq("E13.5 LOCKED when the opt-in cannot be read (fail-closed, as target mode)", read(7), nil)
-end
-do
   sownWorld()
+  T.eq("E13.1 wheat is the field's sown crop (the sowing writer ran)", W.ss.fieldData[7].sownCrop, "WHEAT")
   local rel = read(7)
-  T.eq("E13.6 UNLOCKED by the player's opt-in: a FIELD_REPORT of wheat on field 7",
+  T.eq("E13.6 a FIELD_REPORT of wheat on field 7",
        (rel and rel.scope or "nil") .. "/" .. tostring(rel and rel.cropKey) .. "/" .. tostring(rel and rel.fieldId), "FIELD_REPORT/wheat/7")
-  T.eq("E13.7 UNLOCKED: both readers move to crop windows", readersSwitch(rel), true)
+  T.eq("E13.7 both readers move to crop windows", readersSwitch(rel), true)
 end
-do
-  local entry = ReleaseGate.EXPERIMENTAL.sf73_target
-  ReleaseGate.EXPERIMENTAL.sf73_target = nil
-  local ok, err = pcall(function()
-    sownWorld({ gate = false })
-    T.eq("E13.8 UNLOCKED by the release (no opt-in): both readers move to crop windows", readersSwitch(read(7)), true)
-  end)
-  ReleaseGate.EXPERIMENTAL.sf73_target = entry
-  if not ok then error(err, 0) end
-end
-
 T.summary()

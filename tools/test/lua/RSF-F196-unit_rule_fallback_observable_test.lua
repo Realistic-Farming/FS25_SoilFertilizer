@@ -12,7 +12,7 @@
 -- site 2, the fully-treated comparison, for the notice) the coverage resolves
 -- no name at all, so its unresolved-name counter never moves.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
 
 local BR  = SoilConstants.SPRAYER_RATE.BASE_RATES
 local PF  = SoilConstants.FERTILIZER_PROFILES

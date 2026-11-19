@@ -42,7 +42,7 @@
 --   SP singleplayer: the farm scouts the land it owns; land it has not bought (a field
 --      mission's field among it) is refused, the reading declared to Design
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/DiseaseSystem.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/settings/SoilSettingsGUI.lua, src/ui/SoilScoutDialog.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/DiseaseSystem.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/settings/SoilSettingsGUI.lua, src/ui/SoilScoutDialog.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
 local S, SFS = SpatialScouting, SoilFertilitySystem
 -- The dialog's chemical list formats prices through the engine's UIHelper (a GUI helper, not the subject).

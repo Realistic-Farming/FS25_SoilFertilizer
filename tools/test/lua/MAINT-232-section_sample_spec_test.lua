@@ -26,7 +26,7 @@
 -- is set by hand. Asserted: which sections the hooks left spraying, and the rate stored
 -- per section.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilSensorManager.lua, src/specializations/SFNozzleEffects.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-232-section_sample_world.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilSensorManager.lua, src/specializations/SFNozzleEffects.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-232-section_sample_world.lua
 
 local W, boom, install, tick, spraying, section, cellKey =
     SSW.W, SSW.boom, SSW.install, SSW.tick, SSW.spraying, SSW.section, SSW.cellKey

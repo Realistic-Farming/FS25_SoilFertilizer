@@ -24,7 +24,7 @@
 -- addPaintStrip on a 5 m square; the rows below pin that function's arithmetic, and the
 -- dot adds none of its own to it.
 --
---!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilContextInput.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua
+--!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilContextInput.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua
 
 local function group(name, fn)
     local ok, err = pcall(fn)

@@ -8,7 +8,7 @@
 --   The contract this bench locks: the SOWING profile calibration, the stacked-release total,
 --   the bare-ground / stubble no-op, and the residue-only path when biomass is absent.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local CI   = SoilConstants.CROP_INCORPORATION
 local RI   = SoilConstants.RESIDUE_INCORPORATION

@@ -31,7 +31,7 @@
 --     store reads every cell; the overlay hold (R10) covers the UNAVAILABLE outcome.
 --
 --!env: modenv
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua, src/ground/GroundConditionProperty.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/GroundConditionAdmission.lua, src/ground/GroundNativeObserver.lua, src/ground/GroundMovementProjector.lua, src/ground/GroundMovementCarrier.lua, src/ground/GroundConditionProperty.lua
 
 -- The bench runs inside one function: the concatenated sources' file-level locals with this
 -- file's would pass Lua's 200-local limit for a single function.
@@ -96,8 +96,6 @@ local function world(opts)
     WARN = {}
     SoilMaterialDownBridge.ledgerActive = false
     local settings = { enabled = true }
-    -- The player's Experimental Systems switch (ReleaseGate.liveOptIn), off when a row says so.
-    if opts.gateClosed then settings.allowsExperimentalSystems = function() return false end end
     local sys = SoilFertilitySystem.new(settings)
     local vm, age, wet = ENGINE.newValueMaps()
     vm.applyRawDeltaToLayer = function() return nil end
@@ -189,10 +187,6 @@ group("E", function()
     world({ refuse = "DUPLICATE_OWNER" })
     T.eq("E7 a refused registration: not registered, the arm stands, one warning names the reason",
         tostring(registered()) .. "/" .. tostring(coord():isArmed()) .. "/" .. countWarn("DUPLICATE_OWNER"), "false/true/1")
-
-    world({ gateClosed = true })
-    T.eq("E8 the ground-material family gated off: the coordinator does not arm and nothing is registered with StockGuard",
-        tostring(W.sys.isInitialized) .. "/" .. tostring(coord():isArmed()) .. "/" .. #W.rec.registers, "true/false/0")
 end)
 
 group("R", function()

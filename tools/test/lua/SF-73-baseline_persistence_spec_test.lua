@@ -11,7 +11,7 @@
 --   * a field born in session freezes at creation; a re-roll re-establishes it;
 --   * a reload leaves no vehicle target state behind (a new controller holds none).
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua
 
 local TA = TargetApplication
 -- the prelude's XML handle carries ints, floats and strings; bools the same way (XMLFile)

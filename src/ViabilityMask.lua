@@ -995,7 +995,6 @@ function ViabilityMask:_commitFarmland(farmlandId, data, carrierOwners, generati
     plan.truthGrainMetres      = vm:getGrainMetres()
     plan.executionGrainMetres  = grain
     plan.settingsFingerprint   = ''       -- SF-52 adds no setting
-    plan.releaseGateState      = 'LOCKED'
 
     self._plans[farmlandId] = plan
     self._summaries[farmlandId] = {

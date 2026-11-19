@@ -164,8 +164,7 @@ function SoilFertilitySystem.new(settings)
     self.scanRetryAttempts = 0
     self.hookManager = HookManager.new()
     -- [SF-73] Target-accurate N/P/K: the resolver, the footprint and the results.
-    -- LOCKED behind ReleaseGate "sf73_target"; inert until a vehicle's AUTO is on
-    -- with the gate open and an N/P/K product in the cycle.
+    -- Inert until a vehicle's AUTO is on with an N/P/K product in the cycle.
     self.targetApplication = TargetApplication and TargetApplication.new(self) or nil
     -- Install early so custom fill types are in supportedFillTypes before Mission00.load
     -- restores vehicle fill levels from the savegame (fixes fertilizer disappearing on reload).
@@ -325,33 +324,30 @@ function SoilFertilitySystem:initialize()
     -- every store method returns early SILENTLY on an unknown key. Without this the
     -- system would look healthy while recording nothing at all.
     --
-    -- RELEASE GATE: the ground-material family (SF-43/44/46/49) is LOCKED. When it
-    -- is not released, none of the four members arm, and every isArmed() check in the
-    -- hooks, bridges and readers goes inert - the family is not wired at all, exactly
-    -- as the release-gate design specifies. Arming is the single door.
-    if self.materialDown and ReleaseGate.isSystemLive("ground_material") then
+    -- Arming is the single door: a member that does not arm leaves every isArmed()
+    -- check in the hooks, bridges and readers inert.
+    if self.materialDown then
         self.materialDown:arm(self.valueMaps)
     end
     -- [SF-49] Armed after the sibling: it depends on that system being live, not
     -- merely present, and refuses to arm if it is not.
-    if self.materialWetness and ReleaseGate.isSystemLive("ground_material") then
+    if self.materialWetness then
         self.materialWetness:arm(self.valueMaps, self.materialDown, self)
     end
     -- [SF-44] Armed after the condition layer: depends on both sibling systems.
-    if self.hayBet and ReleaseGate.isSystemLive("ground_material") then
+    if self.hayBet then
         self.hayBet:arm(self.materialDown, self.materialWetness)
     end
     -- [SF-46] Armed after HayBet; depends on all three sibling systems.
-    if self.yardLadder and ReleaseGate.isSystemLive("ground_material") then
+    if self.yardLadder then
         self.yardLadder:arm(self.materialDown, self.materialWetness, self.hayBet)
     end
     -- [RSF-F208] Armed last in the family: the cells assert both condition layers
     -- share one geometry, the coordinator asserts both owners are armed, and the
-    -- admission interface publishes ONLY when the coordinator armed. Under the
-    -- gate, or on any refusal along that chain, getCapabilities() reports no
-    -- groundCondition and every consumer correctly treats Soil as absent for this
-    -- join. Absent is the normal path and it is what ships today.
-    if self.groundConditionCells and ReleaseGate.isSystemLive("ground_material") then
+    -- admission interface publishes ONLY when the coordinator armed. On any
+    -- refusal along that chain, getCapabilities() reports no groundCondition and
+    -- every consumer correctly treats Soil as absent for this join.
+    if self.groundConditionCells then
         if self.groundConditionCells:arm(self.valueMaps) and self.groundConditionCoordinator then
             if self.groundConditionCoordinator:arm(
                    self.groundConditionCells, self.materialDown, self.materialWetness, self)
@@ -362,8 +358,8 @@ function SoilFertilitySystem:initialize()
         end
     end
     -- [SG2-4c-3] Register `soil.groundCondition` with StockGuard when it published its
-    -- mission handle; the property refuses unless the coordinator armed, so a client, the
-    -- gate or any refusal above registers nothing. A separate registration from the
+    -- mission handle; the property refuses unless the coordinator armed, so a client or
+    -- any refusal above registers nothing. A separate registration from the
     -- admission interface: it moves no admissionRevision. StockGuard absent is the
     -- Soil-alone path.
     if self.groundConditionProperty and self.groundConditionCoordinator then
@@ -376,10 +372,7 @@ function SoilFertilitySystem:initialize()
     end
     -- [SF-26] Armed after the value maps; reads diseasePressure for the truth
     -- sample and writes it back for the display compose.
-    -- RELEASE GATE: Read the Dirt (the walked mask + the kneel + the handful read)
-    -- is LOCKED; when not released, spatialScouting never arms and the kneel/mask/
-    -- handful all no-op through isArmed().
-    if self.spatialScouting and ReleaseGate.isSystemLive("read_the_dirt") then
+    if self.spatialScouting then
         self.spatialScouting:arm(self.valueMaps)
     end
 
@@ -2454,9 +2447,7 @@ function SoilFertilitySystem:_updateActiveDisease(fieldId, field, season, isRain
         -- first), so a mode that decayed below threshold today reads as ineligible today.
         -- A hybrid is never reachable through selectDisease's weighted roll -- it is not in
         -- DISEASE_REGISTRY or any per-crop candidate list -- so this is its only door.
-        -- RELEASE GATE: the hybrid family (CD-10) is LOCKED; when not released, the pre-pass
-        -- never runs and a normal disease is rolled instead.
-        if ReleaseGate.isSystemLive("cd10_hybrids") then
+        do
             local hybridId = HybridStrains.selectOnset(field, currentDay)
             if hybridId then
                 field.activeDisease = hybridId
@@ -5794,7 +5785,6 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- in updateDailySoil ahead of the batch). Protection fence is LAW inside.
     -- Neutral when absent / no snapshot / protected field.
     if g_server ~= nil and NeighbourCrossing and NeighbourCrossing.ENABLED
-       and ReleaseGate.isSystemLive("spatial_soil")
        and self._neighbourSnapshot and self._neighbourSnapshot[fieldId] then
         local hookMgr = self.hookManager
         if hookMgr then
@@ -5808,10 +5798,7 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
     -- (the daily pass is server-authoritative), after the field aggregate is
     -- settled. The field-level model is untouched; this adds only WHERE the
     -- pressure lands and how it moves. Neutral when disabled or no cells.
-    -- RELEASE GATE: the spatial-soil family (SF-19 and the drop) is LOCKED; when not
-    -- released the per-cell distribution never runs and pressure stays field-level.
-    if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED
-       and ReleaseGate.isSystemLive("spatial_soil") then
+    if g_server ~= nil and SpatialPressures and SpatialPressures.ENABLED then
         local poly = self:_getFieldPolyVerts(fieldId, field)
         SpatialPressures:run(self, fieldId, field, currentDay, poly,
             self._neighbourSnapshot and self._neighbourSnapshot[fieldId])
@@ -6918,22 +6905,10 @@ function SoilFertilitySystem:isTargetModeForDisplay(vehicle)
     return ok and on == true
 end
 
---- Whether SF-73's release lock is open on this peer, for the HUD's target block
---- (section 7): the same fail-closed switch as target mode (TA:isGateOpen). The opt-in
---- it reads is a synced setting, so a client answers as its server does. Locked, the
---- HUD draws today's panel and nothing new.
-function SoilFertilitySystem:isTargetGateOpen()
-    local ta = self.targetApplication
-    if ta == nil or type(ta.isGateOpen) ~= "function" then return false end
-    local ok, open = pcall(ta.isGateOpen, ta)
-    return ok and open == true
-end
-
 --- [W1b] The field's last confirmed target footprint outcome (REACHED, a shortfall, or a
---- post-spend failure), a copy, for the PDA; nil while SF-73 is locked or when this peer has
---- seen none since load or join. Display only: one footprint's result, never a field claim.
+--- post-spend failure), a copy, for the PDA; nil when this peer has seen none since
+--- load or join. Display only: one footprint's result, never a field claim.
 function SoilFertilitySystem:getLastTargetPassForField(fieldId)
-    if not self:isTargetGateOpen() then return nil end
     local ta = self.targetApplication
     if ta == nil or type(ta.getLastOutcomeForField) ~= "function" then return nil end
     local ok, r = pcall(ta.getLastOutcomeForField, ta, fieldId)
@@ -6943,10 +6918,9 @@ end
 
 --- [PDA pause] The field's last no-crop pause (an AUTO refusal for no growing crop on this
 --- field), a copy carrying `notedAt` and the `fieldCrop` stamp it was noted under, for the PDA;
---- nil while SF-73 is locked or when this peer has seen none since load or join. Display only.
+--- nil when this peer has seen none since load or join. Display only.
 --- getLastTargetPassForField above stays outcomes only.
 function SoilFertilitySystem:getLastTargetPauseForField(fieldId)
-    if not self:isTargetGateOpen() then return nil end
     local ta = self.targetApplication
     if ta == nil or type(ta.getLastPauseForField) ~= "function" then return nil end
     local ok, r = pcall(ta.getLastPauseForField, ta, fieldId)
@@ -6956,10 +6930,9 @@ end
 
 --- [W1b] The refusal reason a player surface names for a target result (the one display
 --- order the HUD and the PDA read, TargetNutrientCore.REASON_DISPLAY_ORDER), so another
---- mod's view (FarmTablet, W1c) names the same reason. nil while SF-73 is locked, for an
+--- mod's view (FarmTablet, W1c) names the same reason. nil for an
 --- outcome, or for a result with no reason it knows.
 function SoilFertilitySystem:getTargetPrimaryReason(result)
-    if not self:isTargetGateOpen() then return nil end
     if TargetNutrientCore == nil or type(TargetNutrientCore.primaryReason) ~= "function" then return nil end
     local ok, reason = pcall(TargetNutrientCore.primaryReason, result)
     if ok then return reason end
@@ -6968,15 +6941,11 @@ end
 
 --- Read contract 2 (SF-73 section 6): the crop-need answer. FIELD_REPORT from the
 --- field scalars without coordinates; strict LOCAL map truth with them.
---- Unavailable (nil) while SF-73's release lock is closed, on the same switch as target
---- mode (TA:isGateOpen, fail-closed): the readers (SeasonalCropStress, DairyCore) keep
---- their complete legacy paths and move to crop windows when SF-73 unlocks (Design, on
---- #1029).
+--- The readers (SeasonalCropStress, DairyCore) move to crop windows on this answer and
+--- keep their complete legacy paths for a nil one (Design, on #1029).
 function SoilFertilitySystem:getCropNutrientRelationship(fieldId, x, z)
     local ta = self.targetApplication
     if ta == nil then return nil end
-    local okGate, open = pcall(ta.isGateOpen, ta)
-    if not okGate or open ~= true then return nil end
     local ok, r = pcall(ta.getCropNutrientRelationship, ta, fieldId, x, z)
     if ok then return r end
     return nil
@@ -7777,13 +7746,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- collapses to the single-chemical path when it is.
     local blendPartners = SoilBlends.getPartners(chemId)
 
-    -- RELEASE GATE: the tank-mix family (CD-12) is LOCKED. When not released, a blend
-    -- fill type degrades to the generic fungicide path: rateName stays FUNGICIDE, no
-    -- lastFungicide tag, no max-over-partners control, and its resistance partners are
-    -- NOT split (a blend is not a real chemical until CD-12 releases). The fill type
-    -- itself still exists (registered at load) but behaves inert, per the design doc.
-    local blendsLive = ReleaseGate.isSystemLive("cd12_tank_mixes")
-    if blendPartners and blendsLive then
+    if blendPartners then
         -- The blend carries its own calibrated rate (the mean of its partners'), so the
         -- meter denominator below is the blend's pass and not generic FUNGICIDE's.
         rateName = chemId
@@ -7803,9 +7766,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
             -- earns full control while one fresh mode earns half. Without it, max-over-partners
             -- composed with the hybrid's flat 0.25 category default means a two-chemical mix
             -- answers a hybrid no better than one jug. No-op on ordinary diseases.
-            if ReleaseGate.isSystemLive("cd10_hybrids") then
-                best = best * HybridStrains.freshModeFactor(field, field.activeDisease, blendPartners)
-            end
+            best = best * HybridStrains.freshModeFactor(field, field.activeDisease, blendPartners)
             effectiveness = (effectiveness or 1.0) * best
         end
     elseif chemId and SoilConstants.FUNGICIDE_CATALOG[chemId] then
@@ -7815,9 +7776,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
             local control = SoilDiseaseSystem.effectiveness(chemId, field.activeDisease) or 1.0
             -- CD-10: one jug spans one mode, so against a two-mode hybrid it earns half
             -- control at best. This is the asymmetry that makes mixing worth doing.
-            if ReleaseGate.isSystemLive("cd10_hybrids") then
-                control = control * HybridStrains.freshModeFactor(field, field.activeDisease, { chemId })
-            end
+            control = control * HybridStrains.freshModeFactor(field, field.activeDisease, { chemId })
             effectiveness = (effectiveness or 1.0) * control
         end
     end
@@ -7871,10 +7830,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     -- which would collapse the denominator and re-create the saturation this fixes.
     -- CD-12: the partners this pass builds on. A single chemical is the one-element case and
     -- collapses to exactly the arithmetic that shipped before blends existed.
-    -- RELEASE GATE: when CD-12 is locked, a blend is not a real chemical, so it builds
-    -- no split resistance - the partner set collapses to the blend's own name (which has
-    -- no mode, so the loop simply finds nothing to build).
-    local resistParts = (blendPartners and blendsLive) and blendPartners or { chemId }
+    local resistParts = blendPartners or { chemId }
     local partnerCount = #resistParts
 
     local isOrganicField = field.organic ~= nil
@@ -7883,11 +7839,7 @@ function SoilFertilitySystem:onFungicideAppliedDirect(fieldId, effectiveness, li
     local doseFactor = math.min(1.0, (liters or 0) / targetVol)
     local bestFactor = nil
 
-    -- RELEASE GATE: the disease-resistance family (CD-9) is LOCKED. When not
-    -- released, resistance never accumulates and effectiveness is never reduced by
-    -- it: a sprayed fungicide behaves as the stable generic baseline. CD-10 hybrids
-    -- and CD-12 blend handling ride this same family and are gated with it.
-    if ReleaseGate.isSystemLive("cd9_resistance") then
+    do
         for _, partner in ipairs(resistParts) do
             local mode = self.getModeForFillType(partner)
             if mode then

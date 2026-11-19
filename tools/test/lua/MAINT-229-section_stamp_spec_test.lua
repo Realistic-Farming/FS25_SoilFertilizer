@@ -35,7 +35,7 @@
 -- lane sits at x = 25, so the 10 m columns are lateral [-25,-15], [-15,-5], [-5,5],
 -- [5,15] and [15,25].
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-229-section_boom_world.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-229-section_boom_world.lua
 
 local TICKS = SBW.TICKS
 local cpBoom, perSectionBoom, streumaster = SBW.cpBoom, SBW.perSectionBoom, SBW.streumaster

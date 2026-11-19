@@ -69,11 +69,7 @@ do
     g_currentMission = oldMission
     g_timeGuard = oldTimeGuard
 
-    local oldReleaseGate = ReleaseGate
-    ReleaseGate = nil
-    T.eq("A12 shipped feature fail-opens when the release owner is unavailable",
-        current:isLive(), true)
-    ReleaseGate = oldReleaseGate
+    T.eq("A12 shipped feature is live with the mask enabled", current:isLive(), true)
 
     -- The Option-Scaling profile read follows the vendored readProfile/resolve
     -- contract through the settings hub; absent hub or profile stays neutral.

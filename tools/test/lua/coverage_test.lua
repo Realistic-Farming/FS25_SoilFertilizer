@@ -4,7 +4,7 @@
 -- call to markOverlapCells (the 2 m overlap record, the real production method that
 -- now owns coverage area on a sectioned pass) can resolve HookManager.overlapCellKey;
 -- without it markOverlapCells returns at once (its own guard) and proves nothing.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 -- Build a `self` that resolves SoilFertilitySystem methods (so self:method() works)
 -- without running .new() (which would pull in HookManager and the live game).

@@ -22,7 +22,7 @@
 -- append; another vehicle's pass is written by the production writer. Asserted: the sections
 -- either check switched off, and the 10 m record.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-234-overlap_record_world.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-234-overlap_record_world.lua
 
 local install, driveLane, twoRows, list, tenMetreSignature, otherPass =
     ORW.install, ORW.driveLane, ORW.twoRows, ORW.list, ORW.tenMetreSignature, ORW.otherPass

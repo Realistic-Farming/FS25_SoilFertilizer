@@ -9,31 +9,30 @@
 -- and gets the existing field-average result, as the pre-SF-14 hopper hook gave it, with
 -- that hook's nutrientCycles gate.
 --
+-- The release gate was removed on 2026-11-19 and the growth family is always live, so
+-- the closed-gate rows went with it. The groups below pin the no-receipt fallback.
+--
 -- THE ENTRY-POINT BAR is every group: the real install (HookManager.new, then
 -- installZoneYieldCutterHook) over a harvester that was live before the install, its work
 -- area holding the processingFunction COPIED at load (WorkArea.lua :266), driven in
 -- WorkArea:onUpdateTick's order (Cutter start, the stored processingFunction, Cutter end).
 -- The pre-cut context is the REAL ZoneYield, built as production builds it
 -- (ZoneYield.new(g_SoilFertilityManager)); the scalar is the REAL
--- SoilFertilitySystem:computeYieldModifier on the field's own N/P/K and OM; the release
--- gate is the REAL ReleaseGate reading the REAL Settings (Settings.new, the schema
--- defaults: Experimental Systems OFF, nutrient cycles ON). The opt-in is PRESENT and
--- false, never the fail-open nil (zone_yield_sf14_test.lua A13 covers that one).
+-- SoilFertilitySystem:computeYieldModifier on the field's own N/P/K and OM; the settings
+-- are the REAL Settings (Settings.new, the schema defaults: nutrient cycles ON).
 --
 -- The engine is modelled from the decompiled scripts: Cutter.lua :584-666 (the cut and
 -- the multiplier area, neutral harvest multiplier), :729-768 (the start event's fruit
 -- list), :770-840 (the combine's litres), FSDensityMapUtil.getFruitArea, the field and
 -- farmland maps. Group G5 places a READY receipt by hand, as SF-14's own bench does: it
--- is the open-gate regression of the spatial path, not part of the closed-gate bar.
+-- is the regression of the spatial path.
 --
 -- Groups:
---   G0  the gate is present and closed with the real settings
---   G1  closed gate, Sauge's depleted field: the cut is scaled by the field-average
+--   G0  the install and the real settings: the growth family is live
+--   G1  no receipt, Sauge's depleted field: the cut is scaled by the field-average
 --       scalar, 0.525 derived by hand, equal to the open-gate fallback
---   G2  closed gate: SF14_CUT path=fallback; no receipt, polygon or drag read; nothing
---       of SF-14's written
---   G3  closed gate: the field's yield freezes at the first cut and holds
---   G4  closed gate, a contract field: the contract path, scaled, and the underwrite
+--   G3  no receipt: the field's yield freezes at the first cut and holds
+--   G4  no receipt, a contract field: the contract path, scaled, and the underwrite
 --       measures the scaled cut
 --   G5  open gate: a READY receipt is spatial, none is the fallback (regression)
 --   G6  nutrient cycles off: no scaling and no freeze on the non-spatial path, gate open
@@ -41,7 +40,7 @@
 --   G7  open gate, value maps unavailable: the fallback context, scaled, never nil
 --   T   the harvest hook's debug line names the cutter, not the retired hopper hook
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/config/SettingsSchema.lua, src/settings/Settings.lua, src/maps/SoilValueMaps.lua, src/ViabilityMask.lua, src/integrations/OptionScalingResolver.lua, src/ZoneYield.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/HarvestContractUnderwrite.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/config/SettingsSchema.lua, src/settings/Settings.lua, src/maps/SoilValueMaps.lua, src/ViabilityMask.lua, src/integrations/OptionScalingResolver.lua, src/ZoneYield.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/HarvestContractUnderwrite.lua
 --!text: src/hooks/HookManager.lua
 
 SoilLogger.info = function() end
@@ -208,7 +207,6 @@ local function newWorld(opts)
                        missionInfo = {}, time = 0 }
   local manager = {}
   local settings = Settings.new(manager)            -- the schema defaults
-  if opts.experimental then settings.experimentalSystems = true end
   if opts.nutrientCycles == false then settings.nutrientCycles = false end
   local soil = setmetatable({
     settings = settings,
@@ -285,14 +283,12 @@ local function near(a, b) return type(a) == "number" and math.abs(a - b) < 1e-9 
 local SAUGE = (1 - 0.50) * (1 + 0.05)
 
 -- =====================================================================
--- G0. The gate is present and closed with the real settings
+-- G0. The install and the real settings
 -- =====================================================================
 group(function()
   newWorld({})
   T.eq("G0.1 [reached] the install wrapped the live work area", W.installed and HookManager._zoneYieldWrappers[W.v.spec_workArea.workAreas[1].processingFunction], true)
-  T.eq("G0.2 the opt-in is PRESENT and false (the real Settings, schema defaults)", ReleaseGate.liveOptIn(), false)
-  T.eq("G0.3 so the growth family is not live", ReleaseGate.isSystemLive("growth_modulation"), false)
-  T.eq("G0.4 and ZoneYield says so", W.zy:isLive(), false)
+  T.eq("G0.2 the growth family is live with the real settings", W.zy:isLive(), true)
   T.eq("G0.5 nutrient cycles are on by default", W.settings.nutrientCycles, true)
   local ys = SoilConstants.YIELD_SENSITIVITY
   T.ok("G0.6 the constants the hand derivation assumes (threshold 50, cap 0.50, OM bonus 0.05 at 5)",
@@ -301,19 +297,19 @@ group(function()
 end)
 
 -- =====================================================================
--- G1. Closed gate, Sauge's depleted field: scaled by the field-average scalar
+-- G1. No receipt, Sauge's depleted field: scaled by the field-average scalar
 -- =====================================================================
 local OPEN_FALLBACK
 group(function()
   newWorld({ experimental = true })
   local a = tick(W.v)
   OPEN_FALLBACK = a
-  T.ok("G1.0 [reached] open gate, no receipt: the fallback scales the cut (" .. tostring(a) .. ")", near(a, CUT * SAUGE))
+  T.ok("G1.0 [reached] no receipt: the fallback scales the cut (" .. tostring(a) .. ")", near(a, CUT * SAUGE))
 end)
 group(function()
   newWorld({})
   local area = tick(W.v)
-  T.ok("G1.1 NAMED: closed gate, the cut's multiplier area is the native 10 x 0.525 (" .. tostring(area) .. ")",
+  T.ok("G1.1 NAMED: no receipt, the cut's multiplier area is the native 10 x 0.525 (" .. tostring(area) .. ")",
        near(area, CUT * SAUGE))
   T.ok("G1.2 NAMED: the same figure as the open-gate fallback on the same field", near(area, OPEN_FALLBACK))
   T.ok("G1.3 the combine took the scaled litres (" .. tostring(W.v.spec_combine.fill) .. ")",
@@ -322,24 +318,7 @@ group(function()
 end)
 
 -- =====================================================================
--- G2. Closed gate: SF-14's own machinery stays inert
--- =====================================================================
-group(function()
-  newWorld({})
-  tick(W.v)
-  local lines = cutLines()
-  T.ok("G2.1 NAMED: SF14_CUT reads path=fallback sf=0.525 (" .. tostring(lines[1]) .. ")",
-       #lines == 1 and lines[1]:find("field=22 fruit=14 path=fallback", 1, true) ~= nil
-       and lines[1]:find("sf=0.525", 1, true) ~= nil)
-  T.eq("G2.2 NAMED: no receipt, source polygon, yield polygon or drag read, and no carrier read",
-       (COUNT._findReceipt or 0) + (COUNT._readYieldPolygon or 0) + (COUNT._readTrafficDragPolygon or 0)
-       + (COUNT._sourcePolygonForWorkArea or 0) + (COUNT.readAverageOfPolygon or 0), 0)
-  T.eq("G2.3 no fallback entry and no receipt written", tostring(next(W.zy._fallbacks)) .. "/" .. tostring(next(W.zy._receipts)), "nil/nil")
-  W.restoreStanding()
-end)
-
--- =====================================================================
--- G3. Closed gate: the yield freezes at the first cut and holds through the harvest
+-- G3. No receipt: the yield freezes at the first cut and holds through the harvest
 -- =====================================================================
 group(function()
   newWorld({})
@@ -354,7 +333,7 @@ group(function()
 end)
 
 -- =====================================================================
--- G4. Closed gate, a contract field: scaled, and the underwrite measures it
+-- G4. No receipt, a contract field: scaled, and the underwrite measures it
 -- =====================================================================
 group(function()
   newWorld({ contract = true, field = CONTRACT })
@@ -369,7 +348,7 @@ group(function()
 end)
 
 -- =====================================================================
--- G5. Open gate: the spatial path and the fallback, as SF-14 built them (regression)
+-- G5. The spatial path and the fallback, as SF-14 built them (regression)
 -- =====================================================================
 group(function()
   newWorld({ experimental = true })
@@ -403,7 +382,7 @@ group(function()
   T.ok("G6.0 [reached] with nutrient cycles off the weeds alone would still cut the yield (" .. tostring(wouldCharge) .. ")",
        type(wouldCharge) == "number" and wouldCharge < 1)
   local area = tick(W.v)
-  T.ok("G6.1 NAMED: closed gate, nutrient cycles off: the native cut, unscaled (" .. tostring(area) .. ")", near(area, CUT))
+  T.ok("G6.1 NAMED: no receipt, nutrient cycles off: the native cut, unscaled (" .. tostring(area) .. ")", near(area, CUT))
   T.eq("G6.2 and no freeze is taken", W.soil.fieldData[DEPLETED].frozenYieldModifier, nil)
   W.restoreStanding()
   newWorld({ nutrientCycles = false, experimental = true, weeds = 100 })
@@ -421,7 +400,7 @@ group(function()
 end)
 
 -- =====================================================================
--- G7. Open gate, value maps unavailable: the fallback context, scaled, never nil
+-- G7. Value maps unavailable: the fallback context, scaled, never nil
 -- =====================================================================
 group(function()
   newWorld({ experimental = true, valueMaps = false })

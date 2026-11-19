@@ -5071,12 +5071,10 @@ function HookManager:installTedderHook()
                 -- only "the wrapper ran" would hand a tester on default settings a
                 -- line that looks like success next to a drying effect that never
                 -- comes, and they would report the repair as broken when it is
-                -- working and the FAMILY is simply gated off.
+                -- working and HayBet is simply not armed.
                 --
-                -- The ground-material family sits behind the ground_material
-                -- release gate, so on an ordinary save HayBet is inert and the
-                -- honest answer is "the wrapper runs, and there is nothing behind
-                -- it yet". Reading this one line tells you which of the two
+                -- When HayBet is not armed the honest answer is "the wrapper
+                -- runs, and there is nothing behind it yet". Reading this one line tells you which of the two
                 -- states you are in without opening the settings panel.
                 local hb = g_SoilFertilityManager
                     and g_SoilFertilityManager.soilSystem
@@ -5088,8 +5086,7 @@ function HookManager:installTedderHook()
                     tostring(armed),
                     armed
                         and "Drying WILL be applied on this pass."
-                        or "Drying will NOT be applied: the ground-material family is gated off. "
-                           .. "Turn on Experimental Systems to see the drying effect.")
+                        or "Drying will NOT be applied: HayBet is not armed.")
             end
             -- RSF-F208 SECTION 3: THE GROUND-CONDITION CARRIER, BEFORE HAYBET. The
             -- carrier's frame is open around the native call so the observer sees
@@ -5537,11 +5534,10 @@ function HookManager:installCombineSwathHook()
     -- acceptance again.
     --
     -- The armed state is in the line for the reason it was added to the tedder
-    -- hook at aa9e61f8: straw birth sits behind the ground_material release gate
-    -- (materialDown arms at SoilFertilitySystem.lua:294, and the check below
-    -- returns early when it has not), so on an ordinary save this wrapper runs and
-    -- NOTHING FOLLOWS IT. A line that reads like success above a gate that is
-    -- closed is exactly how a tester gets sent hunting an effect that cannot
+    -- hook at aa9e61f8: straw birth needs materialDown armed
+    -- (it arms in SoilFertilitySystem:initialize, and the check below returns early
+    -- when it has not), and then this wrapper runs and NOTHING FOLLOWS IT. A line
+    -- that reads like success above a check that fails is exactly how a tester gets sent hunting an effect that cannot
     -- appear, and how a working repair gets reported as broken.
     local firstRunLogged = false
 
@@ -5577,8 +5573,7 @@ function HookManager:installCombineSwathHook()
                     .. "(RSF-F226 combine half confirmed live). MaterialDown armed: %s. %s",
                     tostring(armed),
                     not armed
-                        and "No straw birth will be recorded: the ground-material family is gated off. "
-                           .. "Turn on Experimental Systems to see straw birth."
+                        and "No straw birth will be recorded: MaterialDown is not armed."
                         or not observed
                         and "No straw birth will be recorded: the ground observer is not installed, so the litres a pass lands cannot be read."
                         or "A straw birth WILL be recorded when this pass lands litres on a field.")
@@ -10163,8 +10158,8 @@ end
 --     parameters say what the plan says;
 --   * the drain token, the external fill layer and the area hook record the
 --     actual litres and route the cycle (see those hooks).
--- The controller is TargetApplication; nothing runs unless its release gate is
--- open and the vehicle's AUTO is on.
+-- The controller is TargetApplication; nothing runs unless the vehicle's AUTO
+-- is on.
 
 --- The target controller this manager serves, or nil.
 function HookManager:getTargetApplication()
@@ -10206,7 +10201,7 @@ function HookManager:installTargetApplicationHooks()
     end
     self:installOwnedRegisteredFunctionLayer(Sprayer, "getSprayerUsage", makeTargetUsageWrapper, "sprayer",
         "Sprayer.getSprayerUsage (SF-73 owned target layer)")
-    SoilLogger.info("[OK] SF-73 target application installed (cycle start + owned usage layer; LOCKED by the release gate)")
+    SoilLogger.info("[OK] SF-73 target application installed (cycle start + owned usage layer)")
     return true
 end
 

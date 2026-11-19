@@ -25,7 +25,7 @@
 -- What this bar does NOT prove: native density-map execution, how a joined client
 -- learns a re-roll, and the console commands' server gate. Those are the in-game row.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
 
 local saved = { g_server = g_server, fields = g_fieldManager and g_fieldManager.fields,
                 g_farmlandManager = g_farmlandManager, NpcSoilBridge = NpcSoilBridge,

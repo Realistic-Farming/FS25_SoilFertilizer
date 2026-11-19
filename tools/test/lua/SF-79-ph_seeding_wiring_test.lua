@@ -32,7 +32,7 @@
 -- What this bar does NOT prove: native density-map execution, the client cadence for a
 -- mid-session seed, and engine load order. The TESTING row carries them.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
 
 local saved = { g_server = g_server, fields = g_fieldManager and g_fieldManager.fields,
                 g_farmlandManager = g_farmlandManager, getWorldTranslation = getWorldTranslation,

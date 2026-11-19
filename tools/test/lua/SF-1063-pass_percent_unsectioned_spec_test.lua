@@ -43,7 +43,7 @@
 -- value-map rasters' rounding on a real map, the HUD (it draws what this bar reads),
 -- MP.
 --
---!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua
+--!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/DurationScaling.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua
 --!text: translations/translation_en.xml
 
 SoilLogger.debug = function() end
@@ -342,7 +342,6 @@ local function newWorld(opts)
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, nutrientCycles = true,
                      replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = false,
                      multiTankApplication = true, diseasePressure = true, pestPressure = true, weedPressure = true }
-  settings.allowsExperimentalSystems = function() return false end
   g_currentMission = {
     time = 1000, terrainSize = ENGINE.TERRAIN,
     missionInfo = { helperBuyFertilizer = false, helperSlurrySource = 1, helperManureSource = 1 },

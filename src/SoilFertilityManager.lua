@@ -165,8 +165,8 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- SF-53 GROWTH CREDIT: the reward half of the SF-2M pair. A daily
     -- bookkeeper counts days of excellence; the period hand advances credit
     -- cells one step at the drained FINISHED_GROWTH_PERIOD delivery, bucketed
-    -- on the engine's own fruit plane. Inert unless the growth_modulation
-    -- release gate is open and the mask is enabled.
+    -- on the engine's own fruit plane. Inert while the mask is
+    -- disabled.
     self.growthCredit = GrowthCredit and GrowthCredit.new(self) or nil
     -- [SF-53 One Ground] The single family growth dispatch. The manager owns the
     -- one START/FINISHED message pair and routes to each conformed member, so a
@@ -177,14 +177,14 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     -- SF-78 GROWTH BLOCK: the hold half of the SF-2M pair. Capture at
     -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through
     -- the family write machine; blocked cells fall behind the field. Inert
-    -- unless the growth_modulation release gate is open and the mask enabled.
+    -- while the mask is disabled.
     self.growthBlock = GrowthBlock and GrowthBlock.new(self) or nil
 
     -- SF-14 ZONE YIELD: the payout half of the SF-2M family. Per-cell
     -- yieldEfficiency capture at growth time (riding the family's shared
     -- read) and the area-weighted harvest read that supersedes the SF-16
-    -- scalar freeze on the spatial path. Inert unless the growth_modulation
-    -- release gate is open and the mask enabled.
+    -- scalar freeze on the spatial path. Inert while the mask
+    -- is disabled.
     self.zoneYield = ZoneYield and ZoneYield.new(self) or nil
 
     -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
@@ -281,12 +281,6 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         if SoilGuideDialog and g_gui then
             SoilGuideDialog.register(modDirectory)
             SoilLogger.info("Soil Guide dialog registered")
-        end
-
-        -- Release gate dialog (opened from the version/changelog dialog)
-        if SoilReleaseDialog and g_gui then
-            SoilReleaseDialog.register(modDirectory)
-            SoilLogger.info("Soil Release dialog registered")
         end
 
         -- Overlay help dialog (4th sidebar button on soil map)
@@ -480,7 +474,7 @@ function SoilFertilityManager:activateSoilSystem()
         -- SF-53 GROWTH CREDIT: initialize + register both clocks (the daily
         -- bookkeeper with Time Guard, the period bell with the message center).
         -- Server-only by the fruit-plane write's nature; the module's own live
-        -- gate keeps it inert until the growth_modulation release gate opens.
+        -- gate keeps it inert while the mask is disabled.
         if self.growthCredit then
             self.growthCredit:initialize()
             if g_server ~= nil then
@@ -500,7 +494,7 @@ function SoilFertilityManager:activateSoilSystem()
         -- subscription (brief 3.3/3.11); START/FINISHED arrive through the family
         -- dispatch above. register() is a no-op kept for the uniform member API.
         -- Server-only by the fruit-plane write's nature; the module's own live
-        -- gate keeps it inert until the growth_modulation release gate opens.
+        -- gate keeps it inert while the mask is disabled.
         if self.growthBlock then
             self.growthBlock:initialize()
             if g_server ~= nil then
@@ -512,7 +506,7 @@ function SoilFertilityManager:activateSoilSystem()
         -- subscription (brief 3.3/3.10); START/FINISHED arrive through the family
         -- dispatch above. register() is a no-op kept for the uniform member API.
         -- Server-only by the value-map write's nature; the module's own live gate
-        -- keeps it inert until the growth_modulation release gate opens. The
+        -- keeps it inert while the mask is disabled. The
         -- capture job pump advances from the manager update path.
         if self.zoneYield then
             self.zoneYield:initialize()
@@ -901,15 +895,7 @@ function SoilFertilityManager:onHandfulInput()
         end
     end
 
-    -- Gate 1: the family is LOCKED unless the player opted into experimental
-    -- systems. Same registry the rest of Read the Dirt checks.
-    if ReleaseGate and not ReleaseGate.isSystemLive("read_the_dirt") then
-        local msg = ReleaseGate.lockMessage and ReleaseGate.lockMessage("read_the_dirt", ReleaseGate.liveOptIn())
-        if msg then warn(msg) end
-        return
-    end
-
-    -- Gate 2: you have to actually be kneeling. PlayerStateCrouch flips this flag
+    -- Gate 1: you have to actually be kneeling. PlayerStateCrouch flips this flag
     -- on entry/exit (player/PlayerMover.lua setIsCrouching); crouch is a HOLD in
     -- FS25, not a toggle, so the player holds crouch and presses the key. A hand
     -- tool whose canCrouch is false blocks the crouch state outright - that is
@@ -921,7 +907,7 @@ function SoilFertilityManager:onHandfulInput()
         return
     end
 
-    -- Gate 3: a field and a resolved spot underfoot.
+    -- Gate 2: a field and a resolved spot underfoot.
     local fieldId, x, z = nil, nil, nil
     if self.soilHUD.detectCurrentFieldId then
         local ok, cur, cx, cz = pcall(function() return self.soilHUD:detectCurrentFieldId() end)
@@ -2565,8 +2551,8 @@ end
 -- ============================================================
 -- Server-local. Listeners register at trusted server initialization only and are never
 -- saved or supplied by a client. Every answer is detached data; exact native unique id
--- binding, never farm, fill type or capacity similarity. With the ground-material family
--- off (Experimental Systems) the capabilities are nil and every read is UNAVAILABLE.
+-- binding, never farm, fill type or capacity similarity. While the ground-material family
+-- is not armed the capabilities are nil and every read is UNAVAILABLE.
 
 local function yardLadderOf(self)
     local sys = self.soilSystem
@@ -2750,7 +2736,6 @@ function SoilFertilityManager:getWaterDaysInLast(days, throughDay)
     local mw = self.soilSystem and self.soilSystem.materialWetness
     if mw == nil or type(mw.waterDaysInLast) ~= 'function' then return nil end
     if not mw:isArmed() then return nil end
-    if not ReleaseGate.isSystemLive("ground_material") then return nil end
     local ok, count, known = pcall(mw.waterDaysInLast, mw, days, throughDay)
     if not ok then return nil end
     if known == nil or known <= 0 then return nil end

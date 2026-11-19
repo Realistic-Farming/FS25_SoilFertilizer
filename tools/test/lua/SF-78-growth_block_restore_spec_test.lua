@@ -34,12 +34,8 @@ do
     -- reports ready so the manager's uniform member sweep is satisfied.
     T.eq("A6 shipped register is a no-op that reports ready", current:register(), true)
 
-    -- Fail-open on the release owner, gates hard on the mask (checked in B/A).
-    local oldReleaseGate = ReleaseGate
-    ReleaseGate = nil
-    T.eq("A7 shipped feature fail-opens when the release owner is unavailable",
-        current:isLive(), true)
-    ReleaseGate = oldReleaseGate
+    -- Live while the mask is enabled; the mask gates hard (checked in B/A).
+    T.eq("A7 shipped feature is live with the mask enabled", current:isLive(), true)
 
     -- The retired lattice helpers are gone.
     T.eq("A8 shipped hold derives no old 8m/600 lattice header", type(current._deriveHeader), "nil")

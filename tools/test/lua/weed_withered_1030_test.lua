@@ -4,7 +4,7 @@
 -- maps_weed.xml gives withered states 8/9 a factor of 0.5/0.75 and they persist until
 -- tillage/harvest, so reading weedFactor raw turned a sprayed field's dead weeds into
 -- 50-75% weed pressure that climbed back +20/day after every herbicide pass.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function newSys()
   return setmetatable({ fieldData = {} }, { __index = SoilFertilitySystem })

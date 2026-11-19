@@ -181,7 +181,7 @@ function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
 end
 
 --- [SF-73] On the server: may the sender on connection switch this vehicle's AUTO,
---- which with the release gate open is target automatic, a money and tank mode?
+--- which is target automatic, a money and tank mode?
 --- Beyond the access rule above (Implementation v1.1 section 6): the vehicle exists
 --- and is not being deleted (Vehicle.lua:1096, :1133), the connection resolves to a
 --- user (UserManager:getUserByConnection, users/UserManager.lua:74), the sender's
@@ -1886,7 +1886,7 @@ function SoilSprayerAutoModeEvent:run(connection)
 
     -- The same ownership test as the rate event (row 111).
     if g_server ~= nil and not SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle) then return end
-    -- [SF-73] AUTO is target automatic behind the release gate: a resolved user of a
+    -- [SF-73] AUTO is target automatic: a resolved user of a
     -- real farm that is actively operating the vehicle, never a spectator.
     if g_server ~= nil and not SoilNetworkEvents_ConnectionMayToggleTarget(connection, vehicle) then return end
 

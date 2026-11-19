@@ -21,14 +21,14 @@
 -- records what it painted; its translator reads the shipped en file.
 --
 -- Groups:
---   L  locked: the card hidden, today's heading, no card text
+--   L  AUTO off: the legacy lines the later rows compare against
 --   E  host: the field's last pass survives the holds; the window is the FIELD_REPORT; the
 --      heading reads as the manual plan's targets; the legacy lines are today's
 --   C  client: nothing before the first result; the received REACHED after it
 --   F  a post-spend failure
 --   R  another crop's pass is not shown
 --   D  a door without the card: nothing new
---   K  relocked with a remembered pass; a reload clears it
+--   K  a reload clears a remembered pass
 --   P  one source with W1a (identity), the published reason read, state parity
 --   M  the memory: outcomes only, never saved
 --   X  every key in all 27 languages, translated
@@ -37,7 +37,7 @@
 -- dedicated-server delivery, or a door race between installed mods. The TESTING row names
 -- those observations.
 --
---!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/network/NetworkEvents.lua, src/ui/SoilHUD.lua, src/ui/RfPdaSoilPanel.lua
+--!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/network/NetworkEvents.lua, src/ui/SoilHUD.lua, src/ui/RfPdaSoilPanel.lua
 --!text: src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
 
 local GROUP_N = 0
@@ -388,7 +388,6 @@ local function newWorld(opts)
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, nutrientCycles = true,
                      replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = opts.overlap == true,
                      multiTankApplication = true }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = {
     time = 1000, terrainSize = ENGINE.TERRAIN,
     missionInfo = { helperBuyFertilizer = opts.buy == true, helperSlurrySource = 1, helperManureSource = 1 },
@@ -594,7 +593,6 @@ local function clientWorld(opts)
   local serverFields = W.ss.fieldData
   g_server = nil
   local settings = { enabled = true, autoRateControl = true, showNotifications = true }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = { time = opts.time or 50000, missionDynamicInfo = { isMultiplayer = true }, terrainSize = ENGINE.TERRAIN }
   local ss = setmetatable({ fieldData = {}, settings = settings, isInitialized = true,
                             herbicideAppliedDay = {}, insecticideAppliedDay = {}, fungicideAppliedDay = {} },
@@ -620,20 +618,14 @@ end
 -- E. THE ENTRY-POINT BAR, host: a real dose on field 7 through the real hooks and the
 --    real setResult, then the PDA opened on field 7 (rebuildFieldData, refreshTreatmentPlan)
 -- =====================================================================
-local LOCKED_LINES
+local LEGACY_LINES
 group(function()
-  serverWorld({ gate = false })
-  autoOn(W.v)
+  serverWorld({})
   run(W.v, 3)
   local page = openPda(newPage(true), 7)
-  LOCKED_LINES = legacyLines(page)
-  T.ok("L1 [reached] locked: the roster holds field 7 and the legacy lines painted (" .. LOCKED_LINES .. ")",
+  LEGACY_LINES = legacyLines(page)
+  T.ok("L1 [reached] AUTO off: the roster holds field 7 and the legacy lines painted (" .. LEGACY_LINES .. ")",
        #page.fieldData >= 1 and page.treatTargetN.text ~= nil and page.treatTargetN.text ~= "")
-  T.eq("L2 NAMED: locked, the card stays hidden", cardVisible(page), false)
-  T.eq("L3 NAMED: and the heading is today's 'Target levels'", page.treatTargetsHeading.text, EN.rf_pda_treatment_targets_heading or "Target levels")
-  local wrote = 0
-  for _, id in ipairs(CARD_IDS) do if id ~= "soilTargetCard" and page.ids[id].writes > 0 then wrote = wrote + 1 end end
-  T.eq("L4 and no card text is written", wrote, 0)
 end)
 
 local HOST_PASS
@@ -660,7 +652,7 @@ group(function()
        cardText(page, "soilTargetDetail"), string.format(EN.sf_tgt_d_litres, litres(dose.plannedLitres), litres(dose.physicalLitres)))
   T.eq("E10 NAMED: while the card shows, the legacy heading reads as the manual plan's targets",
        page.treatTargetsHeading.text, EN.sf_tgt_pda_manual_targets)
-  T.eq("E11 NAMED: and the legacy N, P, K and pH lines are exactly today's", legacyLines(page), LOCKED_LINES)
+  T.eq("E11 NAMED: and the legacy N, P, K and pH lines are exactly today's", legacyLines(page), LEGACY_LINES)
   local page2 = openPda(newPage(true), nil)
   T.eq("E12 no field selected: the card hides", cardVisible(page2), false)
   local copy = W.ss:getLastTargetPassForField(7)
@@ -751,24 +743,18 @@ group(function()
   runToDose(W.v, 20)
   local page = openPda(newPage(false), 7)
   T.eq("D1 NAMED: no card in the door: the heading stays today's", page.treatTargetsHeading.text, EN.rf_pda_treatment_targets_heading or "Target levels")
-  T.eq("D2 and the legacy lines are today's", legacyLines(page), LOCKED_LINES)
+  T.eq("D2 and the legacy lines are today's", legacyLines(page), LEGACY_LINES)
 end)
 
 -- =====================================================================
--- K. Relocked with a remembered pass: nothing new
+-- K. A reload clears a remembered pass
 -- =====================================================================
 group(function()
   serverWorld({})
   autoOn(W.v)
   run(W.v, 1)
   runToDose(W.v, 20)
-  W.settings.allowsExperimentalSystems = function() return false end
-  local page = openPda(newPage(true), 7)
-  T.eq("K1 NAMED: relocked, the card hides", cardVisible(page), false)
-  T.eq("K2 the heading is today's", page.treatTargetsHeading.text, EN.rf_pda_treatment_targets_heading or "Target levels")
-  T.eq("K3 the soil read answers nil while locked", W.ss:getLastTargetPassForField(7), nil)
-  W.settings.allowsExperimentalSystems = function() return true end
-  T.ok("K4 [reached] unlocked again, the memory is still there", W.ss:getLastTargetPassForField(7) ~= nil)
+  T.ok("K4 [reached] the memory is there", W.ss:getLastTargetPassForField(7) ~= nil)
   W.ss.targetApplication:reset()
   T.eq("K5 a reload (reset) clears it", W.ss:getLastTargetPassForField(7), nil)
 end)
@@ -784,8 +770,6 @@ group(function()
   serverWorld({})
   T.eq("P2 the published read names the display reason (denied access over no crop)",
        W.ss:getTargetPrimaryReason({ doseState = "INACTIVE", reasons = { "UNSUPPORTED_CROP", "FARM_ACCESS" } }), "FARM_ACCESS")
-  W.settings.allowsExperimentalSystems = function() return false end
-  T.eq("P3 and nil while locked", W.ss:getTargetPrimaryReason({ doseState = "INACTIVE", reasons = { "UNSUPPORTED_CROP" } }), nil)
   local pdaStates, hudStates, sameSet = {}, {}, true
   for s in pairs(RfPdaSoilPanel.TARGET_PDA_STATE) do pdaStates[#pdaStates + 1] = s end
   for s in pairs(SoilHUD.TARGET_STATE_COPY) do hudStates[#hudStates + 1] = s end

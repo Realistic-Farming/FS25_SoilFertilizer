@@ -111,9 +111,8 @@ function GroundConditionCoordinator:arm(cells, materialDown, materialWetness, so
         SoilLogger.warning("[GroundCoord] condition owners did not resolve - ground condition stands down")
         return false
     end
-    -- BOTH owners must be ARMED, not merely present. The ground-material family
-    -- sits behind the `ground_material` release gate, so on an ordinary save the
-    -- two owners exist as objects and are completely inert. Arming on top of inert
+    -- BOTH owners must be ARMED, not merely present. An owner that did not
+    -- arm exists as an object and is completely inert. Arming on top of inert
     -- owners would publish an admission interface that accepts a lease, runs a
     -- barrier against cursors nobody advances, and writes condition no owner
     -- maintains - exactly the "present Soil that cannot receive anything" the

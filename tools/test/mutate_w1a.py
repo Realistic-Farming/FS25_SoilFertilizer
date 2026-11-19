@@ -1,5 +1,4 @@
-# SoilFertilizer SF-73 W1a mutation battery: the rate panel's target block (src/ui/SoilHUD.lua) and
-# the release-lock read it asks (src/SoilFertilitySystem.lua, isTargetGateOpen). Rows live in
+# SoilFertilizer SF-73 W1a mutation battery: the rate panel's target block (src/ui/SoilHUD.lua). Rows live in
 # SF-73-W1a-hud_target_block_spec_test.lua.
 #
 # TARGETED (Tyson, 2026-09-25 and 2026-09-30): only the changed lines. Each mutant runs through
@@ -108,9 +107,6 @@ MUTATIONS = [
     "        tgt.litres(r.plannedLitres)), tone = \"detail\" }\n", 1)],
   "planned and applied litres change places (F5)"),
  # ── when the block exists ───────────────────────────────────────────────
- ("H19-no-gate", HUD,
-  [("    if ss:isTargetGateOpen() ~= true then return nil end\n", "", 1)],
-  "the block ignores the release lock (L6, L8)"),
  ("H20-any-product", HUD,
   [("        if tgt.finite(profile[n]) and profile[n] > 0 then return true end\n",
     "        return true\n", 1)],

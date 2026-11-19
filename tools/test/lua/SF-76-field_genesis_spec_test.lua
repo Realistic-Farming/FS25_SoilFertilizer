@@ -9,7 +9,7 @@
 --   all values stay inside the shipped clamps,
 --   an existing save is untouched (genesis off = today exactly, zero writes),
 --   genesis is server-derived and deterministic (never math.randomseed).
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local SFS = SoilFertilitySystem
 

@@ -53,7 +53,7 @@
 --
 -- Groups: T traffic strip laying, R tool relief, D decay/map-fade, L load, P readers.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/maps/SoilValueMaps.lua, src/SoilCompactionModel.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/SoilFertilityManager.lua, src/hooks/HookManager.lua, src/SpatialPressures.lua, src/EstablishmentFailure.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/maps/SoilValueMaps.lua, src/SoilCompactionModel.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/SoilFertilityManager.lua, src/hooks/HookManager.lua, src/SpatialPressures.lua, src/EstablishmentFailure.lua
 
 local function group(name, fn)
   local ok, err = pcall(fn)

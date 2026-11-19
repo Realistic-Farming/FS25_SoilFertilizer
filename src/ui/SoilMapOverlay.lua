@@ -1223,12 +1223,6 @@ function SoilMapOverlay:_readCellGrowth(sel)
     if sfm == nil or type(sfm.getCellGrowthInfo) ~= "function" then return OFF end
     -- Ride Soil's own stand-down: settings off, or Precision Farming present.
     if (sfm.settings ~= nil and sfm.settings.enabled == false) or sfm._disabledByPF then return OFF end
-    -- growth_modulation is experimental; when the gate is closed the family
-    -- is not running and this surface has nothing honest to say.
-    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function"
-       and not ReleaseGate.isSystemLive("growth_modulation") then
-        return OFF
-    end
     if not self:_isCellScouted(sel.farmlandId, sel.worldX, sel.worldZ) then
         return { state = "unknown" }
     end

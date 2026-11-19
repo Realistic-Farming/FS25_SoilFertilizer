@@ -25,7 +25,7 @@
 -- settings panel itself, and the MP setting-change event (the block is server-only, so
 -- the server's value decides).
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/config/SettingsSchema.lua, src/settings/Settings.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/config/SettingsSchema.lua, src/settings/Settings.lua
 
 FillType = FillType or { UNKNOWN = 0 }
 ToolType = ToolType or { UNDEFINED = 0 }

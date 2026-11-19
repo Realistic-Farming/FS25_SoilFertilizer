@@ -9,7 +9,7 @@
 --   markBoomCells now only marks coverage (pass %, spray trail, zoneData), which
 --   this test asserts by counting zero value-map writes from it.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function newSys()
   local s = setmetatable({}, { __index = SoilFertilitySystem })

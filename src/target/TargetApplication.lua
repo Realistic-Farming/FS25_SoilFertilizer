@@ -19,9 +19,7 @@
 --   commit        the area hook enters the existing consequence path once with the
 --                 actual litres, then this file's frozen polygon writer adds N/P/K.
 --
--- LOCKED behind ReleaseGate "sf73_target" (fail-closed here: a money and tank
--- feature does not run when the opt-in cannot be read). With the gate closed, or
--- AUTO off, or a product without N/P/K, every hook delegates and nothing changes.
+-- With AUTO off, or a product without N/P/K, every hook delegates and nothing changes.
 --
 -- MECHANISM NOTE (declared in the PR): one carrier cell is about 2 m and one
 -- cycle moves the boom a few centimetres, so a single cycle's swept quad rarely
@@ -37,7 +35,6 @@ local TA_mt = { __index = TargetApplication }
 local C = TargetNutrientCore
 local F = TargetFootprint
 
-TA.SYSTEM_ID          = "sf73_target"
 TA.RESULT_INTERVAL_MS = 500     -- presentation cadence, not an economic clock
 TA.RESULT_EXPIRY_MS   = 1000    -- two missed intervals while active
 TA.MIN_TRAVEL         = 0.05    -- metres of forward movement that count as a sweep
@@ -78,21 +75,13 @@ function TA.new(soilSystem)
     return self
 end
 
--- ── gate and mode ───────────────────────────────────────────────────────────
-
---- LOCKED unless the player opted into experimental systems. Fail-closed: nil
---- (settings unreadable) is locked for a feature that moves money and tanks.
-function TA:isGateOpen()
-    if ReleaseGate == nil then return false end
-    return ReleaseGate.isReleased(TA.SYSTEM_ID, ReleaseGate.liveOptIn())
-end
+-- ── mode ───────────────────────────────────────────────────────────
 
 function TA:isTargetMode(sprayer)
     if g_server == nil or sprayer == nil or not sprayer.isServer then return false end
     local sfm = g_SoilFertilityManager
     local settings = sfm and sfm.settings
     if settings == nil or settings.enabled == false or settings.autoRateControl == false then return false end
-    if not self:isGateOpen() then return false end
     local rm = sfm.sprayerRateManager
     return rm ~= nil and rm:getAutoMode(rateVehicleId(sprayer)) == true
 end

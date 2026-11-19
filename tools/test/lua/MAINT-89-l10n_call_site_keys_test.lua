@@ -32,7 +32,7 @@
 --   S  the added sentences are translations: none is the English text, none is an
 --      "[EN]" stamp
 --
---!text: src/HarvestContractUnderwrite.lua, src/SoilFertilityManager.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/hooks/SoilMapHooks.lua, src/network/NetworkEvents.lua, src/settings/SoilSettingsUI.lua, src/specializations/SFNozzleEffects.lua, src/ui/RfPdaSoilMerge.lua, src/ui/RfPdaSoilPanel.lua, src/ui/RfSoilEscJoiner.lua, src/ui/RotationPlannerData.lua, src/ui/RotationPlannerDialog.lua, src/ui/SoilFieldDetailDialog.lua, src/ui/SoilGuideDialog.lua, src/ui/SoilHUD.lua, src/ui/SoilHandfulDialog.lua, src/ui/SoilHarvesterPanel.lua, src/ui/SoilMapOverlay.lua, src/ui/SoilPDAScreen.lua, src/ui/SoilReleaseDialog.lua, src/ui/SoilScoutDialog.lua, src/ui/SoilSettingsPanel.lua, src/ui/SoilSmartSensorPanel.lua, src/ui/SoilSprayerInfoPanel.lua, src/ui/SoilTreatmentDialog.lua, src/ui/SoilTreatmentRates.lua, src/ui/SoilVariableRatePanel.lua, src/ui/SoilVersionDialog.lua, translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
+--!text: src/HarvestContractUnderwrite.lua, src/SoilFertilityManager.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/hooks/SoilMapHooks.lua, src/network/NetworkEvents.lua, src/settings/SoilSettingsUI.lua, src/specializations/SFNozzleEffects.lua, src/ui/RfPdaSoilMerge.lua, src/ui/RfPdaSoilPanel.lua, src/ui/RfSoilEscJoiner.lua, src/ui/RotationPlannerData.lua, src/ui/RotationPlannerDialog.lua, src/ui/SoilFieldDetailDialog.lua, src/ui/SoilGuideDialog.lua, src/ui/SoilHUD.lua, src/ui/SoilHandfulDialog.lua, src/ui/SoilHarvesterPanel.lua, src/ui/SoilMapOverlay.lua, src/ui/SoilPDAScreen.lua, src/ui/SoilScoutDialog.lua, src/ui/SoilSettingsPanel.lua, src/ui/SoilSmartSensorPanel.lua, src/ui/SoilSprayerInfoPanel.lua, src/ui/SoilTreatmentDialog.lua, src/ui/SoilTreatmentRates.lua, src/ui/SoilVariableRatePanel.lua, src/ui/SoilVersionDialog.lua, translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
 
 local SOURCES = {}
 local LANGS = {}
@@ -96,7 +96,7 @@ local KEYS, NKEYS, BYFILE = callSiteKeys()
 -- ── the scan read something ─────────────────────────────────────────────
 -- Not acceptance evidence: a guard against a vacuous pass (a scan that found no call
 -- site would make every C row green).
-T.eq("C0 the bar read 29 sources and 27 language files", #SOURCES .. "/" .. #LANGS, "29/27")
+T.eq("C0 the bar read 28 sources and 27 language files", #SOURCES .. "/" .. #LANGS, "28/27")
 T.ok("C0b the scan found the call sites (" .. NKEYS .. " literal keys), including the row's ungated getText sites",
     NKEYS > 300 and BYFILE["src/ui/SoilSmartSensorPanel.lua"]["sf_sensor_pest"] == true
         and BYFILE["src/ui/SoilVariableRatePanel.lua"]["sf_var_rate_label"] == true
@@ -125,7 +125,7 @@ local CZ = { "sf_map_active", "sf_map_balanced", "sf_map_compaction_ok", "sf_map
     "sf_map_ph_none_needed", "sf_map_ph_normalize", "sf_map_ph_optimal", "sf_map_ph_over_limed",
     "sf_map_ph_severely_over_limed", "sf_map_ph_slightly_acidic", "sf_map_ph_very_acidic", "sf_map_target",
     "sf_map_target_no_data", "sf_map_target_none", "sf_map_tip", "sf_map_treatment", "sf_map_weed_pressure",
-    "sf_release_dialog_title", "sf_report_rec_optimal", "sf_report_rotation_bonus",
+    "sf_report_rec_optimal", "sf_report_rotation_bonus",
     "sf_report_rotation_fatigue", "sf_report_rotation_ok" }
 local FR = { "sf_config_seeSpray", "sf_report_rec_optimal", "sf_report_rotation_bonus", "sf_report_rotation_ok",
     "sf_sensor_disease", "sf_sensor_pest", "sf_sensor_state_off", "sf_sensor_state_on", "sf_var_rate_label" }
@@ -142,7 +142,7 @@ local function missingIn(langs, keys)
 end
 T.eq("N1 the 14 keys the row found in no file (the two page titles among them) are in all 27", missingIn(LANGS, NO_FILE), "")
 T.eq("N2 the rotation N/A key is in all 27 (26 lacked it)", missingIn(LANGS, { "sf_report_rotation_na" }), "")
-T.eq("N3 Czech carries its 40 map, release and report keys", missingIn({ "cz" }, CZ), "")
+T.eq("N3 Czech carries its 39 map and report keys (the release dialog's title left with the dialog)", missingIn({ "cz" }, CZ), "")
 T.eq("N4 French carries its 9 sensor, report and variable-rate keys", missingIn({ "fr" }, FR), "")
 T.eq("N5 Chinese (Simplified) carries its 5 sensor keys", missingIn({ "cs" }, CS), "")
 T.eq("N6 the page titles' English is today's code fallback, so English players see no change",

@@ -11,7 +11,7 @@
 -- widgets the panel paints and records what it painted. The page translator is the
 -- fixture's, marking every key it is asked for, so a raw getText cannot pass as tr.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/ui/RfPdaSoilPanel.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/ui/RfPdaSoilPanel.lua
 
 local FIELD = 33
 

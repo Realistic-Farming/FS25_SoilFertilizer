@@ -35,7 +35,7 @@
 --   UREA with N 40, no crop:     deficit (80 - 40) / 80 = 0.5         -> 0.70x -> index 7.
 -- Targets: AUTO_RATE_TARGETS pH 6.5, N 80 (Constants.lua); PH_MIN 5.0 (NUTRIENT_LIMITS).
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilContextInput.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/SprayerRateManager.lua, src/ui/SoilHUD.lua, src/SoilFertilityManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilContextInput.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua, src/hooks/HookManager.lua, src/SprayerRateManager.lua, src/ui/SoilHUD.lua, src/SoilFertilityManager.lua
 
 FillType = FillType or { UNKNOWN = 0 }
 

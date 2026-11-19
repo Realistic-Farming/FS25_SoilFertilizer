@@ -17,7 +17,7 @@
 -- into the fix is counting calls to the mocked native getDensityMapSize, which
 -- stands in for the engine call the bug report's log shows repeating.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 -- The ground-type map (id "ground") always measures cleanly, exactly like any
 -- ordinary map load; the implement's custom map (id "bad_custom") is the one the
