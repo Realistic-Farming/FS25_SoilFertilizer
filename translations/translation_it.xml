@@ -810,6 +810,8 @@
     <!-- SMART SENSOR PANEL -->
     <!-- SEE AND SPRAY PANEL -->
     <e k="sf_see_spray_panel_title" v="[EN] SEE &amp; SPRAY" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray ha chiuso tutti gli ugelli: il terreno davanti ha già abbastanza di questo prodotto." eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray ha chiuso tutti gli ugelli: nessun bersaglio trovato sul terreno davanti." eh="b40c5615" />
     <e k="sf_see_spray_pest"        v="Pest" />
     <e k="sf_see_spray_disease"     v="Disease" />
     <e k="sf_see_spray_weed"        v="Weed" />

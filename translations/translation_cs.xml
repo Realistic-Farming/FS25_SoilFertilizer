@@ -783,6 +783,8 @@
          SEE & SPRAY PANEL
          ====================================================== -->
     <e k="sf_see_spray_panel_title" v="识别精准喷施面板" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray 已关闭所有喷嘴：前方土壤中该产品已足够。" eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray 已关闭所有喷嘴：前方土壤未发现目标。" eh="b40c5615" />
 <e k="sf_see_spray_protected"   v="0%（无胁迫区域）" />
 
     <!-- ======================================================

@@ -781,6 +781,8 @@
     <!-- SMART-SENSOR-PANEL -->
     <!-- SEE-&-SPRAY-PANEL -->
     <e k="sf_see_spray_panel_title" v="Punktuelle Unkrautbekämpfung" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray hat alle Düsen geschlossen: Der Boden voraus hat bereits genug von diesem Produkt." eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray hat alle Düsen geschlossen: Auf dem Boden voraus wurde kein Ziel gefunden." eh="b40c5615" />
     <e k="sf_see_spray_pest"        v="Schädlinge" />
     <e k="sf_see_spray_disease"     v="Krankheit" />
     <e k="sf_see_spray_weed"        v="Unkraut" />

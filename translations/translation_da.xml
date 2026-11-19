@@ -755,6 +755,8 @@
     <e k="sf_sensor_state_off"   v="SLUKKET" />
     <!-- SEE AND SPRAY PANEL -->
     <e k="sf_see_spray_panel_title" v="SE &amp; SPRØJT" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray lukkede alle dyser: jorden forude har allerede nok af dette produkt." eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray lukkede alle dyser: intet mål fundet på jorden forude." eh="b40c5615" />
     <e k="sf_see_spray_pest"        v="Skadedyr" />
     <e k="sf_see_spray_disease"     v="Sygdom" />
     <e k="sf_see_spray_weed"        v="Ukrudt" />

@@ -36,6 +36,9 @@
 --   U   #1154 follow-up (a), Tyson 2026-11-18: with a fertilizer an undivided boom follows its
 --       nozzles (open while any is open), not the centre alone; chemicals and a real centre
 --       section keep the centre's decision
+--   B   #1154 follow-up (b): a message when See & Spray itself closes the whole
+--       boom, with the reason, once per closing, at most every 30 s, only for the player in the
+--       cab, never for a boundary closing
 --
 -- What this bar does NOT prove: the engine's processSprayerArea, paint and drain (the
 -- work area being active is what lets them run), the credit's own arithmetic, the nozzle
@@ -79,6 +82,13 @@ getWorldTranslation = function(node)
   if lat == nil then return 0, 0, 0 end
   local rx, rz = rightOf()
   return VEH.bx + lat * rx, 0, VEH.bz + lat * rz
+end
+-- A node's local point in the world, the vehicle's frame (x right, z forward): what the chemical
+-- See & Spray check reads 1 m ahead of a nozzle.
+localToWorld = function(node, lx, _, lz)
+  local x, _, z = getWorldTranslation(node)
+  local rx, rz = rightOf()
+  return x + lx * rx + lz * VEH.hx, 0, z + lx * rz + lz * VEH.hz
 end
 localDirectionToWorld = function(node, _, _, _)
   if node == ROOT_NODE and VEH.heading then return VEH.hx, 0, VEH.hz end
@@ -329,3 +339,83 @@ do
        SFNozzleEffects.getIsWorkAreaActive(v, function() return true end, { sectionIndex = 4 }), false)
   T.eq("U7 an undivided work area with a fertilizer while some nozzle is open: open", areaActive(v), true)
 end
+
+-- =====================================================================
+-- B. Follow-up (b): a message when See & Spray closes the whole boom
+-- =====================================================================
+local function catch(v, inCab)
+  local notes = {}
+  SS.showNotification = function(_, title, body) notes[#notes + 1] = { title = title, body = body } end
+  v.getIsActiveForInput = function() return inCab end
+  return notes
+end
+local savedGetText = g_i18n and g_i18n.getText
+g_i18n = g_i18n or {}
+g_i18n.getText = function(_, k) return k end
+local function bands(list) for _, b in ipairs(list) do for x = -15, 15, 2 do for z = b[1], b[2], 2 do setFull(x, z) end end end end
+do
+  newWorld()
+  bands({ { -13, -9 }, { 1, 3 }, { 13, 15 } })          -- full bands at z -14..-8, 0..4, 12..16
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -20, 0, 1, true
+  local v = newSprayer()
+  v[SPEC]._sfFieldTimer = -1e9
+  local notes = catch(v, true)
+  drive(v, 20)                                           -- boom to z = -10, over the first band
+  T.eq("B1 NAMED: See & Spray closed the whole boom over full ground: one message for the player in the cab", #notes, 1)
+  T.eq("B2 it says why: the ground ahead already has enough", notes[1] and (notes[1].title .. "|" .. notes[1].body), "sf_see_spray_panel_title|sf_ss_closed_full")
+  drive(v, 3)
+  T.eq("B3 once per closing, not every frame", #notes, 1)
+  drive(v, 21)                                           -- reopens, then closes over the second band within 30 s
+  T.ok("B4a [reached] the boom closed again over the second band", not areaActive(v))
+  T.eq("B4b within 30 s of the last message: no second one", #notes, 1)
+  g_time = g_time + SFNozzleEffects.SS_MESSAGE_GAP_MS
+  drive(v, 24)                                           -- over the third band, 30 s later
+  T.ok("B4c [reached] closed over the third band", not areaActive(v))
+  T.eq("B4d 30 s later the next closing says so again", #notes, 2)
+end
+do
+  newWorld()
+  bands({ { 1, 9 } })
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -6, 0, 1, true
+  local v = newSprayer()
+  local notes = catch(v, false)
+  drive(v, 16)
+  T.ok("B5a [reached] the boom is closed over the band", not areaActive(v))
+  T.eq("B5 no player in this vehicle on this machine: no message", #notes, 0)
+end
+do
+  newWorld()
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, 20, 0, 1, true
+  local v = newSprayer()
+  v[SPEC]._sfFieldTimer = -1e9                           -- the vehicle still counts as on field 7
+  local notes = catch(v, true)
+  drive(v, 14)                                           -- the nozzles cross onto the neighbour's farmland
+  T.eq("B6a [reached] every nozzle closed at the boundary", v[SPEC].anyNozzleActive, false)
+  T.eq("B6 a boundary closing is not See & Spray's judgement: no message", #notes, 0)
+end
+do
+  newWorld()
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -10, 0, 1, true
+  local v = newSprayer()
+  v[SPEC].seeSprayPest = true
+  v.spec_sprayer.workAreaParameters.sprayFillType = INS.index
+  SS.fieldData[7].pestPressure = 0
+  local notes = catch(v, true)
+  drive(v, 4)
+  T.eq("B7 a chemical with no target ahead: the message says no target was found", notes[1] and notes[1].body, "sf_ss_closed_notarget")
+end
+do
+  newWorld()
+  bands({ { 1, 15 } })                                   -- a long full patch, z 0 to 16
+  VEH.bx, VEH.bz, VEH.hx, VEH.hz, VEH.heading = 0, -6, 0, 1, true
+  local v = newSprayer()
+  local notes = catch(v, true)
+  drive(v, 14)                                           -- boom to z = 1, over the patch
+  for _ = 1, 3 do                                        -- the boom stays closed while 90 s pass
+    g_time = g_time + SFNozzleEffects.SS_MESSAGE_GAP_MS
+    frame(v)
+  end
+  T.ok("B3b [reached] still closed over the long patch", not areaActive(v))
+  T.eq("B3c one closing, one message, however long it lasts (the gap is not what limits it)", #notes, 1)
+end
+g_i18n.getText = savedGetText

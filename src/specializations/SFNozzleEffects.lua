@@ -575,6 +575,8 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     spec.centerActive  = centerActive
     -- #1154 follow-up (a): whether any nozzle at all is open, for an undivided boom (getIsWorkAreaActive).
     spec.anyNozzleActive = anyActive
+    -- #1154 follow-up (b): tell the player in the cab when See & Spray itself has closed the whole boom.
+    SFNozzleEffects.sfCheckWholeBoomClosed(self, spec)
 
     -- Animate shader fade transitions for any nozzle with an effect node.
     for _, effectData in ipairs(spec.sprayerEffects) do
@@ -598,6 +600,38 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
             end
         end
     end
+end
+
+--- #1154 follow-up (b): a message when See & Spray has closed
+--- the whole boom by its own judgement (every nozzle closed as "full" or "notarget"; a nozzle
+--- closed for any other reason keeps it from counting), so a player knows why nothing is going
+--- down. Once per closing (the boom must reopen before it can say it again), not more often than
+--- SS_MESSAGE_GAP_MS, and only on the machine whose player is in the vehicle: onUpdate runs on
+--- every machine, and in 1.25.1 its arguments are not input flags (Vehicle.lua raises it with
+--- dt, mapBoundingSize, wx, wy), so the engine's own getIsActiveForInput(true, true) decides.
+--- Through the soil system's showNotification, which respects the notifications setting.
+SFNozzleEffects.SS_MESSAGE_GAP_MS = 30000
+function SFNozzleEffects.sfCheckWholeBoomClosed(vehicle, spec)
+    local effects = spec.sprayerEffects
+    local closedBySS = effects ~= nil and #effects > 0
+    local reason = nil
+    if closedBySS then
+        for _, ed in ipairs(effects) do
+            if ed.isActive or ed.ssClosed == nil then closedBySS = false; break end
+            if ed.ssClosed == "full" or reason == nil then reason = ed.ssClosed end
+        end
+    end
+    if not closedBySS then spec._ssWholeClosed = false; return end
+    if spec._ssWholeClosed then return end
+    spec._ssWholeClosed = true
+    local now = g_time or 0
+    if spec._ssMessageAt ~= nil and now - spec._ssMessageAt < SFNozzleEffects.SS_MESSAGE_GAP_MS then return end
+    if type(vehicle.getIsActiveForInput) ~= "function" or not vehicle:getIsActiveForInput(true, true) then return end
+    local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
+    if ss == nil or type(ss.showNotification) ~= "function" or g_i18n == nil then return end
+    spec._ssMessageAt = now
+    local key = (reason == "full") and "sf_ss_closed_full" or "sf_ss_closed_notarget"
+    ss:showNotification(g_i18n:getText("sf_see_spray_panel_title"), g_i18n:getText(key))
 end
 
 -- ── Nozzle state functions ────────────────────────────────────────────────────
@@ -707,6 +741,10 @@ end
 -- Checks in order: sprayer state → section active → field boundary → See & Spray threshold.
 function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, lastSpeed)
     local spec = self[SFNozzleEffects.SPEC_TABLE_NAME]
+    -- #1154 follow-up (b): why See & Spray closed this nozzle, when it was its own judgement:
+    -- "full" (pass 3, the ground ahead already has enough) or "notarget" (the chemical check).
+    -- Any other closing (switched off, too slow, a section or field boundary) leaves it nil.
+    effectData.ssClosed = nil
 
     if not isTurnedOn                                      then return false, 1 end
     if (tonumber(lastSpeed) or 0) < 0.25                  then return false, 1 end
@@ -823,7 +861,7 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
                 if (prof.pH or 0) > 0 then adequate = adequate and (cellPH >= tgt.pH);  anyCriteria = true end
                 local omProd = SoilConstants.SPRAYER_RATE.OM_PRIMARY_PRODUCTS
                 if omProd and omProd[ft.name] then adequate = adequate and (cellOM >= tgt.OM); anyCriteria = true end
-                if anyCriteria and adequate then return false, 1 end
+                if anyCriteria and adequate then effectData.ssClosed = "full"; return false, 1 end
             end
         end
     end
@@ -870,6 +908,7 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
     if isWeed    and weedVal    >= ssCfg.WEED_THRESHOLD
         and not (fd.herbicideDaysLeft and fd.herbicideDaysLeft > 0) then return true, 1 end
 
+    effectData.ssClosed = "notarget"
     return false, 1
 end
 

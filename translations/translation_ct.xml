@@ -819,6 +819,8 @@
          SEE & SPRAY PANEL
          ====================================================== -->
     <e k="sf_see_spray_panel_title" v="SEE &amp; SPRAY" eh="a7e00bf0" />
+    <e k="sf_ss_closed_full" v="See &amp; Spray 已關閉所有噴嘴：前方土壤中該產品已足夠。" eh="ad4a487a" />
+    <e k="sf_ss_closed_notarget" v="See &amp; Spray 已關閉所有噴嘴：前方土壤未發現目標。" eh="b40c5615" />
     <e k="sf_see_spray_pest"        v="Pest" />
     <e k="sf_see_spray_disease"     v="Disease" />
     <e k="sf_see_spray_weed"        v="Weed" />
