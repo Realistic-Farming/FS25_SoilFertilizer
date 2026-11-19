@@ -434,3 +434,9 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [ ] Known limit: a one-piece boom cannot spray part of its width. With some nozzles open the whole work area is active and the usage scales to the open share of nozzles (`getSprayerUsage`), so the product is spread across the boom at that share rather than placed under the open nozzles.
 - [ ] Follow-up (b), decided the same day: a message when See & Spray has closed the whole boom.
 - The in-game check is the TESTING row for this PR. Design origin none (Tyson's decision).
+
+## 2026-11-19: a message when See & Spray has closed the whole boom (#1154 follow-up b)
+
+- [x] From the #1154 reporter's suggestion: a See & Spray boom that closed itself used to do so silently, so a player saw nothing go down and no reason. A nozzle See & Spray closes by its own judgement now records why ("full" from the fertilizer check, "notarget" from the chemical check); when every nozzle is closed that way, the player in the vehicle gets one message, "See & Spray closed every nozzle: the ground ahead already has enough of this product" or "... no target found on the ground ahead". Once per closing, at most every 30 s, only on the machine whose player is in the vehicle (the engine's `getIsActiveForInput(true, true)`; in 1.25.1 `onUpdate`'s arguments are not input flags), and through the notification setting. A boom closed at a field boundary, or switched off, says nothing.
+- [ ] Known limit: an AI-driven sprayer with no player in its cab shows no message (no one is there to read it).
+- The in-game check is the TESTING row for this PR. Design origin none.

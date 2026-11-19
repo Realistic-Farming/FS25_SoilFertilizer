@@ -447,3 +447,9 @@
 - [x] Group U of `SF-1154-see_spray_pass3_lookahead_spec_test.lua` (U1 to U7); development fails U3 and U7. `mutate_sf1154a_undivided.py` kills 5 of 5 on the 4 files that load the specialization.
 - [ ] (b) the whole-boom message.
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-19: the whole-boom See & Spray message (#1154 follow-up b)
+
+- [x] `src/specializations/SFNozzleEffects.lua`: `effectData.ssClosed` set at pass 3's "full" exit and the chemical check's "no target" exit; `SFNozzleEffects.sfCheckWholeBoomClosed`, called from `onUpdate`. Strings `sf_ss_closed_full` and `sf_ss_closed_notarget` in all 27 language files.
+- [x] Group B of `SF-1154-see_spray_pass3_lookahead_spec_test.lua` (B1 to B7, B3b/c); development fails the B rows. `mutate_sf1154b_boom_message.py`: 7 mutants, all killed (M2 only after B3b was added).
+- [~] In game (owed): the TESTING row for this PR.
