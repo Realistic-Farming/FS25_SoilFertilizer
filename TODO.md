@@ -433,3 +433,10 @@
 - [ ] W2: AUTO target passes count ground, then take the notice.
 - [ ] The HUD Pass % line says "estimated" on rigs without sections (its own PR).
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-18 (Fred (via Desk)): See & Spray pass 3 read point (#1154)
+
+- [x] `src/specializations/SFNozzleEffects.lua`: `pass3ReadPoint` picks the first value-map pixel centre ahead of the nozzle (heading from `localDirectionToWorld(rootNode, 0, 0, 1)`, margin a quarter pixel, grain from `SoilValueMaps:getGrainMetres`); pass 3 reads there, and makes no decision off the nozzle's farmland or with no heading.
+- [x] Bar `SF-1154-see_spray_pass3_lookahead_spec_test.lua` (16 assertions through the real `onUpdate` and `getIsWorkAreaActive`, Soil's value maps at 2 m a pixel); development fails 9 and errors on the missing helper. `mutate_sf1154_pass3.py` kills 6 of 6 on the 4 files that load the specialization.
+- [ ] (a) the centre nozzle and a single work area, for fertilizers; (b) the whole-boom message (Tyson, 2026-11-18).
+- [~] In game (owed): the TESTING row for this PR; the reporter (iXter B18 with See & Spray, x0.60 and x1.00) has offered to test a build.
