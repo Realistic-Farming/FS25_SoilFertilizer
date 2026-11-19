@@ -559,8 +559,10 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     -- gates the centre work area too, instead of the centre always leaking product.
     local sectionActive = {}
     local centerActive  = nil
+    local anyActive     = false
     for _, ed in ipairs(spec.sprayerEffects) do
         local idx = ed.sectionIndex
+        if ed.isActive then anyActive = true end
         if idx ~= nil and idx ~= 0 then
             if sectionActive[idx] == nil then sectionActive[idx] = false end
             if ed.isActive then sectionActive[idx] = true end
@@ -571,6 +573,8 @@ function SFNozzleEffects:onUpdate(dt, isActiveForInput, isActiveForInputIgnoreSe
     end
     spec.sectionActive = sectionActive
     spec.centerActive  = centerActive
+    -- #1154 follow-up (a): whether any nozzle at all is open, for an undivided boom (getIsWorkAreaActive).
+    spec.anyNozzleActive = anyActive
 
     -- Animate shader fade transitions for any nozzle with an effect node.
     for _, effectData in ipairs(spec.sprayerEffects) do
@@ -940,8 +944,33 @@ function SFNozzleEffects:getIsWorkAreaActive(superFunc, workArea)
     -- on a no-target cell instead of leaking product while the outer boom holds. Safe
     -- default (spray) when there is no centre nozzle to consult (centerActive == nil).
     if spec.centerActive == false and (idx == nil or idx == spec.centerSectionIndex) then
+        -- #1154 follow-up (a), Tyson's decision of 2026-11-18: an undivided work area (no
+        -- sectionIndex) is the whole boom, so for a fertilizer the centre nozzle alone does
+        -- not decide it. The boom stays open while any nozzle still reads ground that needs
+        -- the product, and closes only when every nozzle reads it as full. The usage already
+        -- scales to the open share of nozzles (getSprayerUsage). Chemicals, and a real centre
+        -- section on a sectioned boom, keep the centre nozzle's decision.
+        if idx == nil and spec.anyNozzleActive == true and SFNozzleEffects.isFertilizerFill(self) then
+            return true
+        end
         return false
     end
+    return true
+end
+
+--- #1154 follow-up (a): is the product in the sprayer a fertilizer (it has a FERTILIZER_PROFILE)
+--- and not one of the crop-protection products See & Spray targets (some carry a profile too)?
+function SFNozzleEffects.isFertilizerFill(vehicle)
+    local wap = vehicle and vehicle.spec_sprayer and vehicle.spec_sprayer.workAreaParameters
+    local idx = wap and wap.sprayFillType
+    if idx == nil or idx == 0 or g_fillTypeManager == nil then return false end
+    local ft = g_fillTypeManager:getFillTypeByIndex(idx)
+    if ft == nil or ft.name == nil then return false end
+    local C = SoilConstants
+    if not (C.FERTILIZER_PROFILES and C.FERTILIZER_PROFILES[ft.name]) then return false end
+    if C.PEST_PRESSURE and C.PEST_PRESSURE.INSECTICIDE_TYPES and C.PEST_PRESSURE.INSECTICIDE_TYPES[ft.name] then return false end
+    if C.DISEASE_PRESSURE and C.DISEASE_PRESSURE.FUNGICIDE_TYPES and C.DISEASE_PRESSURE.FUNGICIDE_TYPES[ft.name] then return false end
+    if C.WEED_PRESSURE and C.WEED_PRESSURE.HERBICIDE_TYPES and C.WEED_PRESSURE.HERBICIDE_TYPES[ft.name] then return false end
     return true
 end
 
