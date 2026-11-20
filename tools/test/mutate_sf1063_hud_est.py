@@ -98,40 +98,28 @@ MUTATIONS = [
   "the panel ignores where the coverage rows ended, so the compaction row draws over them"),
 
  ("M13-panel-never-tilde", PNL,
-  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"
-",
-    "        local approx = \"\"
-", 1)],
+  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
+    "        local approx = \"\"\n", 1)],
   "the sprayer info panel shows litre-derived coverage as if it were counted"),
 
  ("M14-panel-always-tilde", PNL,
-  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"
-",
-    "        local approx = \"~\"
-", 1)],
+  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
+    "        local approx = \"~\"\n", 1)],
   "the sprayer info panel marks even boom-cell coverage as an estimate"),
 
  ("M15-panel-pass-cell-bare", PNL,
-  [("        local covStr = string.format(\"%s%d%%\", approx, covPct)
-",
-    "        local covStr = string.format(\"%d%%\", covPct)
-", 1)],
+  [("        local covStr = string.format(\"%s%d%%\", approx, covPct)\n",
+    "        local covStr = string.format(\"%d%%\", covPct)\n", 1)],
   "the PASS cell loses the tilde and the session area keeps it"),
 
  ("M16-panel-ha-cell-bare", PNL,
-  [("        local sessHaStr = string.format(\"%s%.2f ha\", approx, sessHa)
-",
-    "        local sessHaStr = string.format(\"%.2f ha\", sessHa)
-", 1)],
+  [("        local sessHaStr = string.format(\"%s%.2f ha\", approx, sessHa)\n",
+    "        local sessHaStr = string.format(\"%.2f ha\", sessHa)\n", 1)],
   "the session area, worked out from the same litres, loses the tilde and the PASS cell keeps it"),
 
  ("M17-padding-ignores-scale", HUD,
-  [("    local pad  = SoilHUD.PAD * s
-    local maxW = pw - 2 * pad
-",
-    "    local pad  = SoilHUD.PAD
-    local maxW = pw - 2 * pad
-", 1)],
+  [("    local pad  = SoilHUD.PAD * s\n    local maxW = pw - 2 * pad\n",
+    "    local pad  = SoilHUD.PAD\n    local maxW = pw - 2 * pad\n", 1)],
   "the fit's padding stays at scale 1 on a scaled HUD, so a wide row is fitted to the wrong width"),
 ]
 
