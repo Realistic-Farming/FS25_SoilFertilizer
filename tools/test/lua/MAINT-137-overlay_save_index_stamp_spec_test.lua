@@ -252,7 +252,7 @@ group("O", function()
     local cells = env.groundAvailability and env.groundAvailability.unavailable or {}
     -- The coordinator arms on the condition owners alone; the yard ladder is not armed. The
     -- manager's mission start (the ground step at the end of activateSoilSystem) must end
-    -- the hold through the coordinator's own trigger (Bob's MAJOR on #1022).
+    -- the hold through the coordinator's own trigger (the review's MAJOR on #1022).
     DISK = {}
     savedCareer("o4")
     world("o4", { valid = true, loaded = true })
@@ -284,7 +284,7 @@ end)
 -- ══════════════════════════════════════════════════════════════════════════
 -- M. MAINTENANCE row 195: the mission start, through the manager itself
 -- ══════════════════════════════════════════════════════════════════════════
---- A reload in PRODUCTION'S order (Bob's intake on row 195): a fresh system nobody has armed,
+--- A reload in PRODUCTION'S order (build intake on row 195): a fresh system nobody has armed,
 --- main.lua's loadedMission opening the store's load (main.lua:453-455), then the real manager,
 --- whose activateSoilSystem runs the real initialize(). The world supplies what world() above
 --- supplies (the store, whose three files the engine restored at load) and the settings file

@@ -167,7 +167,7 @@ end
 --- owner's farm, a vehicle owned by EVERYONE, or a farm contracting for the owner
 --- (canFarmAccessOtherId :35-49 through Farm:getIsContractingFor, farms/Farm.lua:476),
 --- as the engine's AnimalMoveEvent tests its own objects (:78). Owner equality alone
---- refused contractors (Bob's blocker on #1006). Anything the engine cannot vouch
+--- refused contractors (the review blocker on #1006). Anything the engine cannot vouch
 --- for is refused.
 function SoilNetworkEvents_ConnectionMayControlVehicle(connection, vehicle)
     if connection == nil then return true end
@@ -2634,7 +2634,7 @@ local function sfJudgeLayer(vm, layerIdx, def, cs)
             elseif g_client then
                 -- Charge the attempt ONLY on the branch that actually sends a
                 -- request, so a checksum that evaluates a layer but sends
-                -- nothing cannot burn the cap (#803, Claude(A)'s addition).
+                -- nothing cannot burn the cap (#803, an addition).
                 sfValueMapResyncAttempts[layerIdx] = attempts + 1
                 sfValueMapResyncInFlight[layerIdx] = true
                 SoilLogger.warning("Client: value map '%s' drifted (local sum=%d server=%d) - requesting resync (%d/%d)",

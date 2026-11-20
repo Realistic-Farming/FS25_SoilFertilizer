@@ -983,7 +983,7 @@ function SFNozzleEffects:getIsWorkAreaActive(superFunc, workArea)
     -- on a no-target cell instead of leaking product while the outer boom holds. Safe
     -- default (spray) when there is no centre nozzle to consult (centerActive == nil).
     if spec.centerActive == false and (idx == nil or idx == spec.centerSectionIndex) then
-        -- #1154 follow-up (a), Tyson's decision of 2026-11-18: an undivided work area (no
+        -- #1154 follow-up (a): an undivided work area (no
         -- sectionIndex) is the whole boom, so for a fertilizer the centre nozzle alone does
         -- not decide it. The boom stays open while any nozzle still reads ground that needs
         -- the product, and closes only when every nozzle reads it as full. The usage already

@@ -1,6 +1,6 @@
 -- MAINT-244-constants_on_manager_spec_test.lua
 --
--- MAINTENANCE row 244 (Tyson's call on Bob's fleet sweep row 4): Soil publishes its constants
+-- MAINTENANCE row 244 (fleet sweep, row 4): Soil publishes its constants
 -- on the manager.
 --
 -- THE DEFECT THIS PINS (development 437ca320): SoilConstants is a global of Soil's own mod

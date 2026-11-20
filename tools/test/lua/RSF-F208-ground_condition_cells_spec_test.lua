@@ -661,7 +661,7 @@ do
        admit.groundCondition, nil)
 end
 
--- ── Bob's four coverage MAJORs from the #955 cold review ─────────────────────
+-- ── The four coverage MAJORs from the #955 cold review ─────────────────────
 -- Every rule in that PR had a bar under it except these four, and all four are
 -- guards: the things that decide who may arm, which write is stale, and which
 -- lease token is real. Each case below is PAIRED. The refusal assertion is only

@@ -2,7 +2,7 @@
 --   The tillage choice is a long-term soil-carbon decision. Three coordinated terms
 --   on the existing OM model: (1) a per-tillage OXIDATION gradient, (2) a fenced
 --   no-till daily credit, (3) the retirement of strip-till's separate OM_BOOST into
---   the single residue+oxidation gradient (Tyson's ruling, 2026-07-24).
+--   the single residue+oxidation gradient (ruled 2026-07-24).
 --   The contract this bench locks: the SEASON OM trajectory ranks
 --   direct-drill > strip-till > cultivator > plough, with physical monotonicity
 --   (oxidation strictly tracks soil disturbance) preserved.
@@ -24,7 +24,7 @@ do
   T.near("no-till daily credit = 0.004", om.NO_TILL_DAILY_CREDIT, 0.004)
   T.ok("no-till daily credit is positive", om.NO_TILL_DAILY_CREDIT > 0)
 
-  -- The separate strip-till OM_BOOST is retired (Tyson's ruling): one gain term
+  -- The separate strip-till OM_BOOST is retired by ruling: one gain term
   -- (residue) and one loss term (oxidation) per tillage type.
   T.ok("strip-till OM_BOOST retired", SoilConstants.STRIP_TILL.OM_BOOST == nil)
 

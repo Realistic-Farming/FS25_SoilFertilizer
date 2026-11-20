@@ -1,8 +1,8 @@
 -- MAINT-211-refusal_fieldid_spec_test.lua
 --
--- MAINTENANCE row 211: SF-73's witness refusal named no field, so a refused pass (Tyson's no-crop
+-- MAINTENANCE row 211: SF-73's witness refusal named no field, so a refused pass (the reported no-crop
 -- pause on field 2) named no field to any surface. The Wizard brief :38 says the result carries
--- "one supported crop and field when known"; Tyson ruled (via Desk, 2026-10-02) that a resolved
+-- "one supported crop and field when known"; it was ruled (2026-10-02) that a resolved
 -- field is carried. The refusal now names the field when the witness read exactly one (a farmland,
 -- no MIXED_FIELD), and the crop only for one supported crop (a crop key, neither MIXED_CROP nor
 -- UNSUPPORTED_CROP). Native-inactive refusals and the hold are unchanged.
@@ -14,7 +14,7 @@
 -- is the SF-73 entry bench's (SF-73-target_entry_point_test.lua, lines 30-458, verbatim). Group T
 -- pins the rule itself, row by row, through TargetApplication.refusalIdentity.
 --
---   G1  Tyson's case: one owned field, a cut crop: the field, no crop
+--   G1  the reported case: one owned field, a cut crop: the field, no crop
 --   G2  two fields under the boom: none
 --   G3  the field's edge names the field; no farmland names none
 --   G4  a crop boundary inside one field: the field, no crop
@@ -501,7 +501,7 @@ local function runUntil(reason, limit)
 end
 
 -- =====================================================================
--- G1. Tyson's case: one owned field, a cut crop. The refusal names the field, no crop.
+-- G1. The reported case: one owned field, a cut crop. The refusal names the field, no crop.
 -- =====================================================================
 group(function()
   serverWorld({ ground = CUT_BARLEY })

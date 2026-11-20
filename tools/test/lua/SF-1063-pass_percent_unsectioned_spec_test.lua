@@ -79,7 +79,7 @@ function getWorldTranslation(node)
 end
 function getWorldRotation() return 0, 0, 0 end
 
--- #1098 (Desk follow-up, 2026-10-14): group S's VWW rig needs these so its 2 m
+-- #1098 (follow-up, 2026-10-14): group S's VWW rig needs these so its 2 m
 -- overlap record (getBoomOverlapPositions, which now owns coverage area on a
 -- sectioned pass) can resolve real points, the same no-rotation model as
 -- getWorldTranslation above (nodes and frames are plain {x=, z=} world points; no

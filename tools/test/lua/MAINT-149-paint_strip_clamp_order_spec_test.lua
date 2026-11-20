@@ -1,6 +1,6 @@
 -- MAINT-149-paint_strip_clamp_order_spec_test.lua
 --
--- MAINTENANCE row 149 (Bob's intake of 2026-09-26, FAST TRACK, design origin none).
+-- MAINTENANCE row 149 (build intake of 2026-09-26, FAST TRACK, design origin none).
 -- SoilValueMaps:addPaintStrip ran its saturation clamp AFTER the add, the order #1025
 -- removed from the two aimed-delta paths. The clamp then took the pixels the add had
 -- just carried into its window: a dose of d raw on a pixel at RAW_MAX - 2d + 1 ..
@@ -8,7 +8,7 @@
 -- rawLow + |d| .. rawLow + 2|d| - 1 to rawLow. Every fertilizer and tillage strip (N,
 -- P, K, OM; pH where the positional writer is absent) and the narrow-tool dot write
 -- through it. The clamp now runs first; the windows are unchanged, and so is the
--- sub-step quantisation (rows 66 and 71, under Tyson's Design hold).
+-- sub-step quantisation (rows 66 and 71, under the Design hold).
 --
 -- THE ENTRY-POINT BAR IS GROUPS P AND N. The store is a SoilValueMaps through its own
 -- initialize over the SF-995 pixel engine model (64 px, one metre a pixel); the writes

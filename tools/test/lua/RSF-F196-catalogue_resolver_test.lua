@@ -217,7 +217,7 @@ do
 end
 
 -- ── WHAT ACTUALLY PROTECTS THE DOSE, which is not the density test ───────────
--- Bob's finding in the F196 intake: 28 fill types in this mod declare
+-- A finding in the F196 intake: 28 fill types in this mod declare
 -- massPerLiter="0.001", one gram per litre, every crop-protection product and every
 -- BLEND_* type. That is POSITIVE, so a nil-or-non-positive density test accepts it.
 -- If such a product were ever treated as a dry product to be mass-dosed, the

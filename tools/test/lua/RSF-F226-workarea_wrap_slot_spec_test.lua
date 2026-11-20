@@ -217,7 +217,7 @@ do
 end
 
 
--- ── H: THE SEQUENCE Bob found, and it is the one that stacks ─────────────────
+-- ── H: THE SEQUENCE the review found, and it is the one that stacks ─────────────────
 -- Install, another mod wraps on top, teardown, install again. Nothing pinned the
 -- interaction between teardown and the idempotency test, and the failure is not
 -- an error: the wrapper simply runs TWICE per pass, so a drying delta applies at
@@ -382,7 +382,7 @@ end
 -- misspell the function name, and every case above still passes while no combine
 -- in the game is ever wrapped.
 --
--- This is the same gap Bob found on MD-16, where reset was correct and nothing
+-- This is the same gap the review found on MD-16, where reset was correct and nothing
 -- proved it was still called. The answer there was to call the real entry point,
 -- and it is the answer here: run the REAL installer against a real work-area
 -- chain and assert the right area came back wrapped.

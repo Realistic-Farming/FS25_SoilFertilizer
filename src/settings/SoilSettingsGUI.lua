@@ -161,7 +161,7 @@ function SoilSettingsGUI:consoleProbe741()
     local ok2, comp = pcall(function() return target.getCompletion and target:getCompletion() end)
     P("  eval getCompletion() =", ok2 and tostring(comp) or "err")
     P("=== end probe ===")
-    return "SF741PROBE written to log.txt -- tell Claude"
+    return "SF741PROBE written to log.txt"
 end
 
 -- ── TEMP WeatherGuard PROBE (the WG-1 build-gating confirm) ───────────────
@@ -211,7 +211,7 @@ function SoilSettingsGUI:consoleProbeWeather()
                          "getCurrentTemperature", "getTemperature", "getIsWeatherActive" }) do
         P("  w." .. n .. " =", type(w[n]))
     end
-    P("  w.currentWeather =", tostring(w.currentWeather), " (Claude(A)'s suspected no-op field)")
+    P("  w.currentWeather =", tostring(w.currentWeather), " (suspected no-op field)")
     P("  w.weatherType    =", tostring(w.weatherType))
 
     P("=== live current-sky reads ===")
@@ -283,8 +283,8 @@ function SoilSettingsGUI:consoleProbeWeather()
         P("  no forecastItems on this map (WeatherForecastHUD guards for exactly this)")
     end
 
-    -- Claude(A)'s documented path, tested head-on so we can say which one is real.
-    P("=== forecast:dataForTime path (Claude(A)'s route) ===")
+    -- The documented path, tested head-on so we can say which one is real.
+    P("=== forecast:dataForTime path (documented route) ===")
     if type(w.forecast) == "table" and type(w.forecast.dataForTime) == "function" then
         local baseDay = env.currentMonotonicDay or env.currentDay or 1
         for _, d in ipairs({ 0, 1, 3, 7, 9, 14 }) do
@@ -1618,8 +1618,8 @@ function SoilSettingsGUI:consoleCommandDrainVehicle()
     -- declares no economy). Read at call time through the manager, so a map or mod that
     -- redefines a product is honoured and no second price copy can drift (the old
     -- hand-written table here did). NOT EconomyManager:getPricePerLiter, which adds
-    -- the seasonal factor and the difficulty multipliers: the ruling (Tyson,
-    -- 2026-09-23) is the XML price at the existing 50%, and the XML price is
+    -- the seasonal factor and the difficulty multipliers: the ruling
+    -- (2026-09-23) is the XML price at the existing 50%, and the XML price is
     -- seasonal-invariant, so there is no buy-cheap, drain-dear timing. A product with
     -- no usable shop price (nil, non-finite, negative or 0) refunds 0 and says so.
     local function shopPricePerLiter(idx)

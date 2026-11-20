@@ -79,7 +79,7 @@ function ViabilityMask.new(manager)
     self._plans = {}
     self._planGeneration = 0
     self._pendingFarmlands = {}
-    -- The mask enable. RULED DEFAULT-ON by Tyson (2026-08-05): soil condition is
+    -- The mask enable. RULED DEFAULT-ON (2026-08-05): soil condition is
     -- a difficulty-neutral fact, not a difficulty setting. Kept as an
     -- Administrative control rather than a player dial.
     self.enabled = true

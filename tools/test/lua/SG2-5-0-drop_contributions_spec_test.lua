@@ -1,6 +1,6 @@
 -- SG2-5-0-drop_contributions_spec_test.lua
 --
--- SG2-5 slice 5-0 (SG-2 v2.3 :345, Bob's G1 ruling of 2026-10-02): an admitted drop takes
+-- SG2-5 slice 5-0 (SG-2 v2.3 :345, the G1 ruling of 2026-10-02): an admitted drop takes
 -- the condition of the material StockGuard drops, as the `soil.groundCondition` records it
 -- carried, through the optional `observation.contributions` of deliverMovement
 -- (src/ground/GroundConditionAdmission.lua). Soil reads each record through its own

@@ -1,5 +1,5 @@
 -- sf1143_build_rate_burn_leach_test.lua - #1143/#1146 (antler22): the four build-rate
--- / burn / leach changes owed automated tests before merge (Bob's review at 2f7d1ca4).
+-- / burn / leach changes owed automated tests before merge (review at 2f7d1ca4).
 --   (A/B) New "build" rate steps 21-24: SoilConstants.allowsBuildRate gates which
 --   products may reach them (P/K/pH products with N <= BUILD_MAX_PRODUCT_N, never a
 --   pest/disease product), and SprayerRateManager:cycleUp enforces the ceiling and

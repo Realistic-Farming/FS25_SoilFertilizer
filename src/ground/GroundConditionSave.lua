@@ -15,7 +15,7 @@
 -- on success, #completeAttemptId is written into soilData.xml in the FINAL directory, never
 -- the staging one. A save before this build has no stamp and loads as it always has
 -- (legacy). A stamped save is PAIRED only when its attempt and its completion agree;
--- otherwise it is UNPAIRED, including a save no boundary ran for (Bob's condition on B5: a
+-- otherwise it is UNPAIRED, including a save no boundary ran for (the review condition on B5: a
 -- boundary whose hooks are dead must not make a save read as legacy).
 --
 -- THE IMAGES. On Soil's own boundary the participant names the height image, and the

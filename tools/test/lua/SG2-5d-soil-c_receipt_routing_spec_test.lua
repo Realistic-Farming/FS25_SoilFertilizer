@@ -1,6 +1,6 @@
 -- SG2-5d-soil-c_receipt_routing_spec_test.lua
 --
--- SG2-5 slice 5d-soil-c (Bob's R-15 on StockGuard #33, Drafts/BOB-R15-SG2-5D-A-2026-10-02.md): Soil's
+-- SG2-5 slice 5d-soil-c (the R-15 note on StockGuard #33, 2026-10-02): Soil's
 -- collected reader resolves each receipt by its own producer. MaterialWetness:resolveAllocation sent
 -- EVERY receipt to StockGuard once StockGuard published readCollectionReceipt (StockGuard 5d-a), so
 -- Soil's own seals, for every collection Soil carries itself, went unresolved and every such bale

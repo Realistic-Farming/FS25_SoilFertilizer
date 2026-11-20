@@ -28,7 +28,7 @@
 -- Cells are 10 m (SoilConstants.ZONE.CELL_SIZE), 0.01 ha each; world:cells(from, to)
 -- gives distinct cell centres along one row, so a pass covers exactly those cells.
 --
--- #1098 (Desk follow-up, 2026-10-14): coverage area now accrues through the 2 m
+-- #1098 (follow-up, 2026-10-14): coverage area now accrues through the 2 m
 -- overlap record (markOverlapCells, OVERLAP_CELL_AREA_HA = 0.0004 ha per cell) on a
 -- sectioned (VWW) pass, not through markBoomCells any more. The vehicle now carries
 -- real boom nodes (the work area's start/width/height, the same three

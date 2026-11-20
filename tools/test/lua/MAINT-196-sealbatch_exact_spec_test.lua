@@ -228,7 +228,7 @@ end)
 
 group("X", function()
     world()
-    -- Fred's example: 123.456 L over raws 1, 5 and 10.
+    -- Worked example: 123.456 L over raws 1, 5 and 10.
     local raws = { 1, 5, 10 }
     local snap = snapshotOver(raws)
     local sealed = nil
@@ -253,7 +253,7 @@ group("X", function()
         tostring(good) .. "/" .. tostring(cov and cov.status) .. "/" .. tostring(cov and cov.knownCarrierLitres == A) .. "/" .. tostring(within) .. "/" .. tostring(oldMisses(A, { ["2:8"] = 1, ["3:8"] = 5, ["4:8"] = 10 }, R)),
         "true/" .. tostring(MW.RESULT.OK) .. "/true/true/true")
 
-    -- Bob's sweep: 20000 totals from 100 to 120 L over two cells of 160 L and 400 L, a fixed seed.
+    -- Review sweep: 20000 totals from 100 to 120 L over two cells of 160 L and 400 L, a fixed seed.
     local snap2 = snapshotOver({ 160, 400 })
     local misses, oldN = 0, 0
     for _ = 1, 20000 do

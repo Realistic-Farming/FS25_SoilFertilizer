@@ -1069,7 +1069,7 @@ function TA:finishWithoutCredit(sprayer, cycle)
     if st == nil then return end
     local plan = cycle.committed
     -- Not a native-inactive cycle (turned off, lifted, overlap-blocked, no geometry): that is
-    -- the machine not working, not a target refusal, as updateGuard counts it (Bob, R-15).
+    -- the machine not working, not a target refusal, as updateGuard counts it (R-15 build note).
     if plan.refused and not plan.nativeInactive then self:noteRefusal(st, sprayer, plan) end
     if plan.primeLine ~= nil and plan.geometry ~= nil then
         local pc = plan.primeCaches or {}

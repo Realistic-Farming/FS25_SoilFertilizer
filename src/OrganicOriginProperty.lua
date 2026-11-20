@@ -1,7 +1,7 @@
 -- =========================================================
 -- OrganicOriginProperty
 -- =========================================================
--- Build brief: organic-origin-property-BUILD-BRIEF.md (Office Tyson,
+-- Build brief: organic-origin-property-BUILD-BRIEF.md (tracking repo,
 -- FS25_SoilFertilizer). SoilFertilizer registers as a StockGuard SG1
 -- property producer and supplies `harvestOrganicOriginV1`: the organic
 -- fraction of material at the moment it is born into StockGuard's tracked

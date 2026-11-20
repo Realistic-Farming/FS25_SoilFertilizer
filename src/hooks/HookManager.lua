@@ -792,8 +792,8 @@ function HookManager:installAll(soilSystem)
     -- the file top to bottom concludes the rate multiplier is appended later. What
     -- settles append order is the CALL order in this function: the start hook is
     -- installed above as System 1, this call comes after every other append, and
-    -- the only installs that follow it are prepends. Bob re-derived this in the
-    -- #974 cold review; it lives here so nobody has to again.
+    -- the only installs that follow it are prepends. The #974 cold review re-derived
+    -- this; it lives here so nobody has to again.
     self:installDensityRefusalHook()
     -- [SF-73] The target cycle's enforcement is appended AFTER R2, which makes it the
     -- last start append: nothing later can re-arm a target cycle it zeroed or move a
@@ -8040,8 +8040,8 @@ function HookManager:installPlowingHook()
 
                     -- Compaction: tillage LOOSENS soil - it never packs it. A subsoiler or a
                     -- plow-action tool clears compaction on every 2 m pixel under its active
-                    -- work areas: one pass clears, as it did on the 10 m cells (Tyson,
-                    -- 2026-10-15). Shallow cultivation is neutral; only traffic adds
+                    -- work areas: one pass clears, as it did on the 10 m cells
+                    -- (2026-10-15). Shallow cultivation is neutral; only traffic adds
                     -- compaction. A deep-tillage tool built on the Cultivator spec (e.g. a
                     -- Bourgault SPS configured as a subsoiler) must never ADD compaction (#672).
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
@@ -8136,7 +8136,7 @@ function HookManager:installDedicatedPlowHook()
                     g_SoilFertilityManager.soilSystem:onPlowing(farmlandId, areaHa, false, cropBiomass)
                     g_SoilFertilityManager.soilSystem:recordTillageTrailPoint(farmlandId, x, z, true)
 
-                    -- Compaction: a plow pass clears every 2 m pixel under its work areas (Tyson, 2026-10-15).
+                    -- Compaction: a plow pass clears every 2 m pixel under its work areas (2026-10-15).
                     if g_SoilFertilityManager.settings.compactionEnabled and SoilConstants.COMPACTION then
                         local relieved = 0
                         for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(plowSelf)) do
@@ -8424,7 +8424,7 @@ function HookManager:installWeederHook()
                         SoilLogger.debug("[WeederHook] Field %d: mechanical weed removal applied", farmlandId)
                     end
                     if doRelief then
-                        -- One pass clears every 2 m pixel under the work areas (Tyson, 2026-10-15).
+                        -- One pass clears every 2 m pixel under the work areas (2026-10-15).
                         local relieved = 0
                         for _, quad in ipairs(hookMgrRef:_activeWorkAreaQuads(weederSelf)) do
                             relieved = relieved + mgr.soilSystem:relieveCompactionInQuad(quad)
@@ -10056,7 +10056,7 @@ function HookManager:installExternalFillHook()
     -- wap.sprayFillType at :926, the overlap prepend reads that stale UNKNOWN at
     -- the start of the NEXT pass and returns before its block decision, so that
     -- pass is unblocked and billed, and the one after blocks again. Suppression on
-    -- every other frame (Bob's trace, ledger 35d0dad).
+    -- every other frame (trace in ledger 35d0dad).
     --
     -- The correct type with zero usage keeps wap trackable, but computing the type
     -- without calling the original means copying about 40 lines of engine fill-type
@@ -11271,7 +11271,7 @@ end
 -- preserver saves it at the start of the tick (_sfSavedSectionStates), and the stamp
 -- runs inside the same tick's onEndWorkAreaProcessing, before the preserver restores
 -- and clears it. So Soil's own See & Spray, Smart Sensor, overlap and boundary
--- suppressions keep stamping as before (Tyson's ruling, 2026-10-06, Option B).
+-- suppressions keep stamping as before (ruled 2026-10-06, Option B).
 --
 -- Only the stamp is filtered. getBoomCellPositions returns what it always did, so the
 -- boom paint and the burn metering that share its points are untouched, and with no

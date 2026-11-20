@@ -1,5 +1,5 @@
--- pressure_retune_737_test.lua - issue #737, option D as ruled by Arissani and
--- derived by Claude(A) as a ratio pass.
+-- pressure_retune_737_test.lua - issue #737, option D as ruled by Design and
+-- derived as a ratio pass.
 --
 -- The defect: pest and disease could never reach their own first effect tier.
 -- Pest grows A pts/year and a harvest resets it to fraction f, so the pre-harvest

@@ -1,6 +1,6 @@
 -- SG2-nonstop-soil_buffer_share_spec_test.lua
 --
--- SG-2 non-stop baler framing, PR 1 (Soil's half; Bob's intake BOB-INTAKE-SG2-NONSTOP-BALER-FRAMING-
+-- SG-2 non-stop baler framing, PR 1 (Soil's half; the build intake of
 -- 2026-10-09): a PARTIAL round bale from a non-stop baler takes the buffer's share in the pad
 -- (Baler.lua:1338-1341, the buffer debited by what the bale takes beyond the chamber). When StockGuard
 -- frames the buffer, the buffer's material is the account StockGuard's SG-1 record holds, so the share
@@ -238,7 +238,7 @@ local function birth(opts, bufferPerPixel)
 end
 
 -- ══════════════════════════════════════════════════════════════════════════
--- E. THE ENTRY-POINT BAR: THE BUFFER'S SHARE FROM STOCKGUARD'S BUFFER RECORD (Bob's S-pad)
+-- E. THE ENTRY-POINT BAR: THE BUFFER'S SHARE FROM STOCKGUARD'S BUFFER RECORD (intake S-pad)
 -- ══════════════════════════════════════════════════════════════════════════
 group("E", function()
     local v, okR = boot({ records = { ["s-chamber"] = CHAMBER(), ["s-buffer"] = BUFFER() } })
@@ -278,7 +278,7 @@ group("P", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- N. WITH NO BUFFER RECORD, TODAY'S RESULT (Bob's S-alone)
+-- N. WITH NO BUFFER RECORD, TODAY'S RESULT (intake S-alone)
 -- ══════════════════════════════════════════════════════════════════════════
 group("N", function()
     local own = num((60 * WET + 20 * DRY) / 80)

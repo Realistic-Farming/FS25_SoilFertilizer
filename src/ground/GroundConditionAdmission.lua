@@ -17,7 +17,7 @@
 --   g_currentMission.soilFertilityManager.groundCondition.readCollectedCondition(
 --       snapshotRef, receiptRef)                             (SG2-5d, below)
 --
--- ADMISSION REVISION 2 (SG2-4 S3, Iris's answer 2 of 2026-09-23, Bob's intake of
+-- ADMISSION REVISION 2 (SG2-4 S3, Iris's answer 2 of 2026-09-23, the build intake of
 -- 2026-09-23): the public input of deliverMovement is StockGuard's admitted NATIVE
 -- observation, not caller-chosen Soil cells with a precomputed mixture. Soil derives
 -- the Soil cells itself, from the FOOTPRINT the caller gives admitPrimitive, reads
@@ -43,7 +43,7 @@
 --   `ok = false` means the primitive threw: every lease cell goes unavailable.
 --
 --   contributions (optional, a TIP_TO_GROUND_AROUND_LINE drop only; SG-2 v2.3 :345,
---   Bob's SG2-5 G1 ruling of 2026-10-02): the condition of the material the caller
+--   the SG2-5 G1 ruling of 2026-10-02): the condition of the material the caller
 --   drops, as the `soil.groundCondition` records StockGuard carried on it.
 --     { { litres = n, record = <soil.groundCondition PropertyRecord> }, ... }
 --   Soil reads each record through its own property (GroundConditionProperty.validate
@@ -56,7 +56,7 @@
 --   condition, as before; a pickup ignores it. The field is additive under revision 2:
 --   an older Soil copies only the fields it knows, so the drop lands unknown there.
 --
---   A BIRTH CONTRIBUTION (SG2-5c-soil; SG-2 v2.3 :351, GCC section 4; Bob's 5c ruling
+--   A BIRTH CONTRIBUTION (SG2-5c-soil; SG-2 v2.3 :351, GCC section 4; the 5c ruling
 --   of 2026-10-02): fresh output a positive native production observation proved, which
 --   the caller held in a machine buffer without a condition of its own.
 --     { litres = n, birth = { kind = "MOWER", fillTypeIndex = <the output's type> } }
@@ -70,7 +70,7 @@
 --   output it counted from a cut whose MOWER_CUT admission (below) was ADMITTED: under a
 --   refused barrier Soil's own carrier makes that output explicit unknown, never a birth.
 --
--- MOWER_CUT (SG2-5c-soil; GCC :106 read through :129; Bob's 5c ruling, Q2). A mower's
+-- MOWER_CUT (SG2-5c-soil; GCC :106 read through :129; the 5c ruling, Q2). A mower's
 -- cut writes no Soil cell: its output waits in the drop area's buffer, and the old dry
 -- windrow it picks up is its own line primitive with its own lease. So Soil's mower carrier
 -- cannot see a StockGuard frame from any line lease, and StockGuard admits the cut itself,
@@ -87,7 +87,7 @@
 -- instead (mowerCutAdmittedSince), recording no fresh birth. The kind is additive under
 -- revision 2, as readCollectedCondition was.
 --
--- THE COLLECTED READ (SG2-5d; SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; Bob's
+-- THE COLLECTED READ (SG2-5d; SG-2 v2.3 :344, GCC :106 read through :129 and RSF-F211 :56; the
 -- G2 ruling as amended 2026-10-02). With StockGuard present, StockGuard is the collection's
 -- producer: it seals the allocation at the add's applied delta (F211 :76), hands this reader the
 -- reference and stores the account it returns as the carried property. Soil computes the meaning:
@@ -132,7 +132,7 @@
 -- what the observer compares across its native call: the util's call is synchronous,
 -- so a lease admitted during it can only be the inner slot's lease for that very
 -- primitive, whatever identity the inner caller names; the observer stands aside when
--- the count moved (Bob's intake item 3b). A refused inner admission mints no lease,
+-- the count moved (build intake item 3b). A refused inner admission mints no lease,
 -- so Soil's own observation then stands, projecting or marking as it would alone.
 --
 
@@ -161,7 +161,7 @@ GroundConditionAdmission.DELIVER_BAD_OBS       = "BAD_OBSERVATION"
 GroundConditionAdmission.MAX_COLLECTED         = 256
 GroundConditionAdmission.READ_SNAPSHOT_UNKNOWN = "SNAPSHOT_UNKNOWN"
 
--- The primitive kinds a lease can name (Bob's SG2 chain intake: the four
+-- The primitive kinds a lease can name (the SG2 chain intake: the four
 -- DensityMapHeightUtil primitives SG2-4 brackets) and the footprint shape each takes.
 GroundConditionAdmission.KIND_TIP_LINE    = "TIP_TO_GROUND_AROUND_LINE"
 GroundConditionAdmission.KIND_SMOOTH_LINE = "SMOOTH_AROUND_LINE"
@@ -439,7 +439,7 @@ local function currentFrameIndex()
     -- environment (mods.lua:436-442): modEnv's __index is the real global table
     -- and modEnv._G is modEnv itself, so rawget(_G, name) looks in the mod's own
     -- table and never sees an engine global. Shipped in #1002 as a rawget, which
-    -- read nil in a game and left the frame rule inert; Bob's finding on #1003.
+    -- read nil in a game and left the frame rule inert; the review finding on #1003.
     local n = g_updateLoopIndex
     return type(n) == "number" and n or nil
 end
@@ -808,7 +808,7 @@ end
 --- have changed with records nobody vouched for: the standalone observer stood aside
 --- for the admission (the count moved), so the only witness delivered nothing, or a
 --- refused observation, or one in a later frame. Every cell the lease named goes
---- unavailable (Bob's verdict on #1002): bytes kept, never cleared or invented.
+--- unavailable (the review verdict on #1002): bytes kept, never cleared or invented.
 function GroundConditionAdmission:_markUndelivered(lease, reason)
     if (lease.accepted or 0) > 0 or lease.marked then return 0 end
     lease.marked = true
@@ -839,7 +839,7 @@ end
 --- question they will ask before the call. During the call they watch the count.
 --- Live means open AND of this frame: a lease a caller never closed expires by the
 --- frame rule here, so it cannot keep the standalone carrier standing aside for the
---- rest of the mission (Bob's verdict on #1002).
+--- rest of the mission (the review verdict on #1002).
 function GroundConditionAdmission:hasLiveLeaseFor(vehicleOrObject, workAreaIdentity)
     for _, lease in pairs(self.leases) do
         if lease.open and lease.owner == vehicleOrObject and lease.workArea == workAreaIdentity then

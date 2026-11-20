@@ -17,8 +17,8 @@
 local scaled = SoilDuration.scaledDays
 local REF = SoilConstants.DURATION.REFERENCE_DPP
 
--- ── 1. The reference constant is Tyson's ruling ──────────────────────────────
-T.eq("REFERENCE_DPP is 3 (Tyson, 2026-07-23)", REF, 3)
+-- ── 1. The reference constant is a ruling ──────────────────────────────
+T.eq("REFERENCE_DPP is 3 (2026-07-23)", REF, 3)
 
 -- ── 2. Reference-identity: a save at REFERENCE_DPP is unchanged ───────────────
 T.eq("fungicide 35 unchanged at the reference season", scaled(35, 3), 35)

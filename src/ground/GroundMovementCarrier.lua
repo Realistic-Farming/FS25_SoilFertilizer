@@ -70,7 +70,7 @@
 -- coordinator's combine and in the log. A redischarge never re-seeds: a component
 -- picked up from the ground carries its captured condition and no provenance.
 --
--- P-GROUND-1, PROVISIONAL (Tyson D1 2026-09-15, Arissani's ratification owed): off
+-- P-GROUND-1, PROVISIONAL (D1 2026-09-15, ratification owed): off
 -- the ground, material keeps its captured wetness, and its age is the captured raw
 -- age plus the whole days since capture, saturating at the ceiling, applied ONCE when
 -- it resolves. Each component keeps its stamp, so a repeated read derives from the
@@ -424,7 +424,7 @@ end
 --- environment (mods.lua:436-442): modEnv's __index is the real global table and
 --- modEnv._G is modEnv itself, so rawget(_G, name) looks in the mod's table and
 --- never sees an engine global. A plain read resolves through __index, which is the
---- only way an engine global reaches a mod. Bob's finding on #1003 at 043f11f1.
+--- only way an engine global reaches a mod. The review finding on #1003 at 043f11f1.
 local function currentFrameIndex()
     local n = g_updateLoopIndex
     return type(n) == "number" and n or nil

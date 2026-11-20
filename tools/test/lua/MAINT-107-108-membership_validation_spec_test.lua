@@ -1,7 +1,7 @@
 -- MAINT-107-108-membership_validation_spec_test.lua
 --
 -- MAINTENANCE rows 107 and 108, the RSF-F213 membership index at arm (GROUND-CONDITION-
--- CONTRACT v1.5 section 5; Bob's two MINORs on #1005; batch intake item 11).
+-- CONTRACT v1.5 section 5; the two review MINORs on #1005; batch intake item 11).
 --
 -- Row 107: a saved index is trusted only when it came from the same save as the
 -- condition bytes it indexes. The membership, age and wetness layers must all have
@@ -242,7 +242,7 @@ group("E", function()
     T.eq("E2d a member whose condition read fails stays, even over a known zero of material (unknown is never empty)",
         runs() .. " | " .. bit(2, 2) .. " | " .. tostring(coord().membership.emptyLeft), "2:2-2 4:4-4 9:9-9 | 1 | nil")
 
-    -- Bob's case end to end: a real mower whose drop throws inside the native call. The
+    -- The review's case end to end: a real mower whose drop throws inside the native call. The
     -- carrier marks every envelope cell unavailable, which marks it a member; straw lies
     -- in one envelope cell (9,9), the rest hold nothing. The save carries those bits.
     world(100)

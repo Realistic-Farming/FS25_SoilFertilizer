@@ -206,7 +206,7 @@ T.ok("WIRE C4: the helper was CHARGED for it", #money >= 1 and money[1].amount <
 T.ok("WIRE C5: and the dose was armed", vC.spec_sprayer.workAreaParameters.sprayFillLevel > 0)
 
 -- =====================================================================
--- GROUP D: Bob's row. A synthetic refused product, registered for real, and R2
+-- GROUP D: the intake's row. A synthetic refused product, registered for real, and R2
 -- proven to zero the dose. With an empty catalogue the resolver returns nil and
 -- R2 returns before it looks, so this is the half a hand-populated fixture hides.
 -- =====================================================================

@@ -1852,7 +1852,7 @@ function SoilFertilityManager:_checkOneVehicleCompaction(vehicle)
     -- Below the minimum the stored position stays put, so a slow vehicle builds up its
     -- travel and lays the strip once it has really moved MIN_MOVE_DISTANCE_M. It used to
     -- move on every sample, so nothing under 7.2 km/h (a working combine) ever laid
-    -- compaction here (Tyson, 2026-10-15). Parked jitter never reaches the minimum.
+    -- compaction here (2026-10-15). Parked jitter never reaches the minimum.
     if dist < (cp.MIN_MOVE_DISTANCE_M or 2.0) then return false end   -- parked / barely moved
     self:_rememberCompactionPos(vehicle, x, z)
     if dist > (cp.MAX_SEGMENT_M or 30.0) then return false end        -- discontinuity: no line across the gap
@@ -1867,8 +1867,8 @@ function SoilFertilityManager:_checkOneVehicleCompaction(vehicle)
         stepAt(lx + dx * t, lz + dz * t)
     end
 
-    -- Compaction: the strip as wide as the vehicle along the driven segment (Tyson,
-    -- 2026-10-14). compactStrip gates each 2 m pixel to once a day and to real field
+    -- Compaction: the strip as wide as the vehicle along the driven segment
+    -- (2026-10-14). compactStrip gates each 2 m pixel to once a day and to real field
     -- ground, and finds the field under each pixel itself.
     local width = (vehicle.size and vehicle.size.width) or cp.VEHICLE_WIDTH_FALLBACK_M or 3.0
     pcall(function() self.soilSystem:compactStrip(lx, lz, x, z, width, points) end)
@@ -2628,7 +2628,7 @@ end
 --- never registered stops reading as restoring, and the ground coordinator's availability
 --- hold ends. EACH OWNER TRIGGERS ITS OWN decision: the coordinator arms on the condition
 --- owners alone, so it must not depend on the yard ladder being armed to leave its hold
---- (Bob's MAJOR on #1022).
+--- (the review's MAJOR on #1022).
 function SoilFertilityManager:_groundMissionStarted()
     local sys = self.soilSystem
     if sys == nil then return end

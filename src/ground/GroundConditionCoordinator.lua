@@ -684,7 +684,7 @@ end
 --- [MAINTENANCE row 137] The mission started: every savegame item has loaded, so the store
 --- decides now if nothing did it first (MaterialDown:finishLoad is idempotent), and its
 --- observer ends the hold. The coordinator triggers this itself, never through the yard
---- ladder, which it does not depend on (Bob's MAJOR on #1022): an armed coordinator with
+--- ladder, which it does not depend on (the review's MAJOR on #1022): an armed coordinator with
 --- no armed ladder would otherwise hold every cell unavailable for the whole session. A
 --- decision that somehow did not reach the observer still ends the hold, restoring nothing.
 function GroundConditionCoordinator:onMissionStarted()

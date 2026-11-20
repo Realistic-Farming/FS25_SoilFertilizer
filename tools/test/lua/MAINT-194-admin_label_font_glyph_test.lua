@@ -1,6 +1,6 @@
 -- MAINT-194-admin_label_font_glyph_test.lua: MAINTENANCE row 194, the settings panel's
 -- admin button drew "⚙ ADMIN". FS25's text font has no U+2699 (gear): the game logged
--- "Character '9881' not found in texture font" (Tyson's 2026-10-01 log) and drew a blank.
+-- "Character '9881' not found in texture font" (a 2026-10-01 log) and drew a blank.
 -- The label is now plain "ADMIN".
 --
 -- TEXT BAR FROM THE ENTRY POINT. The panel is made by the real SoilSettingsPanel.new (as

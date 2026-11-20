@@ -1,6 +1,6 @@
 -- coverage_test.lua - spray-coverage accounting, incl. the #650 dry-spreader fix.
 --
--- #1098 (Desk follow-up, 2026-10-14): HookManager.lua is now loaded too, so a direct
+-- #1098 (follow-up, 2026-10-14): HookManager.lua is now loaded too, so a direct
 -- call to markOverlapCells (the 2 m overlap record, the real production method that
 -- now owns coverage area on a sectioned pass) can resolve HookManager.overlapCellKey;
 -- without it markOverlapCells returns at once (its own guard) and proves nothing.

@@ -1,16 +1,16 @@
 -- SF-73-pda_last_pause_spec_test.lua
 --
 -- SF-73 section 7, the PDA last-pause follow-on: the TREATMENT card's target card names a
--- field's last no-crop pause beside W1b's last pass, built on Bob's pre-build ruling
--- (BOB-RULING-PDA-LAST-PAUSE-2026-10-03). Only a crop-condition pause enters (the reason a
+-- field's last no-crop pause beside W1b's last pass, built on the pre-build ruling
+-- of 2026-10-03. Only a crop-condition pause enters (the reason a
 -- surface names is UNSUPPORTED_CROP, a field is named, FARM_ACCESS is absent, tested on its
 -- own); it is stamped on entry with the field report's crop (TA:fieldCropKey) on the peer
 -- that writes it, never in the result; the card shows it only while that stamp is the field
 -- report's crop, and only when it is newer than the last pass (a tie goes to the pass); it
 -- reads "Last pause: no growing crop" with the manual hint (its own PDA key: W1a's meaning,
--- sized for the 180px card, Bob's amended point 4) and no litres.
+-- sized for the 180px card, the amended point 4) and no litres.
 --
--- THE ENTRY-POINT BAR is group E: Tyson's field-2 case. A sprayer with a target product and
+-- THE ENTRY-POINT BAR is group E: the reported field-2 case. A sprayer with a target product and
 -- AUTO on over a cut supported crop on an owned field, with no earlier pass, through the real
 -- install, the real sprayer hooks, buildPlan, the real F.witness and refusalIdentity, and the
 -- real TargetApplication:setResult; then the PDA opened the way the page opens it (the real
@@ -27,7 +27,7 @@
 -- narrower boom wholly on farm 2's farmland 9.
 --
 -- Groups:
---   E  the entry bar: Tyson's case, the pause on the host's PDA
+--   E  the entry bar: the reported case, the pause on the host's PDA
 --   N  newer wins: a pass, the crop cut, the pause; a later pass on a living strip; a tie
 --   G  the edge after a pass, and a crop boundary: nothing written, the pass stands
 --   L  a pause, then the boom leaves over the edge: the stored pause stays the no-crop one
@@ -675,7 +675,7 @@ end
 H.PAUSE_LINES = tostring(EN.sf_tgt_pda_state_paused) .. " | " .. tostring(EN.sf_tgt_pda_pause_hint) .. " | "
 
 -- =====================================================================
--- E. THE ENTRY-POINT BAR: Tyson's field-2 case. AUTO on over a cut supported crop on an
+-- E. THE ENTRY-POINT BAR: the reported field-2 case. AUTO on over a cut supported crop on an
 --    owned field, no earlier pass, through the real hooks and setResult; then the real PDA.
 -- =====================================================================
 group(function()
@@ -1038,7 +1038,7 @@ group(function()
   local PASS_KEYS = { "sf_tgt_pda_state_reached", "sf_tgt_pda_state_binding", "sf_tgt_pda_state_hardware",
                       "sf_tgt_pda_state_supply", "sf_tgt_pda_state_quantized", "sf_tgt_pda_state_failed",
                       "sf_tgt_pda_state_none" }
-  -- the W1b card lines a language's width is measured over (%s counted as one letter), as Bob's R-15 measured
+  -- the W1b card lines a language's width is measured over (%s counted as one letter), as the R-15 note measured
   local CARD_KEYS = { "sf_tgt_pda_state_reached", "sf_tgt_pda_state_binding", "sf_tgt_pda_state_hardware",
                       "sf_tgt_pda_state_supply", "sf_tgt_pda_state_quantized", "sf_tgt_pda_state_failed",
                       "sf_tgt_pda_state_none", "sf_tgt_pda_scope", "sf_tgt_n_failed", "sf_tgt_pda_binding" }

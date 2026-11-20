@@ -45,7 +45,7 @@
 SoilNetworkSyncBridge = SoilNetworkSyncBridge or {}
 
 -- Provisional module id. This is the network CHANNEL and the join-snapshot key, so
--- it must be locked with Claude(A) before release (a later rename desyncs a mixed
+-- it must be locked with Design before release (a later rename desyncs a mixed
 -- lobby). Matches the <Mod>_<Thing> convention shared with StateLedger.
 SoilNetworkSyncBridge.MODULE_ID = "SoilFertilizer_Sync"
 SoilNetworkSyncBridge.CHANNEL   = "SoilFertilizer_Sync"

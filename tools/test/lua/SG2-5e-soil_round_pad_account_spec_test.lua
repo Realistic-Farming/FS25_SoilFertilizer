@@ -1,6 +1,6 @@
 -- SG2-5e-soil_round_pad_account_spec_test.lua
 --
--- SG2-5 slice 5e's Soil half (5e-soil, Part 0 of Bob's intake BOB-INTAKE-SG2-5E-ROUND-CORE-2026-10-05,
+-- SG2-5 slice 5e's Soil half (5e-soil, Part 0 of the build intake of 2026-10-05,
 -- section 4): with StockGuard framing a round Baler (StockGuard 5e-b), a PARTIAL round bale is born
 -- with the account StockGuard's chamber record holds, read BEFORE the engine pads the chamber to
 -- capacity (Baler.lua:1328-1347; the full chamber's finishBale runs inside the pad's add, :1345, so a
@@ -214,7 +214,7 @@ local function chamberRecord(account, litres)
     return spec.combine(ctxOf("op9", { { allocation = 1, account = account } }), { leg("op9", 1, litres, rec(3, 120, litres)) }, nil)
 end
 --- What StockGuard's record would say once the chamber is padded: the pad as unknown litres
---- beside the material (StockGuard 5e-b credits the pad as no known litres, Bob's intake (d)).
+--- beside the material (StockGuard 5e-b credits the pad as no known litres, build intake (d)).
 local PADDED = nil
 --- The record answered by the chamber's current level: `before` at or under the pre-pad level,
 --- the padded record above it.
@@ -272,7 +272,7 @@ group("E", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- N. WITH NOTHING TO READ, TODAY'S RESULT, ACCOUNT FOR ACCOUNT (Bob's bar 2)
+-- N. WITH NOTHING TO READ, TODAY'S RESULT, ACCOUNT FOR ACCOUNT (intake bar 2)
 -- ══════════════════════════════════════════════════════════════════════════
 --- The partial bale's birth with the given StockGuard setup: "<pct>|<birth account>|<Soil's own account>".
 local function today(opts, setRecord)
@@ -289,7 +289,7 @@ group("N", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- X. A READ THAT FAILS FALLS BACK TO SOIL'S OWN, NEVER TO AN ERROR (Bob's bar 4)
+-- X. A READ THAT FAILS FALLS BACK TO SOIL'S OWN, NEVER TO AN ERROR (intake bar 4)
 -- ══════════════════════════════════════════════════════════════════════════
 group("X", function()
     local own = "26.063|100/100/0/0/2606.2992|100/100/0/0/2606.2992"
@@ -317,7 +317,7 @@ group("R", function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════════════
--- F. THE FULL ROUND BALE IS UNCHANGED (Bob's bar 3)
+-- F. THE FULL ROUND BALE IS UNCHANGED (intake bar 3)
 -- ══════════════════════════════════════════════════════════════════════════
 group("F", function()
     -- A 100 L chamber: the standard 100 L fills it, and the bale finishes inside the pickup's add.

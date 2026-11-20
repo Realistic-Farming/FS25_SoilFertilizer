@@ -2618,7 +2618,7 @@ end
 --- A refusal writes NOTHING, flips nothing, sends nothing and broadcasts nothing,
 --- and returns NO report at all (nil plus SCOUT_REFUSED): the current report would be
 --- the full truth once the owner has scouted, so a refused door must not read it
---- back (Bob, #998). On a client the same test runs against the synced farmland
+--- back (review of #998). On a client the same test runs against the synced farmland
 --- owner before the optimistic flip and the event; the server tests again from the
 --- sender's own player record.
 ---@param fieldId number
@@ -4714,7 +4714,7 @@ function SoilFertilitySystem:_nutrientPassStrip(field, sd, ax, az, bx, bz, boomL
     for _, key in ipairs(SoilFertilitySystem.PASS_NUTRIENT_KEYS) do
         local value = (carry[key] or 0) * perArea
         if value ~= 0 then
-            -- Round each pixel's write to the nearest raw step (Tyson, 2026-10-16):
+            -- Round each pixel's write to the nearest raw step (2026-10-16):
             -- addPaintStrip floors toward zero, which under-applied every pass by up to
             -- one step. Half a step added away from zero turns that floor into rounding.
             local entry = rawSpan ~= nil and type(vm.getLayerEntry) == "function" and vm:getLayerEntry(key) or nil
@@ -9115,7 +9115,7 @@ end
 --- the ceiling, and at DECAY_MONTHLY that is roughly a year of game time to clear.
 ---
 --- RULED (Arissani, 2026-08-01): the player never made that choice, the bug did, so the
---- fields should not stay burned. Shape ruled by Tyson the same day: clear rather than
+--- fields should not stay burned. Shape ruled the same day: clear rather than
 --- rescale. Rescaling sounds gentler but the inflation factor is UNKNOWABLE -- it depended
 --- on boom width and framerate -- so any divisor would be invented. And only ~3 days
 --- separate the two builds, in which honest accrual could reach at most a pass or two out
@@ -9571,8 +9571,8 @@ end
 --- Compact the strip a heavy vehicle drove over: the 2 m pixels whose centres lie
 --- in the rectangle `width` wide from (x0, z0) to (x1, z1). Each pixel gains once
 --- per game day. The per-pixel points are scaled to the strip width so the same
---- driving moves the field average as much as the 10 m cells did (Tyson,
---- 2026-10-14): a 10 m cell was credited about 10 m of width per step.
+--- driving moves the field average as much as the 10 m cells did
+--- (2026-10-14): a 10 m cell was credited about 10 m of width per step.
 ---@param x0 number  segment start (world)
 ---@param z0 number
 ---@param x1 number  segment end (world)
@@ -9680,7 +9680,7 @@ end
 --- Compaction relief under one work area of a subsoiler, a plow-action tool or a
 --- grassland weeder: every 2 m pixel whose centre lies in `quad` goes to 0. A pass
 --- cleared its 10 m cells before the move to 2 m, because the relief hooks run every
---- tick; on 2 m it clears the ground the tool really worked (Tyson, 2026-10-15). It
+--- tick; on 2 m it clears the ground the tool really worked (2026-10-15). It
 --- is idempotent, so the many ticks a work area spends over a pixel need no dedup.
 ---@param quad table  4 world vertices {x=,z=} in perimeter order
 ---@return number pixels relieved
@@ -9728,7 +9728,7 @@ end
 --- The average is DERIVED as compactionSum / compactionTotalCells, so the sum is faded
 --- by the same ratio as the average or a later pixel write would re-derive the old
 --- average (the "decompaction reset on the next wheel pass" report, nemrod153). The
---- map fades each pixel by the same ratio (Tyson, 2026-10-14: proportional per
+--- map fades each pixel by the same ratio (2026-10-14: proportional per
 --- pixel), through banded passes once the pending fade reaches MAP_DECAY_STEP.
 ---@param field table  fieldData entry
 ---@param reductionPoints number  points to shave off the field-average compaction

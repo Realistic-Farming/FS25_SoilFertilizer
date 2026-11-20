@@ -149,9 +149,9 @@ do
     --
     -- CITED SO IT CAN BE RE-RUN RATHER THAN TRUSTED. A bench asserting a bare
     -- measurement reads as settled fact while being uncheckable by the next reader,
-    -- which makes it weaker than not asserting it at all. Bob raised exactly that
-    -- and was right to: he could not reach this log, because it is not in any game
-    -- log path. On his machine the equivalent numbers are 474 prices and a highest
+    -- which makes it weaker than not asserting it at all. A review raised exactly that
+    -- and was right to: the log cannot be reached, because it is not in any game
+    -- log path. On another machine the equivalent numbers are 474 prices and a highest
     -- index of 495, which is a different machine and a different modset.
     --
     -- Source: Wizard's River Bend session, 2026-09-21, delivered through Discord to
@@ -212,7 +212,7 @@ end
 
 -- ── GROUP G: the one load line, driven as main.lua's call site drives it ────────
 -- main.lua does exactly this: applyFloor(), then loadLine(raised, width), then
--- print the line if there is one. Tyson's ruling of 2026-09-22: when another mod
+-- print the line if there is one. The ruling of 2026-09-22: when another mod
 -- has already satisfied the floor, say so, so a log alone shows the floor is in
 -- force. A tester's log with no "raised" line read as a possible miss for an
 -- evening until FS25_ProductionStorageControl was found setting 10 before us.

@@ -284,7 +284,7 @@ do
     T.eq("A no longer joined", SoilCapacityIntegration.isJoined(a), false)
     T.eq("B joins after A was unloaded", SoilCapacityIntegration.beginCapacityLoad(b), true)
     T.eq("B is the joined mission", SoilCapacityIntegration.isJoined(b), true)
-    -- The failure mode Bob named: an unload that passes nothing leaves A bound and B is refused.
+    -- The failure mode the review named: an unload that passes nothing leaves A bound and B is refused.
     SoilCapacityIntegration._resetForTests()
     SoilCapacityIntegration.beginCapacityLoad(a)
     SoilCapacityIntegration.endCapacityLoad(nil)

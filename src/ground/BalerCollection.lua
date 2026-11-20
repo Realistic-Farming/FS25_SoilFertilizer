@@ -721,7 +721,7 @@ function BC.aroundFinish(vehicle, original, ...)
             if st.pad.share ~= nil then BC.accountAddAccount(account, st.pad.share) end
         else
             local level = mainLevel(vehicle, spec)
-            -- [SG2-5d] A chamber StockGuard frames holds its condition in SG-1's record (Bob's 5d Q4):
+            -- [SG2-5d] A chamber StockGuard frames holds its condition in SG-1's record (5d intake, Q4):
             -- that account, reconciled to the chamber's native level, is the finish account. A framed
             -- chamber's record holds one, square or (from StockGuard 5e-b) round; an unframed chamber
             -- keeps Soil's own.

@@ -5,7 +5,7 @@
 -- `local task = self:cultivateField(field)` and then `task:setSprayType(...)`
 -- (decompile field/FieldManager.lua:412-414 and :418-420). Soil wrapped both methods
 -- with Utils.appendedFunction, which returns nothing, so at the end of a sleep the
--- game logged "attempt to index nil with 'setSprayType'" (Tyson's log.txt,
+-- game logged "attempt to index nil with 'setSprayType'" (a log.txt,
 -- 2026-10-13 22:25:21, runtime FieldManager.lua:553 and :557).
 --
 -- The hook is installed through the production entry point, RfPdaSoilMerge.buildGroups

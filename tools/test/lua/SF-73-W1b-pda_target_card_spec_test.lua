@@ -1,8 +1,8 @@
 -- SF-73-W1b-pda_target_card_spec_test.lua
 --
 -- SF-73 section 7, W1b: the PDA's TREATMENT card shows the door's soilTargetCard (the W1
--- door set, placement B) for the selected field, built on Bob's W1 intake and his W1b
--- pre-build ruling (BOB-RULING-W1B-PREBUILD-2026-10-02): the AUTO crop window as a field
+-- door set, placement B) for the selected field, built on the W1 build intake and the W1b
+-- pre-build ruling of 2026-10-02: the AUTO crop window as a field
 -- report, the field's last confirmed target pass for its current crop as one footprint's
 -- result, the legacy target lines kept and their heading read as the manual plan's targets
 -- while the card shows, nothing new when locked or when the winning door lacks the card.

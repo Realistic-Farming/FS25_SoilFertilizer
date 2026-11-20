@@ -42,7 +42,7 @@
 -- A THROW INSIDE THE NATIVE CALL is re-raised unchanged after the handler is told
 -- the primitive failed; the frame is the carrier's to close, in its own finally.
 --
--- STANDING ASIDE FOR AN INNER ADMISSION (SG2-4, Bob's intake item 3b). This wrap sits
+-- STANDING ASIDE FOR AN INNER ADMISSION (SG2-4, build intake item 3b). This wrap sits
 -- on the Lua util (the OUTER slot). The util calls the engine global
 -- addDensityMapHeightAtWorldLine at DensityMapHeightUtil.lua:290, and that is where
 -- StockGuard's SG2-4 observes and admits (the INNER slot): its lease is opened,
@@ -71,7 +71,7 @@ O.MAX_MARK_CELLS     = 16384
 
 O.frames = O.frames or {}
 O.nextOrdinal = O.nextOrdinal or 0
--- Diagnostics: how much reading one primitive costs (Bob's intake asked for a number),
+-- Diagnostics: how much reading one primitive costs (the build intake asked for a number),
 -- and how often this wrap stood aside for an admission made inside its native call.
 O.stats = O.stats or { primitives = 0, occupancyReads = 0, cellsRead = 0, refusedEnvelopes = 0, stoodAside = 0 }
 O.stats.litresOnly = O.stats.litresOnly or 0   -- tips served by a litres-only frame (row 145)

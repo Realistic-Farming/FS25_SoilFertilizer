@@ -31,7 +31,7 @@
 -- prepend reads that stale value and returns before its block decision, and the
 -- second frame is billed. One blocked frame cannot see that; the third can.
 --
--- AND ONLY WHILE THE PRODUCT IS THE SAME ONE (Bob, #965 review). Repeating the
+-- AND ONLY WHILE THE PRODUCT IS THE SAME ONE (#965 review). Repeating the
 -- last billed type after the tank switched to an untracked product (herbicide)
 -- kept the old trackable type in wap, so the prepend blocked the herbicide on
 -- every pass. Group L pins that; group D pins the opposite case, a tank that runs
@@ -568,7 +568,7 @@ end)
 -- ── L and D: when the product in the tank changes during a blocked stretch ──
 
 group("L", function()
-    -- A DIFFERENT PRODUCT OVER COVERED GROUND (Bob, #965 review). The helper buys
+    -- A DIFFERENT PRODUCT OVER COVERED GROUND (#965 review). The helper buys
     -- fertiliser from an empty tank and is billed, blocks over ground covered this
     -- session, then the tank is filled with herbicide. Herbicide is not a product
     -- the overlap rule tracks, so the block must let go of it within one pass.
