@@ -16,7 +16,7 @@
 # run about 130 files per mutant). A filter can only turn a kill into a survivor, never fake
 # one, so a SURVIVED result in SoilHUD.lua is re-run once under --loads of that file (17 files)
 # before it is called real. A SURVIVED result in SoilFertilitySystem.lua is reported as it
-# stands: no other file reads the new field.
+# stands: the one other reader of the new field, group H of SF-1063-pass_percent_unsectioned_spec_test.lua, is not in this selection.
 #
 # Anchors are written with LF line ends; in a CRLF file they are matched as CRLF.
 #
