@@ -32,6 +32,12 @@ local UREA = { name = "UREA", index = 50, massPerLiter = 0.00077 }
 FillType = FillType or { UNKNOWN = 0 }
 g_fillTypeManager = { getFillTypeByIndex = function(_, i) if i == 50 then return UREA end end,
                       getFillTypeByName  = function(_, n) if n == "UREA" then return UREA end end }
+-- #1063 W4: the ghost's 1.0x rate is the map's own spray type for the product, registered as
+-- production registers a dry product (registerCustomSprayTypes): its kg/ha over its density,
+-- over 36000.
+g_sprayTypeManager = { getSprayTypeByFillTypeIndex = function(_, i)
+  if i == 50 then return { litersPerSecond = (BR.UREA.value / (UREA.massPerLiter * 1000)) / 36000 } end
+end }
 
 -- The world: one field record, the player in a sprayer with UREA in its tank.
 local FIELD = { fieldArea = 2.0, nutrientBuffer = { [50] = 200 } }

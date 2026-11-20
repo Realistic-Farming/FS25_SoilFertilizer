@@ -1944,8 +1944,9 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
         local fillTypeIndex = fillType and fillType.index
         if fillTypeIndex then
             local currentBuffer = info.nutrientBuffer[fillTypeIndex] or 0
-            local br = SoilConstants.SPRAYER_RATE.BASE_RATES
-            local baseRate = (fillType and br[fillType.name]) or br.DEFAULT
+            -- #1063 W4: 1.0x is the map's own base rate for the product, not BASE_RATES
+            -- standing in for a rate the map never gave. No rate for it, no projection.
+            local baseRate = self:getRateConfig(fillType, self._cachedSprayer)
             
             if baseRate then
                 -- Scale target volume by the current rate so the ghost bar reflects
@@ -2315,19 +2316,26 @@ function SoilHUD:getSprayerFillType(sprayer)
     return g_fillTypeManager and g_fillTypeManager:getFillTypeByIndex(fillTypeIndex)
 end
 
---- Returns the BASE_RATES entry for a fill type, falling back to DEFAULT.
-function SoilHUD:getRateConfig(fillType)
-    local br = SoilConstants.SPRAYER_RATE.BASE_RATES
-    if fillType and br[fillType.name] then
-        return br[fillType.name]
+--- [#1063 W4] The 1.0x rate for the product a sprayer holds, as the map applies it:
+--- { value, unit } from HookManager.getMapBaseRate, or nil when the map gives no rate
+--- for it (the readout then shows the multiplier alone). BASE_RATES no longer stands in
+--- for a rate the map did not give, and DEFAULT is no longer shown as a measured rate.
+---@return table|nil rateConfig
+function SoilHUD:getRateConfig(fillType, sprayer)
+    if HookManager == nil or type(HookManager.getMapBaseRate) ~= "function" then
+        -- Observable, never silent: a bench that loads the HUD alone can assert this.
+        SoilHUD.mapRateFallbacks = (SoilHUD.mapRateFallbacks or 0) + 1
+        return nil
     end
-    return br.DEFAULT
+    return HookManager.getMapBaseRate(sprayer, fillType)
 end
 
 --- Returns a formatted rate string with units for the given multiplier.
 --- Shows gal/ac (liquid) or lb/ac (dry) when useImperialUnits is true,
 --- otherwise L/ha or kg/ha.
 function SoilHUD:formatRate(multiplier, rateConfig)
+    -- No rate from the map: the multiplier alone, never an invented amount (#1063 W4).
+    if rateConfig == nil then return string.format("%.2fx", multiplier) end
     local value    = rateConfig.value * multiplier
     local imperial = (self.settings.useImperialUnits ~= false)
     local conv     = SoilConstants.SPRAYER_RATE
@@ -2354,6 +2362,7 @@ end
 
 --- Returns just the numeric part of the rate (no unit suffix), for adjacent step labels.
 function SoilHUD:formatRateNumber(multiplier, rateConfig)
+    if rateConfig == nil then return string.format("%.2f", multiplier) end
     local value    = rateConfig.value * multiplier
     local imperial = (self.settings.useImperialUnits ~= false)
     local conv     = SoilConstants.SPRAYER_RATE
@@ -2747,7 +2756,14 @@ function SoilHUD:drawSprayerRatePanel()
     currentIdx = math.max(1, math.min(#steps, currentIdx or 1))
     local fontMult   = SoilConstants.HUD.FONT_SIZE_MULTIPLIERS[self.settings.hudFontSize or 2]
     local fillType   = sprayer and self:getSprayerFillType(sprayer) or nil
-    local rateConfig = self:getRateConfig(fillType)
+    -- With a sprayer, the readout is the map's own 1.0x rate for its product (#1063 W4).
+    -- Edit mode with no sprayer only previews the layout, so it keeps the placeholder.
+    local rateConfig
+    if sprayer ~= nil then
+        rateConfig = self:getRateConfig(fillType, sprayer)
+    else
+        rateConfig = SoilConstants.SPRAYER_RATE.BASE_RATES.DEFAULT
+    end
     local curMult    = steps[currentIdx] or 1.0
     local burnGuaranteed = curMult >= SoilConstants.SPRAYER_RATE.BURN_GUARANTEED_THRESHOLD
     local burnPossible = not burnGuaranteed

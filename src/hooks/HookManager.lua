@@ -10380,6 +10380,37 @@ function HookManager.getNativeSprayRatePerHa(sprayer, fillTypeIndex)
     return fillScale * lps * 36000
 end
 
+--- [#1063 W4] The 1.0x rate the map itself applies for a product, for the HUD's rate
+--- readout and ghost bar. It is the native rate the usage formula uses (the same
+--- getNativeSprayRatePerHa the coverage estimate reads), stated in the product's public
+--- unit: kilograms per hectare for the twelve dry products (litres x density, U2), litres
+--- per hectare for everything else. A product Soil registers drains exactly its
+--- BASE_RATES entry, so for those this is that entry; a base-game or map product (FERTILIZER,
+--- LIQUIDFERTILIZER, LIME, a map's own fill type) keeps the rate its own spray type
+--- carries, which BASE_RATES never claimed to measure. A product with no spray type has no
+--- rate here: nil is "unavailable", never a stand-in calibration.
+---@param sprayer table|nil  the sprayer, for its usage scale; nil reads the default scale
+---@param fillType table|nil a fill-type descriptor (name, index, massPerLiter)
+---@return table|nil rate { value = number, unit = "dry"|"liquid" }
+function HookManager.getMapBaseRate(sprayer, fillType)
+    if type(fillType) ~= "table" or type(fillType.index) ~= "number" then return nil end
+    local stm = g_sprayTypeManager
+    if stm == nil or type(stm.getSprayTypeByFillTypeIndex) ~= "function" then return nil end
+    local spT = stm:getSprayTypeByFillTypeIndex(fillType.index)
+    local lps = spT and spT.litersPerSecond
+    if type(lps) ~= "number" or lps ~= lps or lps <= 0 then return nil end
+
+    local litres = HookManager.getNativeSprayRatePerHa(sprayer, fillType.index)
+    if type(litres) ~= "number" or litres ~= litres or litres <= 0 then return nil end
+
+    local br = SoilConstants and SoilConstants.SPRAYER_RATE and SoilConstants.SPRAYER_RATE.BASE_RATES
+    local entry = br and fillType.name and br[fillType.name]
+    return {
+        value = HookManager.massEquivalent(fillType, litres),
+        unit  = (entry and entry.unit) or "liquid",
+    }
+end
+
 ---@return boolean success
 function HookManager:installSprayerUsageHook()
     if not Sprayer or type(Sprayer.getSprayerUsage) ~= "function" then

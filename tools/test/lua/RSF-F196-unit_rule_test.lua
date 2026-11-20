@@ -278,14 +278,26 @@ end
 -- GROUP F: U3 site 4, the HUD ghost bar, through the REAL drawNutrientRow.
 -- The same function converts here and at site 2, so bar and threshold agree.
 -- =====================================================================
+-- #1063 W4: the ghost's 1.0x rate is the map's own spray type for the product, registered as
+-- production registers it: a dry product's litres per second is its kg/ha over its density, a
+-- passthrough product's is its BASE_RATES value, both over 36000.
+local function sprayTypesLikeProduction()
+  return { getSprayTypeByFillTypeIndex = function(_, i)
+    local ft = BY_INDEX[i]
+    if ft == nil or BR[ft.name] == nil then return nil end
+    return { litersPerSecond = (BR[ft.name].value / (HookManager.rateKgPerLiter(ft) or 1)) / 36000 }
+  end }
+end
 local function drawRow(ft, bufferLiters, areaHa, fillValue)
   local savedGlobals = { renderText = renderText, setTextAlignment = setTextAlignment, setTextColor = setTextColor,
                          RenderText = RenderText, getTextWidth = getTextWidth, setTextBold = setTextBold,
-                         g_SoilFertilityManager = g_SoilFertilityManager, masterHUD = g_currentMission.masterHUD }
+                         g_SoilFertilityManager = g_SoilFertilityManager, masterHUD = g_currentMission.masterHUD,
+                         g_sprayTypeManager = g_sprayTypeManager }
   renderText = function() end; setTextAlignment = function() end; setTextColor = function() end
   setTextBold = function() end; getTextWidth = function() return 0.01 end
   RenderText = RenderText or { ALIGN_LEFT = 1, ALIGN_RIGHT = 2, ALIGN_CENTER = 3 }
   g_SoilFertilityManager = { settings = { replenishmentRate = 3 } }
+  g_sprayTypeManager = sprayTypesLikeProduction()
   local bars = {}
   g_currentMission.masterHUD = { renderer = {
     renderProgressBar = function(_r, x, y, w, h, fill, col, fillPlusGhost) bars[#bars + 1] = { fill = fill, total = fillPlusGhost }; return true end,
@@ -297,6 +309,7 @@ local function drawRow(ft, bufferLiters, areaHa, fillValue)
   renderText, setTextAlignment, setTextColor = savedGlobals.renderText, savedGlobals.setTextAlignment, savedGlobals.setTextColor
   RenderText, getTextWidth, setTextBold = savedGlobals.RenderText, savedGlobals.getTextWidth, savedGlobals.setTextBold
   g_SoilFertilityManager = savedGlobals.g_SoilFertilityManager
+  g_sprayTypeManager = savedGlobals.g_sprayTypeManager
   g_currentMission.masterHUD = savedGlobals.masterHUD
   return ok, err, bars
 end
