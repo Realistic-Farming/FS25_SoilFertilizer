@@ -258,6 +258,8 @@ T.eq("L3 translated, not the English copy", table.concat(copies, ","), "")
 T.eq("L4 no format specifier (the line is joined in code)", table.concat(specs, ","), "")
 T.eq("L5 no dash in any language", table.concat(dashes, ","), "")
 T.eq("L6 every entry carries the English text's hash", table.concat(hashes, ","), "")
+T.eq("L6b and that hash is md5 of the English text, the first 8 hex digits (lang_sync's get_hash)",
+     LANG.en.sf_hud_pass_estimated and LANG.en.sf_hud_pass_estimated.eh, "f8db73c1")
 T.eq("L7 each language says it with the word its own notice uses", table.concat(words, ","), "")
 local unread = {}
 for _, l in ipairs(LANGS) do
@@ -349,4 +351,18 @@ group("Q", function()
   local ok2, _, texts2 = panelTexts(cnt)
   T.ok("Q6 coverage counted from boom cells: 57% and 2.28 ha, no tilde", ok2 and has(texts2, "57%") and has(texts2, "2.28 ha")
        and not has(texts2, "~57%") and not has(texts2, "~2.28 ha"))
+  -- Before the first boom cell is counted, after a reload or a product switch, and on a client,
+  -- the session coverage is 0 and the flag is still true: nothing to estimate, so no tilde.
+  local _, idle = frame({ day = 0, session = 0, product = nil })
+  local ok3, _, texts3 = panelTexts(idle)
+  T.eq("Q7 an idle rig (no pass yet): the flag reads true", idle.sessionCoverageEstimated, true)
+  T.ok("Q8 and the panel shows 0% and 0.00 ha with no tilde", ok3 and has(texts3, "0%") and has(texts3, "0.00 ha")
+       and not has(texts3, "~0%") and not has(texts3, "~0.00 ha"))
+  local _, switched = frame({ day = 0.57, session = 0, product = "UREA" })
+  local _, _, texts4 = panelTexts(switched)
+  T.ok("Q9 a product switch (coverage reset to 0): no tilde either", has(texts4, "0%") and not has(texts4, "~0%"))
+  local _, begun = frame({ day = 0, session = 0.004, product = "UREA" })
+  local _, _, texts5 = panelTexts(begun)
+  T.ok("Q10 a pass just begun (0.4% of the field) is a pass under way: it carries its tilde",
+       has(texts5, "~0%") and has(texts5, "~0.02 ha"))
 end)

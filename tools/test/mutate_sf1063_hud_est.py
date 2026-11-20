@@ -98,12 +98,12 @@ MUTATIONS = [
   "the panel ignores where the coverage rows ended, so the compaction row draws over them"),
 
  ("M13-panel-never-tilde", PNL,
-  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
+  [("        local approx = (sessCov > 0 and info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
     "        local approx = \"\"\n", 1)],
   "the sprayer info panel shows litre-derived coverage as if it were counted"),
 
  ("M14-panel-always-tilde", PNL,
-  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
+  [("        local approx = (sessCov > 0 and info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
     "        local approx = \"~\"\n", 1)],
   "the sprayer info panel marks even boom-cell coverage as an estimate"),
 
@@ -117,6 +117,11 @@ MUTATIONS = [
     "        local sessHaStr = string.format(\"%.2f ha\", sessHa)\n", 1)],
   "the session area, worked out from the same litres, loses the tilde and the PASS cell keeps it"),
 
+ ("M18-panel-tilde-without-a-pass", PNL,
+  [("        local approx = (sessCov > 0 and info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n",
+    "        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"\n", 1)],
+  "an idle rig, a reload, a product switch and every client show ~0% and ~0.00 ha"),
+
  ("M17-padding-ignores-scale", HUD,
   [("    local pad  = SoilHUD.PAD * s\n    local maxW = pw - 2 * pad\n",
     "    local pad  = SoilHUD.PAD\n    local maxW = pw - 2 * pad\n", 1)],
@@ -127,7 +132,7 @@ def sha(b): return hashlib.sha256(b).hexdigest()
 
 
 SELECTED = [
-    "SF-1063-hud_pass_estimated_test.lua",   # groups E, D, L, P: the flag, the label, the rows, the languages, the panel
+    "SF-1063-hud_pass_estimated_test.lua",   # groups E, P, D, Q, L: the flag, the label, the panel, the rows, the sprayer panel, the languages
 ]
 TEST_DIR = os.path.join(ROOT, "tools", "test")
 RUNNER = os.path.join(TEST_DIR, "run-tests.mjs")
@@ -229,11 +234,8 @@ for mid, rel, edits, why in MUTATIONS:
     if rc != 0:
         killed.append(mid)
         tag = "KILLED  "
-        # defensive: every group of this bench runs inside group(), which turns a raised Lua
-        # error into a named FAIL row, so a kill by a bare crash is not expected here
-        if crashes and not named:
-            crashkills.append(mid)
-            tag = "KILLED* "
+        # every group of this bench runs inside group(), which turns a raised Lua error into a
+        # named FAIL row, so a kill by a bare crash cannot happen here and is not classified
     else:
         survived.append((mid, why))
         tag = "SURVIVED"
@@ -245,7 +247,7 @@ for mid, rel, edits, why in MUTATIONS:
         print("        CRASH " + l[:170])
 
 print("\n==== MUTATION RESULT ====")
-print("killed   %d (of which %d only by a Lua error, marked KILLED*)" % (len(killed), len(crashkills)))
+print("killed   %d" % len(killed))
 print("survived %d" % len(survived))
 for mid, why in survived:
     print("   SURVIVED %s: %s" % (mid, why))

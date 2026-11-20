@@ -612,3 +612,30 @@ do
   local n = noticePass({ product = PROP, rate = 0.5 })
   T.eq("W3.8 crop protection over the whole field: no notice", #n, 0)
 end
+
+-- =====================================================================
+-- H. The flag the HUD's Pass line and the sprayer info panel read, from the production ticks
+-- =====================================================================
+-- getFieldInfo's sessionCoverageEstimated is the notice's own test (no boom-cell owner). These
+-- rows read it after the same real passes the notice rows run, so the labels follow what the
+-- sprayer hook actually wrote. Before the first boom cell is counted it reads true with a
+-- session coverage of 0, which is why a label needs a coverage above 0.
+do
+  newWorld({ product = FERT })
+  local idle = W.ss:getFieldInfo(7)
+  T.eq("H1 a rig without sections before any pass: no session coverage", idle.sessionCoverageFraction, 0)
+  run(W.v, TICKS)
+  local info = W.ss:getFieldInfo(7)
+  T.ok("H2 after a whole-field pass its coverage is above 0 and worked out from litres",
+       info.sessionCoverageFraction > 0 and info.sessionCoverageEstimated == true)
+end
+do
+  newWorld({ product = FERT, vww = true })
+  local idle = W.ss:getFieldInfo(7)
+  T.eq("H3 a sectioned rig before its first cell: no session coverage", idle.sessionCoverageFraction, 0)
+  T.eq("H4 and the flag already reads true, so a label must also see a coverage above 0", idle.sessionCoverageEstimated, true)
+  run(W.v, TICKS)
+  local info = W.ss:getFieldInfo(7)
+  T.ok("H5 after the pass, counted from boom cells: coverage above 0 and NOT estimated",
+       info.sessionCoverageFraction > 0 and info.sessionCoverageEstimated == false)
+end
