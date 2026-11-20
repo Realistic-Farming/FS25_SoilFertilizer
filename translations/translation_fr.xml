@@ -586,6 +586,8 @@
     <e k="sf_notify_treated_title" v="Mise à jour du sol" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Objectif de couverture du passage atteint : champ %d, %s, %d%% couvert à x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Objectif de couverture du passage atteint : champ %d, %s, environ %d%% couvert (estimation) à x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Objectif de couverture du passage atteint : champ %d, %s, %d%% couvert à la dose cible AUTO" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Objectif de couverture du passage atteint : champ %d, %s, environ %d%% couvert (estimation) à la dose cible AUTO" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Brûlure d'engrais" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Champ %d : dégâts dus à une surapplication (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Mod de gestion du sol : problème de synchronisation des données détecté. Merci de le signaler si cela persiste." eh="1a307946" />

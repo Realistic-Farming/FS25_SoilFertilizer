@@ -601,6 +601,8 @@
     <e k="sf_notify_treated_title" v="Atualização do Solo" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Objetivo de cobertura da passagem atingido: campo %d, %s, %d%% coberto a x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Objetivo de cobertura da passagem atingido: campo %d, %s, cerca de %d%% coberto (estimado) a x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Objetivo de cobertura da passagem atingido: campo %d, %s, %d%% coberto à taxa-alvo do AUTO" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Objetivo de cobertura da passagem atingido: campo %d, %s, cerca de %d%% coberto (estimado) à taxa-alvo do AUTO" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Queimadura por Fertilizante" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Campo %d: danos por sobreaplicação (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Mod Solo: detetado problema de sincronização de dados. Por favor reporte se persistir." eh="1a307946" />

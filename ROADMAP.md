@@ -446,3 +446,9 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] The Experimental Systems setting held back eight systems: disease resistance, hybrid strains, tank mixes, ground material, spatial soil, Read the Dirt, growth modulation and target N/P/K. They now run for every player, always on. `ReleaseGate.lua`, the release dialog, the `SoilRelease` console command, the setting with its panel section, its confirmation and its 12 translation keys are gone. A save that stored the toggle loads as before: the stored value is no longer read and drops out at the next save. The version dialog loses its release-status panel and Explore fills the right column.
 - [ ] Known limit: the version dialog's changelog bullets from earlier releases still mention Settings > Experimental until the next release rewrites them.
 - The in-game check is the TESTING row for this PR. Design origin none.
+
+## 2026-11-20: AUTO target passes count the ground they dose, and take the pass-coverage notice (#1063 W2)
+
+- [x] A target pass without sections used to count its litres against the product's 1x native rate, so it counted its dose, not its ground: a strip dosed at about half the 1x rate showed about half covered. A target cycle's litres per hectare are now its litres over the plan's accepted footprint (the closed pixels it doses), so each credited cycle adds exactly the ground it dosed, at any rate. A refused, priming, held or zero cycle still adds nothing. A sectioned rig already counted ground through the 2 m overlap record and is unchanged.
+- [x] Target passes now take the "Pass coverage target reached" notice. Their sentence names the AUTO target rate instead of a selected rate (two new strings, translated by hand in all 27 language files).
+- The in-game check is the TESTING row for this PR. Design origin: SF-73 v1.1 with RSF-F196 v0.9, Design's answer of 2026-10-02 section 2 (W2).

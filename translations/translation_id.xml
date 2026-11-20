@@ -600,6 +600,8 @@
     <e k="sf_notify_treated_title" v="Pembaruan Tanah" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Target cakupan lintasan tercapai: ladang %d, %s, %d%% tercakup pada x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Target cakupan lintasan tercapai: ladang %d, %s, sekitar %d%% tercakup (perkiraan) pada x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Target cakupan lintasan tercapai: ladang %d, %s, %d%% tercakup pada dosis target AUTO" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Target cakupan lintasan tercapai: ladang %d, %s, sekitar %d%% tercakup (perkiraan) pada dosis target AUTO" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Terbakar Pupuk" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Lahan %d: kerusakan aplikasi berlebih (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Mod Tanah: Masalah sinkronisasi data terdeteksi. Silakan lapor jika berlanjut." eh="1a307946" />

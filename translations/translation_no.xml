@@ -594,6 +594,8 @@
     <e k="sf_notify_treated_title" v="Jordoppdatering" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Dekningsmålet for overkjøringen nådd: jorde %d, %s, %d%% dekket ved x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Dekningsmålet for overkjøringen nådd: jorde %d, %s, ca. %d%% dekket (anslått) ved x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Dekningsmålet for overkjøringen nådd: jorde %d, %s, %d%% dekket ved AUTO-måldoseringen" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Dekningsmålet for overkjøringen nådd: jorde %d, %s, ca. %d%% dekket (anslått) ved AUTO-måldoseringen" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Sviskade fra gjødsel" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Felt %d: skade ved overdosering (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Jordmod: Problem med datasynkronisering oppdaget. Vennligst rapporter hvis dette vedvarer." eh="1a307946" />

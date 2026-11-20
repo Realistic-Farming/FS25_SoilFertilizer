@@ -430,7 +430,7 @@
 
 - [x] `src/SoilFertilitySystem.lua`: `checkPassCoverageNotice` replaces the dose comparison at the end of `applyFertilizer`. `src/hooks/HookManager.lua`: the area hook hands the selected rate over (`_passRateMult`) and clears it with `_sf73TargetField`. Two new strings, `sf_notify_pass_body` and `sf_notify_pass_body_est`, in all 27 language files; the unused `sf_notify_treated_body` is removed (the title key stays).
 - [x] Bars: group D of `RSF-F196-unit_rule_test.lua` (rewritten for the retired site 2: D1 to D10, and F8), group W3 of `SF-1063-pass_percent_unsectioned_spec_test.lua` (W3.0 to W3.8, from the hook to the shipped English sentence), OBS 9 and 11 of `RSF-F196-unit_rule_fallback_observable_test.lua`. Development fails 14 of them; `mutate_sf1063_w3.py` kills 10 of 10 mutants running only those three files.
-- [ ] W2: AUTO target passes count ground, then take the notice.
+- [x] W2: AUTO target passes count ground, then take the notice (2026-11-20).
 - [ ] The HUD Pass % line says "estimated" on rigs without sections (its own PR).
 - [~] In game (owed): the TESTING row for this PR.
 
@@ -459,4 +459,11 @@
 - [x] `src/ReleaseGate.lua`, `src/ui/SoilReleaseDialog.lua` and `xml/gui/SoilReleaseDialog.xml` removed; every gated call site runs unconditionally (main.lua bridges, the ground-material and Read the Dirt arms, CD-9/10/12, spatial soil, growth modulation, SF-73 target mode and its HUD, PDA and crop-need reads).
 - [x] `experimentalSystems` out of `SettingsSchema`, `Settings`, `SoilSettingsPanel` (section, description, the drawn confirmation) and `SoilSettingsGUI` (`SoilRelease`, the command locks); 12 keys out of all 27 language files.
 - [x] Benches: the two gate-only benches removed; the rows that pinned the locked state removed or rebuilt (the W1b legacy baseline is now AUTO off); `src/ReleaseGate.lua` out of every load list; the gate mutants out of the old batteries.
+- [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-20: AUTO target passes count ground (#1063 W2)
+
+- [x] `src/hooks/HookManager.lua`: a target cycle's coverage litres per hectare are its litres over `sf73Plan.acceptedHa`; the hook marks a target cycle (`_passRateTarget`) beside `_passRateMult` and clears both after its pcall.
+- [x] `src/SoilFertilitySystem.lua`: `applyFertilizer` no longer skips the notice for a target cycle; `checkPassCoverageNotice` uses `sf_notify_pass_body_target` / `_target_est` for it. The two strings are in all 27 language files.
+- [x] Bars: group E14 of `SF-73-target_entry_point_test.lua` (E14.0 to E14.18); development fails E14.1, .2, .5, .9, .10 and .12. `RSF-F196-unit_rule_test.lua` D6 now expects the target sentence. `mutate_sf1063_w2.py`: 8 mutants, all killed, on that bench alone.
 - [~] In game (owed): the TESTING row for this PR.

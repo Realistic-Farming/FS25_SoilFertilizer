@@ -26,6 +26,7 @@
 -- TESTING row names the live observations.
 --
 --!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!text: translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
 
 SoilLogger.debug = function() end
 local WARN = {}
@@ -1259,4 +1260,140 @@ do
        (rel and rel.scope or "nil") .. "/" .. tostring(rel and rel.cropKey) .. "/" .. tostring(rel and rel.fieldId), "FIELD_REPORT/wheat/7")
   T.eq("E13.7 both readers move to crop windows", readersSwitch(rel), true)
 end
+
+-- =====================================================================
+-- E14. #1063 W2 (SF-73 v1.1 with RSF-F196 v0.9, Design's answer of 2026-10-02 section 2):
+-- a target pass counts the ground it dosed, not its dose, and then takes the
+-- pass-coverage notice, worded for the AUTO target rate.
+--
+-- The rig has no sections, so the pass's area comes from the litre track. A target
+-- cycle's litres per hectare are its litres over the plan's accepted footprint, so the
+-- area added is that footprint at any rate the cycle applied. Development divided the
+-- litres by the 1x native rate, so the same strip counted its dose.
+-- =====================================================================
+local W2_LANGS = { "br", "cs", "ct", "cz", "da", "de", "ea", "en", "es", "fc", "fi", "fr", "hu", "id", "it", "jp",
+                   "kr", "nl", "no", "pl", "pt", "ro", "ru", "sv", "tr", "uk", "vi" }
+local W2_LANG = {}
+for _, l in ipairs(W2_LANGS) do
+  local text = (SOURCE_TEXT and SOURCE_TEXT["translations/translation_" .. l .. ".xml"]) or ""
+  local m = {}
+  for k, v, h in text:gmatch('<e k="([^"]+)" v="([^"]*)" eh="([^"]*)"') do m[k] = { v = v, eh = h } end
+  W2_LANG[l] = m
+end
+local W2_EN = {}
+for k, e in pairs(W2_LANG.en) do W2_EN[k] = e.v end
+
+-- Drive the boom down field 7 for `metres` and sum, from the real commit, the accepted
+-- footprint of every cycle that was credited.
+local function w2Strip(opts, carrierN, metres)
+  newWorld(opts)
+  local missing0 = SoilFertilitySystem.coverageRateMissing or 0
+  paintCarrier(carrierN, 39.8, 39.8)
+  local ta = W.ss.targetApplication
+  local realCommit = ta.commit
+  local acc = { ha = 0, litres = 0, cycles = 0, capacity = 0 }
+  ta.commit = function(t, v, cycle, credited)
+    if credited == true and cycle and cycle.committed then
+      acc.ha = acc.ha + (cycle.committed.acceptedHa or 0)
+      acc.litres = acc.litres + (cycle.physical or 0)
+      acc.capacity = acc.capacity + (cycle.committed.capacity or 0)
+      acc.cycles = acc.cycles + 1
+    end
+    return realCommit(t, v, cycle, credited)
+  end
+  if opts.manual ~= true then autoOn(W.v) end
+  local z0 = W.v.rootNode.z
+  run(W.v, math.floor(metres / travelPerTick(W.v) + 0.5))
+  acc.groundHa = (W.v.rootNode.z - z0) * BOOM_HALF * 2 / 10000
+  acc.missing = (SoilFertilitySystem.coverageRateMissing or 0) - missing0
+  return W.ss.fieldData[7], acc
+end
+local function w2near(a, b, tol) return type(a) == "number" and type(b) == "number" and math.abs(a - b) <= tol end
+
+do
+  local f, acc = w2Strip({}, 40, 20)
+  T.ok("E14.0 [reached] AUTO on, no sections: credited target cycles over the strip (" .. acc.cycles .. " cycles, "
+       .. string.format("%.2f", acc.litres) .. " L)", acc.cycles > 0 and acc.litres > 0)
+  T.ok("E14.1 NAMED: the pass counts exactly the ground its cycles dosed ("
+       .. string.format("%.5f of %.5f ha", f.sessionCoverageHa or -1, acc.ha) .. ")",
+       w2near(f.sessionCoverageHa, acc.ha, 1e-9) and acc.ha > 0)
+  T.ok("E14.2 NAMED: and that is the strip's ground, short of at most one pixel row ("
+       .. string.format("%.5f of %.5f ha", f.sessionCoverageHa or -1, acc.groundHa) .. ")",
+       (f.sessionCoverageHa or 0) <= acc.groundHa + 1e-9
+       and (f.sessionCoverageHa or 0) >= acc.groundHa - 2 * 2 * BOOM_HALF / 10000)
+  T.eq("E14.3 no rate went missing on the way", acc.missing, 0)
+end
+do
+  local _, lowNeed = w2Strip({}, 40, 20)
+  local fHigh, highNeed = w2Strip({}, 36, 20)
+  -- both below the machine's 1x capacity, where a dose and its ground part ways
+  T.ok("E14.4 [reached] a hungrier field takes more litres over the same strip, still under 1x ("
+       .. string.format("%.2f vs %.2f L, %.2fx of 1x", highNeed.litres, lowNeed.litres, fHigh.sessionCoverageHa and highNeed.capacity > 0 and highNeed.litres / highNeed.capacity or -1) .. ")",
+       highNeed.litres > lowNeed.litres * 1.05 and highNeed.litres < highNeed.capacity * 0.98)
+  T.ok("E14.5 NAMED: the area counted is the same: ground, not dose ("
+       .. string.format("%.5f vs %.5f ha", fHigh.sessionCoverageHa or -1, lowNeed.ha) .. ")",
+       w2near(fHigh.sessionCoverageHa, lowNeed.ha, 1e-9))
+end
+do
+  local f, acc = w2Strip({}, 100, 20)
+  T.ok("E14.6 ground already at its window: no target litres and no area (" .. string.format("%.2f L, %.5f ha", acc.litres, f.sessionCoverageHa or 0) .. ")",
+       acc.litres == 0 and (f.sessionCoverageHa or 0) == 0)
+end
+
+-- the notice, with the shipped English
+do
+  T.ok("E14.7 [reached] the shipped English carries both AUTO target sentences",
+       W2_EN.sf_notify_pass_body_target ~= nil and W2_EN.sf_notify_pass_body_target_est ~= nil)
+  local shown = {}
+  local realGetText = g_i18n.getText
+  g_i18n.getText = function(_, k) return W2_EN[k] or k end
+  local ok, err = pcall(function()
+    newWorld({})
+    paintCarrier(40, 39.8, 39.8)
+    -- field 7 is a 0.024 ha map field here: the soil system's own area resolver answers it
+    W.ss._resolveCropAreaHa = function() return 0.024 end
+    W.ss.showNotification = function(_, title, body) shown[#shown + 1] = { title = title, body = body } end
+    autoOn(W.v)
+    run(W.v, math.floor(24 / travelPerTick(W.v) + 0.5))
+  end)
+  g_i18n.getText = realGetText
+  T.ok("E14.8 the pass ran (" .. tostring(err) .. ")", ok)
+  T.eq("E14.9 NAMED: the target pass takes the notice, once", #shown, 1)
+  local body = shown[1] and shown[1].body or ""
+  local pct = tonumber(body:match("about (%d+)%%") or "")
+  local ft = g_fillTypeManager:getFillTypeByIndex(UREA)
+  T.eq("E14.10 NAMED: in the AUTO target sentence, estimated on a rig without sections (" .. body .. ")",
+       body, pct and string.format(W2_EN.sf_notify_pass_body_target_est or "", 7, ft.title or ft.name, pct) or "no percentage")
+  T.ok("E14.11 it names no selected rate", body:find(" at x", 1, true) == nil)
+  T.eq("E14.12 under the existing title", shown[1] and shown[1].title, W2_EN.sf_notify_treated_title)
+  T.ok("E14.13 and the hook left no rate and no AUTO marker behind", W.ss._passRateMult == nil and W.ss._passRateTarget == nil)
+end
+
+-- both new keys in all 27 Soil languages, translated, specifiers kept, the English hash
+do
+  local function specs(s)
+    local out = {}
+    for x in s:gsub("%%%%", ""):gmatch("%%[-+ #0-9.]*[sdif]") do out[#out + 1] = x end
+    return table.concat(out, ",")
+  end
+  local missing, copies, formats, dashes, hashes = {}, {}, {}, {}, {}
+  for _, l in ipairs(W2_LANGS) do
+    for _, k in ipairs({ "sf_notify_pass_body_target", "sf_notify_pass_body_target_est" }) do
+      local e, x = W2_LANG.en[k], W2_LANG[l][k]
+      if x == nil then missing[#missing + 1] = l .. ":" .. k
+      elseif e ~= nil then
+        if l ~= "en" and x.v == e.v then copies[#copies + 1] = l .. ":" .. k end
+        if specs(x.v) ~= specs(e.v) then formats[#formats + 1] = l .. ":" .. k end
+        if x.v:find("\226\128\148", 1, true) or x.v:find("\226\128\147", 1, true) then dashes[#dashes + 1] = l .. ":" .. k end
+        if x.eh ~= e.eh then hashes[#hashes + 1] = l .. ":" .. k end
+      end
+    end
+  end
+  T.eq("E14.14 both keys in all 27 language files", table.concat(missing, ","), "")
+  T.eq("E14.15 no translation is the English text", table.concat(copies, ","), "")
+  T.eq("E14.16 every translation keeps %d, %s, %d in order", table.concat(formats, ","), "")
+  T.eq("E14.17 no em or en dash", table.concat(dashes, ","), "")
+  T.eq("E14.18 every entry carries the English text's hash", table.concat(hashes, ","), "")
+end
+
 T.summary()

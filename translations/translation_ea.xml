@@ -571,6 +571,8 @@
     <e k="sf_notify_treated_title" v="Actualización del Suelo" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Objetivo de cobertura de la pasada alcanzado: campo %d, %s, %d%% cubierto a x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Objetivo de cobertura de la pasada alcanzado: campo %d, %s, aproximadamente %d%% cubierto (estimado) a x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Objetivo de cobertura de la pasada alcanzado: campo %d, %s, %d%% cubierto a la dosis objetivo de AUTO" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Objetivo de cobertura de la pasada alcanzado: campo %d, %s, aproximadamente %d%% cubierto (estimado) a la dosis objetivo de AUTO" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Quemadura por Abono" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Campo %d: daño por sobre-aplicación (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Soil Mod: Error de sincronización. Infórmalo si persiste." eh="1a307946" />

@@ -192,14 +192,17 @@ local function noticeRun(ft, liters, sessionCov, opts)
   f.sessionLastProduct      = opts.lastProduct or ft.name
   f.sessionCoverageFraction = sessionCov
   f._geometricCoverageOwner = opts.cells or nil
-  s._passRateMult           = (opts.rate ~= false) and (opts.rate or 1.0) or nil
+  -- as the sprayer hook hands them over: a target cycle carries the AUTO marker and no rate
+  s._passRateMult           = (not opts.sf73 and opts.rate ~= false) and (opts.rate or 1.0) or nil
+  s._passRateTarget         = opts.sf73 and true or nil
   s._sf73TargetField        = opts.sf73 and 1 or nil
   s:applyFertilizer(1, ft.index, liters, nil)
-  s._passRateMult, s._sf73TargetField = nil, nil
+  s._passRateMult, s._passRateTarget, s._sf73TargetField = nil, nil, nil
   return s, f
 end
 local savedGetText = g_i18n.getText
-g_i18n.getText = function(_, key) return key .. "|%d|%s|%d|%.2f" end
+-- the AUTO target sentences take no rate (#1063 W2)
+g_i18n.getText = function(_, key) return key .. (key:find("_target", 1, true) and "|%d|%s|%d" or "|%d|%s|%d|%.2f") end
 do
   local oldThreshold = 2.0 * BR.UREA.value * THR          -- the retired kg-derived figure
   local s1 = noticeRun(FT.UREA, 1.0, 0.95)
@@ -216,7 +219,9 @@ do
   local s5 = noticeRun(FT.UREA, 1.0, 0.95, { rate = false })
   T.eq("U D5: with no rate handed over there is no notice, rather than claim x1.00", #s5._notices, 0)
   local s6 = noticeRun(FT.UREA, 1.0, 0.95, { sf73 = true })
-  T.eq("U D6: an SF-73 target cycle gets no notice yet (its coverage still counts dose, W2)", #s6._notices, 0)
+  T.eq("U D6: an SF-73 target cycle gets the notice once W2 counts its ground", #s6._notices, 1)
+  T.eq("U D6b: in the AUTO target sentence, with no selected rate, estimated (litre coverage)",
+       s6._notices[1] and s6._notices[1].body, "sf_notify_pass_body_target_est|1|UREA|95")
   local s7 = noticeRun(FT.INSECTICIDE, 1.0, 0.95)
   T.eq("U D7: a crop-protection product gets no notice", #s7._notices, 0)
 end
