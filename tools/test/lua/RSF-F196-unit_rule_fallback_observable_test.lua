@@ -83,13 +83,22 @@ do
 end
 
 -- ── the HUD guard ──
+-- #1063 W4: the ghost's 1.0x rate is the map's own spray type for the product, registered as
+-- production registers a dry product: its kg/ha over its density, over 36000.
+local function sprayTypesLikeProduction()
+  return { getSprayTypeByFillTypeIndex = function(_, i)
+    if i == 50 then return { litersPerSecond = (BR.UREA.value / (UREA.massPerLiter * 1000)) / 36000 } end
+  end }
+end
 local function drawRow()
   local sg = { renderText = renderText, setTextAlignment = setTextAlignment, setTextColor = setTextColor, RenderText = RenderText,
-               getTextWidth = getTextWidth, setTextBold = setTextBold, sfm = g_SoilFertilityManager, hud = g_currentMission.masterHUD }
+               getTextWidth = getTextWidth, setTextBold = setTextBold, sfm = g_SoilFertilityManager, hud = g_currentMission.masterHUD,
+               stm = g_sprayTypeManager }
   renderText = function() end; setTextAlignment = function() end; setTextColor = function() end
   setTextBold = function() end; getTextWidth = function() return 0.01 end
   RenderText = RenderText or { ALIGN_LEFT = 1, ALIGN_RIGHT = 2, ALIGN_CENTER = 3 }
   g_SoilFertilityManager = { settings = { replenishmentRate = 3 } }
+  g_sprayTypeManager = sprayTypesLikeProduction()
   local bars = {}
   g_currentMission.masterHUD = { renderer = { renderProgressBar = function(_r, x, y, w, h, fill, col, total) bars[#bars + 1] = { fill = fill, total = total }; return true end } }
   local hud = setmetatable({ scale = 1, fillOverlay = nil }, { __index = SoilHUD })
@@ -97,6 +106,7 @@ local function drawRow()
   local ok, err = pcall(hud.drawNutrientRow, hud, "N", "N", { value = 50, status = "Fair" }, 0.1, 0.5, 0.3, 1, 1, info, PF.UREA, UREA, 1.0, nil)
   renderText, setTextAlignment, setTextColor, RenderText = sg.renderText, sg.setTextAlignment, sg.setTextColor, sg.RenderText
   getTextWidth, setTextBold, g_SoilFertilityManager, g_currentMission.masterHUD = sg.getTextWidth, sg.setTextBold, sg.sfm, sg.hud
+  g_sprayTypeManager = sg.stm
   return ok, err, bars
 end
 local function ghostOf(bars) return bars[1].total - bars[1].fill end
@@ -108,14 +118,27 @@ do
   T.eq("OBS 15: and the HUD fallback counter did not move", SoilHUD.unitRuleFallbacks, nil)
 end
 do
+  -- A HookManager that gives the row a rate but cannot convert litres to mass (never so in
+  -- production, where both are defined together): the HUD's own guard still records it.
+  local savedHM = HookManager
+  HookManager = { getMapBaseRate = function() return { value = BR.UREA.value, unit = "dry" } end }
+  local ok, err, bars = drawRow()
+  HookManager = savedHM
+  T.ok("OBS 16: the HUD row drew without the litres-to-mass conversion (" .. tostring(err) .. ")", ok)
+  local remaining = math.max(0, 2.0 * BR.UREA.value * THR - 200)
+  T.near("OBS 17: unconverted ghost", ghostOf(bars), math.min(0.5, PF.UREA.N * (remaining / 1000) / 2.0 * RR / 100), 1e-9)
+  T.eq("OBS 18: and the HUD fallback is RECORDED, once", SoilHUD.unitRuleFallbacks, 1)
+end
+do
+  -- #1063 W4: with no HookManager there is no rate to project from, so the row draws with
+  -- no ghost, and the missing rate source is recorded rather than replaced by BASE_RATES.
   local savedHM = HookManager
   HookManager = nil
   local ok, err, bars = drawRow()
   HookManager = savedHM
-  T.ok("OBS 16: the HUD row drew without HookManager (" .. tostring(err) .. ")", ok)
-  local remaining = math.max(0, 2.0 * BR.UREA.value * THR - 200)
-  T.near("OBS 17: unconverted ghost", ghostOf(bars), math.min(0.5, PF.UREA.N * (remaining / 1000) / 2.0 * RR / 100), 1e-9)
-  T.eq("OBS 18: and the HUD fallback is RECORDED, once", SoilHUD.unitRuleFallbacks, 1)
+  T.ok("OBS 19: the HUD row still drew with no HookManager (" .. tostring(err) .. ")", ok)
+  T.eq("OBS 20: and shows no ghost, there being no rate to project from", ghostOf(bars), 0)
+  T.eq("OBS 21: and the missing rate source is RECORDED, once", SoilHUD.mapRateFallbacks, 1)
 end
 
 g_fillTypeManager = savedFtm

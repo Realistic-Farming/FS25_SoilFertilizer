@@ -467,3 +467,10 @@
 - [x] `src/SoilFertilitySystem.lua`: `applyFertilizer` no longer skips the notice for a target cycle; `checkPassCoverageNotice` uses `sf_notify_pass_body_target` / `_target_est` for it. The two strings are in all 27 language files.
 - [x] Bars: group E14 of `SF-73-target_entry_point_test.lua` (E14.0 to E14.18); development fails E14.1, .2, .5, .9, .10 and .12. `RSF-F196-unit_rule_test.lua` D6 now expects the target sentence. `mutate_sf1063_w2.py`: 8 mutants, all killed, on that bench alone.
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-20: the HUD shows the map's own 1.0x rate (#1063 W4)
+
+- [x] `src/hooks/HookManager.lua`: `getMapBaseRate(sprayer, fillType)` returns the spray type's native rate (`getNativeSprayRatePerHa`, usage scale included) in the product's unit class, kg/ha for the twelve dry products, or nil when the map has no spray type for the product.
+- [x] `src/ui/SoilHUD.lua`: `getRateConfig(fillType, sprayer)` reads it; the rate panel, its four neighbouring steps and the ghost bar use it. No rate: the multiplier alone and no ghost. Edit mode with no sprayer keeps the layout placeholder.
+- [x] Bars: `SF-1063-w4_map_base_rate_test.lua` (groups R, G and C, 52 assertions through the real HUD update, rate panel and nutrient row); the ghost rows of `RSF-F196-unit_rule_test.lua`, `RSF-F196-unit_rule_fallback_observable_test.lua` and `SF-73-ghost_bar_target_mode_spec_test.lua` now register a spray type as production does. `mutate_sf1063_w4.py`: 12 mutants, all killed, on the four files that hold the rows.
+- [~] In game (owed): the TESTING row for this PR.
