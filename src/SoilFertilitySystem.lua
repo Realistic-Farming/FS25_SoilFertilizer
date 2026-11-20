@@ -8642,6 +8642,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         sessionLastProduct      = field.sessionLastProduct,
         -- #1063: true when the pass coverage above was worked out from litres rather than
         -- counted from boom cells, the test the pass-coverage notice uses for "estimated".
+        -- The owner flag is server state, so this reads true on a client too; harmless,
+        -- because no sync carries the session coverage and a client's HUD and sprayer panel
+        -- draw no Pass figure at all. Read it only together with sessionCoverageFraction.
         sessionCoverageEstimated = not field._geometricCoverageOwner,
         compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,

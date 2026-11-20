@@ -480,5 +480,6 @@
 - [x] `src/SoilFertilitySystem.lua`: `getFieldInfo` carries `sessionCoverageEstimated = not field._geometricCoverageOwner`.
 - [x] `src/ui/SoilHUD.lua`: `update` appends `sf_hud_pass_estimated` to the Pass line when it is set; `drawCoverageLines` draws the coverage rows and fits a wide one to the panel.
 - [x] One new string, `sf_hud_pass_estimated`, in all 27 language files (the word each language's notice uses for "estimated").
-- [x] Bars: `SF-1063-hud_pass_estimated_test.lua` (groups E, D, L and P, 36 assertions, from the field record through `getFieldInfo`, `update` and the real `drawPanel`); `mutate_sf1063_hud_est.py`: 12 mutants, all killed, on that bench alone.
+- [x] `src/ui/SoilSprayerInfoPanel.lua`: the stats bar's PASS and session-ha cells carry a "~" when `sessionCoverageEstimated` is set.
+- [x] Bars: `SF-1063-hud_pass_estimated_test.lua` (groups E, P, D, Q and L, 47 assertions, from a real field record through `getFieldInfo`, `update`, the real `drawPanel` and the real sprayer info panel); `mutate_sf1063_hud_est.py`: 17 mutants, all killed, on that bench alone.
 - [~] In game (owed): the TESTING row for this PR.

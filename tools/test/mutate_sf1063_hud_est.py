@@ -1,6 +1,7 @@
 # #1063 HUD Pass line "estimated" mutation battery (targeted, a small logic fix): the flag
-# getFieldInfo hands over, the label SoilHUD:update appends to the Pass line, and the rows as
-# SoilHUD:drawCoverageLines draws them. The rows are groups E, D and P of
+# getFieldInfo hands over, the label SoilHUD:update appends to the Pass line, the rows as
+# SoilHUD:drawCoverageLines draws them, and the "~" the sprayer info panel puts on its PASS
+# and session-ha cells. The rows are groups E, P, D and Q of
 # SF-1063-hud_pass_estimated_test.lua (group L reads the language files and no mutation of
 # source reaches it).
 #
@@ -13,7 +14,7 @@
 # The selection goes through a filtered copy of run-tests.mjs written beside it and deleted
 # in `finally` (the runner has no per-file option; --loads src/SoilFertilitySystem.lua would
 # run about 130 files per mutant). A filter can only turn a kill into a survivor, never fake
-# one, so a SURVIVED result in SoilHUD.lua is re-run once under --loads of that file (16 files)
+# one, so a SURVIVED result in SoilHUD.lua is re-run once under --loads of that file (17 files)
 # before it is called real. A SURVIVED result in SoilFertilitySystem.lua is reported as it
 # stands: no other file reads the new field.
 #
@@ -32,6 +33,7 @@ def p(rel): return os.path.join(ROOT, rel)
 
 SFS = "src/SoilFertilitySystem.lua"
 HUD = "src/ui/SoilHUD.lua"
+PNL = "src/ui/SoilSprayerInfoPanel.lua"
 
 MUTATIONS = [
  ("M1-flag-inverted", SFS,
@@ -94,6 +96,43 @@ MUTATIONS = [
   [("                cy = self:drawCoverageLines(covLines, px, cy, pw, s, fontMult)\n",
     "                self:drawCoverageLines(covLines, px, cy, pw, s, fontMult)\n", 1)],
   "the panel ignores where the coverage rows ended, so the compaction row draws over them"),
+
+ ("M13-panel-never-tilde", PNL,
+  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"
+",
+    "        local approx = \"\"
+", 1)],
+  "the sprayer info panel shows litre-derived coverage as if it were counted"),
+
+ ("M14-panel-always-tilde", PNL,
+  [("        local approx = (info and info.sessionCoverageEstimated == true) and \"~\" or \"\"
+",
+    "        local approx = \"~\"
+", 1)],
+  "the sprayer info panel marks even boom-cell coverage as an estimate"),
+
+ ("M15-panel-pass-cell-bare", PNL,
+  [("        local covStr = string.format(\"%s%d%%\", approx, covPct)
+",
+    "        local covStr = string.format(\"%d%%\", covPct)
+", 1)],
+  "the PASS cell loses the tilde and the session area keeps it"),
+
+ ("M16-panel-ha-cell-bare", PNL,
+  [("        local sessHaStr = string.format(\"%s%.2f ha\", approx, sessHa)
+",
+    "        local sessHaStr = string.format(\"%.2f ha\", sessHa)
+", 1)],
+  "the session area, worked out from the same litres, loses the tilde and the PASS cell keeps it"),
+
+ ("M17-padding-ignores-scale", HUD,
+  [("    local pad  = SoilHUD.PAD * s
+    local maxW = pw - 2 * pad
+",
+    "    local pad  = SoilHUD.PAD
+    local maxW = pw - 2 * pad
+", 1)],
+  "the fit's padding stays at scale 1 on a scaled HUD, so a wide row is fitted to the wrong width"),
 ]
 
 def sha(b): return hashlib.sha256(b).hexdigest()
@@ -187,7 +226,7 @@ for mid, rel, edits, why in MUTATIONS:
 
     try:
         rc, fails, crashes = run_suite(None)
-        if rc == 0 and rel == HUD:
+        if rc == 0 and rel in (HUD, PNL):
             # the filter can only hide a kill: a survivor in the HUD file is re-run under --loads
             rc, fails, crashes = run_suite(rel)
     finally:
@@ -202,6 +241,8 @@ for mid, rel, edits, why in MUTATIONS:
     if rc != 0:
         killed.append(mid)
         tag = "KILLED  "
+        # defensive: every group of this bench runs inside group(), which turns a raised Lua
+        # error into a named FAIL row, so a kill by a bare crash is not expected here
         if crashes and not named:
             crashkills.append(mid)
             tag = "KILLED* "
