@@ -931,13 +931,20 @@ function SoilHUD:update(dt)
             if showSession then
                 local sessPct = math.floor(sessCov * 100 + 0.5)
                 local lastProd = info.sessionLastProduct
+                local passLine
                 if lastProd then
                     local ft = g_fillTypeManager and g_fillTypeManager:getFillTypeByName(lastProd)
                     local productLabel = (ft and ft.title) or lastProd
-                    table.insert(parts, string.format(g_i18n:getText("sf_hud_pass_coverage"), sessPct, productLabel))
+                    passLine = string.format(g_i18n:getText("sf_hud_pass_coverage"), sessPct, productLabel)
                 else
-                    table.insert(parts, string.format(g_i18n:getText("sf_hud_pass_noproduct"), sessPct))
+                    passLine = string.format(g_i18n:getText("sf_hud_pass_noproduct"), sessPct)
                 end
+                -- #1063: a pass coverage worked out from litres, not counted from boom
+                -- cells, says so: the same test the pass-coverage notice uses.
+                if info.sessionCoverageEstimated == true then
+                    passLine = passLine .. " " .. g_i18n:getText("sf_hud_pass_estimated")
+                end
+                table.insert(parts, passLine)
             end
             self._fmt_covLines = parts
         else
@@ -1594,6 +1601,23 @@ function SoilHUD:draw()
 
 end
 
+--- The coverage rows (the daily coverage and the per-pass Pass line), left-aligned in the
+--- panel, one LINE_H slot each. A row wider than the panel's inner width is drawn smaller
+--- rather than spilling past its edge, as the rate panel's target block does (#1063).
+---@return number cy  the y of the last row's slot
+function SoilHUD:drawCoverageLines(covLines, px, cy, pw, s, fontMult)
+    local pad  = SoilHUD.PAD * s
+    local maxW = pw - 2 * pad
+    for _, line in ipairs(covLines) do
+        cy = cy - SoilHUD.LINE_H * s
+        local size = 0.010 * fontMult * s
+        local w = type(getTextWidth) == "function" and getTextWidth(size, line) or nil
+        if w ~= nil and w > maxW and w > 0 then size = size * maxW / w end
+        renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, size, line)
+    end
+    return cy
+end
+
 -- ── Main panel ───────────────────────────────────────────
 function SoilHUD:drawPanel()
     local s   = self.scale
@@ -1799,13 +1823,9 @@ function SoilHUD:drawPanel()
                 local covPoor, _, covGood = self:palette()
                 local cr, cg, cb = covPoor[1], covPoor[2], covPoor[3]
                 if cov >= minCov then cr, cg, cb = covGood[1], covGood[2], covGood[3] end
-                local pad = SoilHUD.PAD * s
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
-                for _, line in ipairs(covLines) do
-                    cy = cy - SoilHUD.LINE_H * s
-                    renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, line)
-                end
+                cy = self:drawCoverageLines(covLines, px, cy, pw, s, fontMult)
             end
 
             -- Compaction row

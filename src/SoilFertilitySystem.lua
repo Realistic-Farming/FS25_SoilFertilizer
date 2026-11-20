@@ -8640,6 +8640,9 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         coverageFraction        = field.coverageFraction or 0,
         sessionCoverageFraction = field.sessionCoverageFraction or 0,
         sessionLastProduct      = field.sessionLastProduct,
+        -- #1063: true when the pass coverage above was worked out from litres rather than
+        -- counted from boom cells, the test the pass-coverage notice uses for "estimated".
+        sessionCoverageEstimated = not field._geometricCoverageOwner,
         compaction = posCompaction or (field.compaction or 0),
         fromZoneCell = fromZoneCell,
         needsFertilization = needsFert,
