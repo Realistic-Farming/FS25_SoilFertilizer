@@ -588,6 +588,8 @@
     <e k="sf_notify_treated_title" v="Boden-Update" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Zielabdeckung der Überfahrt erreicht: Feld %d, %s, %d%% abgedeckt bei x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Zielabdeckung der Überfahrt erreicht: Feld %d, %s, etwa %d%% abgedeckt (geschätzt) bei x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Zielabdeckung der Überfahrt erreicht: Feld %d, %s, %d%% abgedeckt mit der AUTO-Zielmenge" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Zielabdeckung der Überfahrt erreicht: Feld %d, %s, etwa %d%% abgedeckt (geschätzt) mit der AUTO-Zielmenge" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Düngerschäden" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Feld %d: Schäden durch Überdosierung (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Boden-Mod: Datensynchronisationsproblem erkannt. Bitte melden, falls dies anhält." eh="1a307946" />

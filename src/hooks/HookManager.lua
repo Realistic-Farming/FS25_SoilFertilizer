@@ -6612,10 +6612,13 @@ function HookManager:installSprayerAreaHook()
                 end
                 -- #1063 part 3 (W3): the rate the player selected, for the pass-coverage
                 -- notice applyFertilizer may show this tick. An SF-73 target cycle's own dose
-                -- rate is not a selection, and those passes skip the notice until W2.
-                -- Cleared after the pcall below, with _sf73TargetField.
+                -- rate is not a selection: its notice names the AUTO target rate instead (W2).
+                -- Both cleared after the pcall below, with _sf73TargetField.
                 local _ssRate = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
-                if _ssRate then _ssRate._passRateMult = (sf73Cycle == nil) and rateMultiplier or nil end
+                if _ssRate then
+                    _ssRate._passRateMult = (sf73Cycle == nil) and rateMultiplier or nil
+                    _ssRate._passRateTarget = (sf73Cycle ~= nil) or nil
+                end
                 local effectiveLiters = liters
 
                 -- [#1063] The litres per hectare this pass put down, which the litre
@@ -6626,6 +6629,17 @@ function HookManager:installSprayerAreaHook()
                 local _wapCov = spec.workAreaParameters
                 local coverageLitersPerHa = HookManager.getNativeSprayRatePerHa(self, fillTypeIndex)
                     * ((_wapCov and _wapCov.sfRateMult) or 1.0)
+                -- #1063 W2: an SF-73 target cycle counts the ground it dosed, not its dose. The
+                -- start hook leaves a target cycle at 1.0x, so the native rate above would count
+                -- its litres as dose. Its own litres per hectare are its litres over the plan's
+                -- accepted footprint (the closed pixels it doses), so the litre track adds
+                -- exactly that footprint at whatever rate it applied. A refused, priming, held
+                -- or zero cycle never reaches this line: it finished at the top of this hook.
+                if sf73Cycle ~= nil then
+                    local acceptedHa = sf73Plan.acceptedHa
+                    coverageLitersPerHa = (type(acceptedHa) == "number" and acceptedHa > 0 and liters > 0)
+                        and (liters / acceptedHa) or nil
+                end
 
                 -- Section Control double-penalty fix (Issue #345):
                 -- wap.usage already reflects section shutoff (VariableWorkWidth.getIsWorkAreaActive
@@ -7248,6 +7262,7 @@ function HookManager:installSprayerAreaHook()
             if ssClear then
                 ssClear._sf73TargetField = nil
                 ssClear._passRateMult = nil   -- #1063 W3: a rate never outlives its tick
+                ssClear._passRateTarget = nil -- nor W2's AUTO target marker
             end
             if not success and sf73Cycle ~= nil and not sf73Cycle.commitStarted then
                 -- product was spent and the consequence path threw: record the failure

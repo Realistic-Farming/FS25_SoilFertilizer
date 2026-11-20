@@ -600,6 +600,8 @@
     <e k="sf_notify_treated_title" v="土壤状态更新" eh="4633156e" />
     <e k="sf_notify_pass_body" v="本趟覆盖目标已达成：田地 %d，%s，已覆盖 %d%%，倍率 x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="本趟覆盖目标已达成：田地 %d，%s，约覆盖 %d%%（估算），倍率 x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="本趟覆盖目标已达成：田地 %d，%s，已覆盖 %d%%，按 AUTO 目标施用量" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="本趟覆盖目标已达成：田地 %d，%s，约覆盖 %d%%（估算），按 AUTO 目标施用量" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="肥料灼伤（肥害）" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="%d号田地施肥过量产生肥害（当前酸碱度 %.1f）" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="土壤模组：检测到数据同步异常，若持续出现请提交反馈。" eh="1a307946" />

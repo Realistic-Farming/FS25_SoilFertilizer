@@ -571,6 +571,8 @@
     <e k="sf_notify_treated_title" v="Markuppdatering" eh="4633156e" />
     <e k="sf_notify_pass_body" v="Täckningsmålet för överfarten nått: fält %d, %s, %d%% täckt vid x%.2f" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="Täckningsmålet för överfarten nått: fält %d, %s, cirka %d%% täckt (uppskattat) vid x%.2f" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="Täckningsmålet för överfarten nått: fält %d, %s, %d%% täckt med AUTO-måldoseringen" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="Täckningsmålet för överfarten nått: fält %d, %s, cirka %d%% täckt (uppskattat) med AUTO-måldoseringen" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="Gödselbränna" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="Fält %d: skada vid överdosering (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="Mark-mod: Datasynkroniseringsproblem upptäckt. Rapportera om detta kvarstår." eh="1a307946" />

@@ -592,6 +592,8 @@
     <e k="sf_notify_treated_title" v="土壌アップデート" eh="4633156e" />
     <e k="sf_notify_pass_body" v="走行カバー率の目標に到達：圃場 %d、%s、%d%% カバー（x%.2f）" eh="4560b693" />
     <e k="sf_notify_pass_body_est" v="走行カバー率の目標に到達：圃場 %d、%s、約 %d%% カバー（推定、x%.2f）" eh="14708dfd" />
+    <e k="sf_notify_pass_body_target" v="走行カバー率の目標に到達：圃場 %d、%s、%d%% カバー（AUTO 目標施用量）" eh="1bfcfb5a" />
+    <e k="sf_notify_pass_body_target_est" v="走行カバー率の目標に到達：圃場 %d、%s、約 %d%% カバー（推定、AUTO 目標施用量）" eh="a0d629f1" />
     <e k="sf_notify_burn_title" v="肥料焼け" eh="ad8ed599" />
     <e k="sf_notify_burn_body" v="フィールド %d: 過剰散布によるダメージ (pH %.1f)" eh="cb731ee3" />
     <e k="sf_notify_sync_error" v="土壌Mod: データ同期の問題を検出しました。続くようであれば報告してください。" eh="1a307946" />

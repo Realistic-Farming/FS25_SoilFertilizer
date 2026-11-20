@@ -6352,8 +6352,8 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
     -- Every independent physical consequence stays (nutrient buffer, the coarse
     -- field N/P/K/OM scalars, positional pH/OM, burn, organic input, coverage);
     -- only the legacy per-pixel N/P/K writes are replaced by the target's frozen
-    -- polygon writer, and the volume-based "fully treated" notice is not a crop
-    -- window outcome, so it is not shown. The area hook names the field.
+    -- polygon writer. The pass-coverage notice is shown, worded for the AUTO target
+    -- rate (#1063 W2). The area hook names the field.
     local sf73 = self._sf73TargetField ~= nil and self._sf73TargetField == fieldId
 
     local field = self:getOrCreateField(fieldId, true)
@@ -6800,14 +6800,14 @@ function SoilFertilitySystem:applyFertilizer(fieldId, fillTypeIndex, liters, boo
     -- #1063 part 3 (W3): the pass-coverage notice (checkPassCoverageNotice below).
     -- Crop-protection products (INSECTICIDE, FUNGICIDE, HERBICIDE) share
     -- FERTILIZER_PROFILES entries for pest/disease reduction but are not fertilizers,
-    -- so they get no notice. An SF-73 target cycle gets none either: its coverage
-    -- still counts dose rather than ground until W2.
+    -- so they get no notice. An SF-73 target cycle gets it too, since W2 counts its
+    -- coverage as ground; its sentence names the AUTO target rate.
     local isCropProtection = (
         (SoilConstants.PEST_PRESSURE    and SoilConstants.PEST_PRESSURE.INSECTICIDE_TYPES    and SoilConstants.PEST_PRESSURE.INSECTICIDE_TYPES[fillType.name])    or
         (SoilConstants.DISEASE_PRESSURE and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES   and SoilConstants.DISEASE_PRESSURE.FUNGICIDE_TYPES[fillType.name])    or
         (SoilConstants.WEED_PRESSURE    and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES      and SoilConstants.WEED_PRESSURE.HERBICIDE_TYPES[fillType.name])
     )
-    if not isCropProtection and not sf73 then
+    if not isCropProtection then
         self:checkPassCoverageNotice(fieldId, field, fillType)
     end
 end
@@ -6826,15 +6826,18 @@ end
 ---
 --- The rate is the multiplier the sprayer hook read from the rate manager for this tick
 --- (_passRateMult, set beside that lookup and cleared after the hook's pcall). With no
---- rate in reach the notice is not shown, rather than claim x1.00.
+--- rate in reach the notice is not shown, rather than claim x1.00. An SF-73 target cycle
+--- (_passRateTarget, set and cleared beside it) has no selected rate: its sentence says
+--- the AUTO target rate instead (#1063 W2).
 ---@param fieldId  number
 ---@param field    table  self.fieldData[fieldId]
 ---@param fillType table  the credited product's fill type
 function SoilFertilitySystem:checkPassCoverageNotice(fieldId, field, fillType)
     if type(field) ~= "table" or type(fillType) ~= "table" then return end
     if field.sessionLastProduct ~= fillType.name then return end
+    local autoTarget = self._passRateTarget == true
     local rate = self._passRateMult
-    if type(rate) ~= "number" or rate ~= rate or rate <= 0 or rate == math.huge then return end
+    if not autoTarget and (type(rate) ~= "number" or rate ~= rate or rate <= 0 or rate == math.huge) then return end
     local coverage = field.sessionCoverageFraction or 0
     local target = SoilConstants.SPRAYER_RATE.FERTILIZER_COVERAGE_THRESHOLD or 0.90
     if coverage < target then return end
@@ -6851,10 +6854,17 @@ function SoilFertilitySystem:checkPassCoverageNotice(fieldId, field, fillType)
     shown[fillType.name] = true
 
     local estimated = not field._geometricCoverageOwner
-    local bodyKey = estimated and "sf_notify_pass_body_est" or "sf_notify_pass_body"
     local pct = math.floor(math.min(1.0, coverage) * 100 + 0.5)
-    self:showNotification(g_i18n:getText("sf_notify_treated_title"),
-        string.format(g_i18n:getText(bodyKey), fieldId, fillType.title or fillType.name, pct, rate))
+    local name = fillType.title or fillType.name
+    local body
+    if autoTarget then
+        local bodyKey = estimated and "sf_notify_pass_body_target_est" or "sf_notify_pass_body_target"
+        body = string.format(g_i18n:getText(bodyKey), fieldId, name, pct)
+    else
+        local bodyKey = estimated and "sf_notify_pass_body_est" or "sf_notify_pass_body"
+        body = string.format(g_i18n:getText(bodyKey), fieldId, name, pct, rate)
+    end
+    self:showNotification(g_i18n:getText("sf_notify_treated_title"), body)
 end
 
 -- =========================================================
