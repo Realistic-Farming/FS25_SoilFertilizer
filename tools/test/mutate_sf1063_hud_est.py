@@ -71,7 +71,9 @@ MUTATIONS = [
   "a pass with no product recorded loses the label"),
 
  ("M8-no-fit", HUD,
-  [("        if w ~= nil and w > maxW and w > 0 then size = size * maxW / w end\n", "", 1)],
+  [("        local w = type(getTextWidth) == \"function\" and getTextWidth(size, line) or nil\n"
+    "        if w ~= nil and w > maxW and w > 0 then size = size * maxW / w end\n",
+    "        local w = type(getTextWidth) == \"function\" and getTextWidth(size, line) or nil\n", 1)],
   "a row wider than the panel is drawn at full size and spills past its edge"),
 
  ("M9-fit-to-the-whole-width", HUD,

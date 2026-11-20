@@ -459,3 +459,9 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] A product with no spray type has no rate. The readout then shows the multiplier alone (no new strings) and the ghost bar draws no projection.
 - [x] Not changed: consumption, the nutrient credit, the unit-class lookups in the treatment plan (they read only dry or liquid) and the console diagnostics that compare `BASE_RATES` with Soil's own registered spray types.
 - The in-game check is the TESTING row for this PR. Design origin: RSF-F196 v0.9 rate contract (Implementation :135-149), Design's answer of 2026-10-02 section 2 (W4).
+
+## 2026-11-20: the HUD Pass line says estimated when its coverage comes from litres (#1063)
+
+- [x] The per-pass Pass line gave a coverage worked out from litres, on a rig without sections, the same look as one counted from boom cells; the pass-coverage notice has said "(estimated)" for it since W3. `getFieldInfo` now carries `sessionCoverageEstimated` (the notice's own test: no geometric coverage owner) and the HUD appends `sf_hud_pass_estimated` to the Pass line when it is set. The daily coverage line is unchanged. The string is in all 27 language files, each with the word its own notice uses.
+- [x] The coverage rows are drawn by `SoilHUD:drawCoverageLines`, which draws a row wider than the panel's inner width smaller instead of letting it spill past the edge (the rate panel's target block does the same).
+- The in-game check is the TESTING row for this PR. Design origin: Design's answer of 2026-10-02 section 2 (a volume-derived fallback is labelled estimated).
