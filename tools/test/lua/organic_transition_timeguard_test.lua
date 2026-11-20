@@ -4,7 +4,7 @@
 -- turned three years into anything from months to decades depending on the
 -- days-per-month setting.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/OrganicCertification.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/OrganicCertification.lua
 
 -- Engine mock: a manager whose difficulty setting we can drive.
 g_SoilFertilityManager = { settings = { difficulty = 2 } }

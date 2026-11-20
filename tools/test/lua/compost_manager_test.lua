@@ -4,7 +4,7 @@
 -- Time Guard clock, and yields the existing COMPOST fill type. SF owns the OM
 -- amendment effect; this owns production only.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/CompostManager.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/CompostManager.lua
 
 g_currentMission = { _isServer = true }
 function g_currentMission:getIsServer() return self._isServer end

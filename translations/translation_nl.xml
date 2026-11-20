@@ -1271,11 +1271,6 @@
     <e k="sf_dis_resistant_complex_pulse" v="[EN] Multi-resistant pulse complex" />
     <e k="sf_dis_resistant_complex_forage" v="[EN] Multi-resistant forage complex" />
 
-    <e k="sf_experimental_short" v="[EN] Experimental Systems" eh="065b69cd" />
-    <e k="sf_experimental_long" v="[EN] Turn on experimental systems that are not released yet." eh="5226b9cb" />
-    <e k="sf_desc_experimentalSystems" v="[EN] Off by default. Independent of difficulty. Use at your own risk." eh="a8ad3206" />
-    <e k="sf_panel_hdr_experimental" v="[EN] Experimental" eh="704b5561" />
-<e k="sf_release_dialog_title" v="[EN] Release Gate" eh="74d19780" />
 		<e k="sf_map_target_no_data" v="[EN] No data" eh="42a7b262" />
 		<e k="sf_map_limiting" v="[EN] Limiting" eh="208ee821" />
 		<e k="sf_map_ph_optimal" v="[EN] Optimal" eh="cb61fef1" />
@@ -1373,13 +1368,6 @@
     <e k="wc_rf_pda_open_manager" v="Werkersbeheer openen" eh="1c6592d5" />
     <e k="sf_pda_btn_rotation_planner" v="Rotatieplanner" eh="5404f1c2" />
     <e k="sf_pda_btn_field_detail" v="Veldgegevens" eh="03b5acd7" />
-    <e k="sf_exp_confirm_title" v="Experimental Systems" />
-    <e k="sf_exp_confirm_yes" v="Confirm" />
-    <e k="sf_exp_confirm_no" v="Abort" />
-    <e k="sf_exp_confirm_on" v="This turns on systems that are NOT finished. They can behave oddly, change without warning, or affect this savegame in ways that cannot be undone. Keep a backup save." />
-    <e k="sf_exp_confirm_off" v="Experimental systems will stop running on this savegame. Anything they already wrote stays where it is, but it will no longer be updated." />
-    <e k="sf_exp_confirm_q_on" v="Turn experimental systems ON?" />
-    <e k="sf_exp_confirm_q_off" v="Turn experimental systems OFF?" />
     <e k="sf_handful_title" v="The Handful" />
     <e k="sf_handful_sec_nutrients" v="NUTRIENTS" />
     <e k="sf_handful_sec_ground" v="GROUND" />

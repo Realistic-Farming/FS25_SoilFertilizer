@@ -16,7 +16,7 @@
 -- here: StockGuard's own reading of the place (its SG2-3a and SG2-5c group V
 -- bars) or a live harvest in game.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/OrganicOriginProperty.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/OrganicOriginProperty.lua
 
 local INFO, WARN = {}, {}
 SoilLogger.info = function(fmt, ...) INFO[#INFO + 1] = string.format(fmt, ...) end

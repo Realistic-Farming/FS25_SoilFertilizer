@@ -43,7 +43,7 @@
 -- Server.lua:544), the daily simulation of a joined field, and the map overlay
 -- drawing it.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/NpcSoilBridge.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/NpcSoilBridge.lua, src/hooks/HookManager.lua
 
 -- A group that raises is reported as a named failing row, so a crash stays attributable.
 local function group(name, fn)

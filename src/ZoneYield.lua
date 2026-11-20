@@ -941,9 +941,9 @@ end
 --- uses the existing frozen scalar), "contract" (NPC-disabled or contract-exempt).
 ---
 --- MAINTENANCE row 210 (#1083): the N/P/K yield penalty is the baseline, not part of
---- the locked growth family. The fruit, the field and the contract branch read no SF-14
---- state, so they resolve whatever the release gate says; a closed gate is unavailable
---- spatial truth (One Ground amendment :361) and returns the fallback context, before any
+--- the growth family. The fruit, the field and the contract branch read no SF-14
+--- state, so they resolve before the family's live check; a family that is not live is
+--- unavailable spatial truth (One Ground amendment :361) and returns the fallback context, before any
 --- route, source polygon, receipt or value-map read. An unavailable value map on the live
 --- path falls back the same way, never nil (brief :43, :138).
 function ZoneYield:preparePreCutContext(cutterSelf, workArea)
@@ -1334,14 +1334,10 @@ function ZoneYield:registerGrowthMessage()
     return true
 end
 
---- The family's live gate: the release gate must be open AND the mask enabled.
---- FAIL-OPEN on the release gate (nil settings on the bench means live); the
---- mask switch is a real toggle and gates hard.
+--- The family is live while the mask is enabled; the mask switch is a real toggle
+--- and gates hard.
 function ZoneYield:isLive()
     local vm = self:_viability()
     if vm ~= nil and vm.enabled == false then return false end
-    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == 'function' then
-        return ReleaseGate.isSystemLive("growth_modulation")
-    end
     return true
 end

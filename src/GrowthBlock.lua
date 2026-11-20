@@ -1107,15 +1107,11 @@ function GrowthBlock:register()
     return true
 end
 
---- The family's live gate: the release gate must be open AND the mask enabled.
---- FAIL-OPEN on the release gate (nil settings on the bench means live); the
---- mask switch is a real toggle and gates hard.
+--- The family is live while the mask is enabled; the mask switch is a real toggle
+--- and gates hard.
 function GrowthBlock:isLive()
     local vm = self:_viability()
     if vm ~= nil and vm.enabled == false then return false end
-    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == 'function' then
-        return ReleaseGate.isSystemLive("growth_modulation")
-    end
     return true
 end
 

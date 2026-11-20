@@ -13,7 +13,7 @@
 --   AFTER the nutrient ceiling clamps it (not the nominal dose), and applyRainEffects
 --   reads that multiplier back to scale nitrogen leaching only; K and P rain-leach now
 --   use the halved/quartered RAIN multipliers (1 and 0.25) regardless of N source.
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/SprayerRateManager.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua, src/SprayerRateManager.lua
 
 local SR = SoilConstants.SPRAYER_RATE
 

@@ -6,7 +6,7 @@
 -- the protection fence (a protected field seeds nothing), the wilderness form
 -- (nothing resolved = no modifier, no crossing), and the ceiling.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SpatialPressures.lua, src/NeighbourCrossing.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SpatialPressures.lua, src/NeighbourCrossing.lua
 
 local NC = NeighbourCrossing
 

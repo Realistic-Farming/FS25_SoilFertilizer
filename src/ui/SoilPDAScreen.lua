@@ -111,10 +111,6 @@ local function readGrowthSummary(fieldId, fieldEntry)
     local sfm = g_currentMission and g_currentMission.soilFertilityManager
     if sfm == nil or type(sfm.getFieldGrowthSummary) ~= "function" then return nil end
     if (sfm.settings ~= nil and sfm.settings.enabled == false) or sfm._disabledByPF then return nil end
-    if ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function"
-       and not ReleaseGate.isSystemLive("growth_modulation") then
-        return nil
-    end
     local summary = sfm:getFieldGrowthSummary(fieldId)
     if type(summary) ~= "table" then return nil end
     return summary

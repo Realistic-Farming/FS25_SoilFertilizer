@@ -896,7 +896,7 @@ function RfPdaSoilPanel.refreshTargetCard(page, entry)
     local fieldId = entry and entry.fieldId or nil
     local sfm = g_SoilFertilityManager
     local ss = sfm and sfm.soilSystem
-    if fieldId == nil or ss == nil or type(ss.isTargetGateOpen) ~= "function" or ss:isTargetGateOpen() ~= true then
+    if fieldId == nil or ss == nil then
         hide()
         return
     end

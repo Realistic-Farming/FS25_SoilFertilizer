@@ -41,11 +41,7 @@ do
     T.eq("A11 shipped register is a no-op that reports ready", current:register(), true)
     T.eq("A12 retired registration installs no independent subscription", current:registerGrowthMessage(), true)
 
-    -- Fail-open on the release owner.
-    local oldReleaseGate = ReleaseGate
-    ReleaseGate = nil
-    T.eq("A13 shipped feature fail-opens when the release owner is unavailable", current:isLive(), true)
-    ReleaseGate = oldReleaseGate
+    T.eq("A13 shipped feature is live with the mask enabled", current:isLive(), true)
 
     -- The retired lattice and farmland-wide identity helpers are gone.
     T.eq("A14 shipped yield derives no old 8m/600 lattice", type(current._deriveCapturePoints), "nil")

@@ -14,7 +14,7 @@
 -- map-fade ratio (field._compactionMapRatio) still accumulates the same ratio the
 -- average takes, even with no fieldId/valueMaps (the bookkeeping line is unconditional;
 -- only the actual map write is gated on fieldId~=nil and vmAvailable()).
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local function sys()
   return setmetatable({ settings = {} }, { __index = SoilFertilitySystem })

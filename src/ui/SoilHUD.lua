@@ -2437,8 +2437,7 @@ end
 -- The host's own floor for target automatic (Implementation v1.1 section 7, the Wizard
 -- brief sections 2 and 3, Iris's answer of 2026-10-02 section 1). It is built only from
 -- the soil system's reads: the machine-pass result (getApplicationTargetResult), the
--- target-mode read (isTargetModeForDisplay) and the release lock (isTargetGateOpen).
--- Locked, there is no block and the panel is today's. Under target mode the block
+-- target-mode read (isTargetModeForDisplay). Under target mode the block
 -- replaces the legacy "Target:" line, which is built from field info and defaults and
 -- "cannot stand in for the new confirmed implement-footprint result" (:89).
 
@@ -2696,8 +2695,7 @@ end
 function SoilHUD:buildTargetView(sprayer, ss, rm, rateVehId, profile)
     if self._targetMemory == nil then self._targetMemory = {} end
     self:pruneTargetMemory()
-    if sprayer == nil or ss == nil or type(ss.isTargetGateOpen) ~= "function" then return nil end
-    if ss:isTargetGateOpen() ~= true then return nil end
+    if sprayer == nil or ss == nil then return nil end
     local mem = self._targetMemory[sprayer]
     if mem == nil then
         mem = { notified = {} }

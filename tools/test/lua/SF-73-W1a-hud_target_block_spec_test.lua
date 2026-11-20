@@ -30,7 +30,6 @@
 --   F  a post-spend failure on the host
 --   T  every reason its own text, the four shortfalls apart
 --   M  the manual hint only for no growing crop alone
---   L  the lock: nothing new on the host, after relocking, or on a client
 --   N  the notice: the setting, once per reason in an activation, never per cycle
 --   W  a row too wide is drawn smaller
 --   X  every key in all 27 languages, translated, specifiers kept, no dashes
@@ -39,7 +38,7 @@
 -- widths, controller and viewport behaviour, and real dedicated-server delivery. The
 -- TESTING row names those observations.
 --
---!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/network/NetworkEvents.lua, src/ui/SoilHUD.lua
+--!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/network/NetworkEvents.lua, src/ui/SoilHUD.lua
 --!text: translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
 
 SoilLogger.debug = function() end
@@ -383,7 +382,6 @@ local function newWorld(opts)
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, nutrientCycles = true,
                      replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = opts.overlap == true,
                      multiTankApplication = true }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = {
     time = 1000, terrainSize = ENGINE.TERRAIN,
     missionInfo = { helperBuyFertilizer = opts.buy == true, helperSlurrySource = 1, helperManureSource = 1 },
@@ -614,7 +612,6 @@ local function clientWorld(opts)
   opts = opts or {}
   g_server = nil
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, hudPosition = 1 }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   local notices = {}
   g_currentMission = { time = opts.time or 50000, missionDynamicInfo = { isMultiplayer = true },
                        hud = { showBlinkingWarning = function(_, text) notices[#notices + 1] = text end } }
@@ -1028,42 +1025,6 @@ group(function()
 end)
 
 -- =====================================================================
--- L. THE LOCK: locked, the panel is today's and nothing new is drawn
--- =====================================================================
-group(function()
-  serverWorld({ gate = false })
-  autoOn(W.v)
-  run(W.v, 3)
-  frame(W.hud)
-  local d = draw(W.hud)
-  T.eq("L1 [reached] locked: AUTO on opens no target state", W.ss.targetApplication.states[W.v], nil)
-  T.ok("L2 NAMED: the panel draws today's legacy 'Target:' line", hasPrefix(d, EN.sf_sprayer_target))
-  T.eq("L3 NAMED: and no text of the block, in any form", blockText(d), nil)
-  T.eq("L4 and no notice", #NATIVE.notices, 0)
-end)
-group(function()
-  -- a refused result exists, then the lock closes again: the old result is not shown
-  serverWorld({ product = DAP, ground = CUT_BARLEY })
-  autoOn(W.v)
-  run(W.v, 1)
-  frame(W.hud)
-  W.settings.allowsExperimentalSystems = function() return false end
-  run(W.v, 1)
-  frame(W.hud)
-  local d = draw(W.hud)
-  local r = W.ss:getApplicationTargetResult(W.v)
-  T.ok("L5 [reached] the host still holds the final refused result", r ~= nil and r.active == false)
-  T.eq("L6 NAMED: relocked, the block draws nothing of it", blockText(d), nil)
-  T.ok("L7 and the legacy line is back", hasPrefix(d, EN.sf_sprayer_target))
-end)
-group(function()
-  clientWorld({ gate = false })
-  frame(CW.hud)
-  local d = draw(CW.hud)
-  T.ok("L8 NAMED: a locked client draws today's panel, never 'waiting'", hasPrefix(d, EN.sf_sprayer_target) and blockText(d) == nil)
-end)
-
--- =====================================================================
 -- N. The notice: once per reason in an activation, never per cycle; the setting holds
 -- =====================================================================
 group(function()
@@ -1079,8 +1040,7 @@ group(function()
   -- the HUD's own memory across a scripted sequence of results for one vehicle
   local shown = {}
   local CUR
-  local ss = { isTargetGateOpen = function() return true end,
-               getApplicationTargetResult = function() return CUR end,
+  local ss = { getApplicationTargetResult = function() return CUR end,
                showNotification = function(_, t, b) shown[#shown + 1] = b end }
   g_server = {}
   local hud = SoilHUD.new(ss, { autoRateControl = true })

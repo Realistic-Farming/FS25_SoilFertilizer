@@ -10,8 +10,7 @@
 --
 -- THE ENTRY-POINT BAR. The real SoilHUD (SoilHUD.new) runs its real update(), which reads
 -- the sprayer the player sits in and caches the decision through the soil system's real
--- read: on the server and host TargetApplication:isTargetMode (the release gate through
--- ReleaseGate and the live settings, auto rate control, and the real SprayerRateManager's
+-- read: on the server and host TargetApplication:isTargetMode (the live settings, auto rate control, and the real SprayerRateManager's
 -- AUTO mode); on a client the result received through the real TargetApplication:receive.
 -- The row is then drawn by the real drawNutrientRow with the HUD's cached state, as draw()
 -- does (SoilHUD.lua, the N/P/K rows). The fixture supplies the world only: the player in a
@@ -19,7 +18,7 @@
 -- the field-detect timer) is set aside so update() reaches its cache block; it is not
 -- under test.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ui/SoilHUD.lua
 
 SoilLogger.debug = function() end
 SoilLogger.info = function() end
@@ -51,7 +50,6 @@ local function world(opts)
   g_server = opts.server and {} or nil
   g_currentMission = { time = 10000 }
   local settings = { enabled = true, autoRateControl = true, replenishmentRate = 3, hudPosition = 1 }
-  settings.allowsExperimentalSystems = function() return opts.experimental == true end
   local ss = setmetatable({ fieldData = {}, settings = settings }, { __index = SoilFertilitySystem })
   ss.targetApplication = TargetApplication.new(ss)
   local rm = SprayerRateManager.new()
@@ -102,16 +100,6 @@ local function near(a, b) return type(a) == "number" and math.abs(a - b) < 1e-12
 -- =====================================================================
 -- HOST: target mode decided by the real gates
 -- =====================================================================
-do
-  world({ server = true, experimental = false, auto = true })
-  W.hud:update(16)
-  T.ok("H0 [reached] update() cached the player's sprayer and its UREA", W.hud._cachedSprayer == W.sprayer and W.hud._cachedFillType == UREA)
-  T.eq("H1 experimental systems off (SF-73 locked), AUTO on: not target mode", W.hud._cachedTargetMode, false)
-  local ok, err, ghost, suffix = drawN()
-  T.ok("H2 the row drew (" .. tostring(err) .. ")", ok)
-  T.ok("H3 so the ghost is today's, to the width (" .. tostring(ghost) .. ")", near(ghost, expectedGhost(1.0)) and ghost > 0)
-  T.eq("H4 and the (+N) suffix is shown", suffix, true)
-end
 do
   world({ server = true, experimental = true, auto = false })
   W.hud:update(16)

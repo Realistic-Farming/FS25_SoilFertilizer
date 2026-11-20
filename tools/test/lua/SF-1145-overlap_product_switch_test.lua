@@ -32,7 +32,7 @@
 -- trackable list, so the gate treats a switch between them as a genuine product
 -- change, not an untracked fill type falling out of the gate entirely.
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-234-overlap_record_world.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, tools/test/lua/MAINT-234-overlap_record_world.lua
 
 local install, driveLane, otherPass, list = ORW.install, ORW.driveLane, ORW.otherPass, ORW.list
 

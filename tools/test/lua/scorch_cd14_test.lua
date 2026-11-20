@@ -4,7 +4,7 @@
 -- nothing on a mild day, ignores bare ground / seedlings, meters on its OWN
 -- accumulator (never the rate burn's), and stays nil-honest (no WeatherGuard =
 -- no scorch).
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local SFS = SoilConstants.SPRAYER_RATE
 local HEAT = SoilConstants.HEAT_SENSITIVITY

@@ -125,10 +125,6 @@ source(modDirectory .. "src/utils/DurationScaling.lua")
 source(modDirectory .. "src/config/SoilCropTuning.lua")
 source(modDirectory .. "src/config/SettingsSchema.lua")
 source(modDirectory .. "src/integrations/OptionScalingResolver.lua")
--- Release gate: which systems are released (STABLE) vs experimental (LOCKED).
--- Orthogonal to difficulty; the lock set comes from Arissani's certification
--- (2026-08-02). Loaded before Settings and SoilSettingsGUI, which consult it.
-source(modDirectory .. "src/ReleaseGate.lua")
 source(modDirectory .. "src/DiseaseSystem.lua")
 source(modDirectory .. "src/SoilCompactionModel.lua")
 -- SF-55 TRAFFIC ON WET GROUND: the pure arithmetic behind the trafficDrag layer
@@ -233,20 +229,20 @@ source(modDirectory .. "src/CompostManager.lua")
 source(modDirectory .. "src/ViabilityMask.lua")
 -- SF-53 GROWTH CREDIT: the reward half of the SF-2M family, a peer of
 -- ViabilityMask (same class idiom). Consumes SF-52's getter and lattice at
--- runtime; publishes nothing. Inert unless the growth_modulation release gate
--- is open and the mask is enabled.
+-- runtime; publishes nothing. Inert while the mask is
+-- disabled.
 source(modDirectory .. "src/GrowthCredit.lua")
 -- SF-78 GROWTH BLOCK: the hold half of the SF-2M family. Capture at
 -- START_GROWTH_PERIOD, restore at the drained FINISHED delivery through the
 -- family write machine. No Time Guard registration; the engine's own bracket
--- is the clock. Inert unless the growth_modulation release gate is open and
--- the mask is enabled.
+-- is the clock. Inert while the mask is
+-- disabled.
 source(modDirectory .. "src/GrowthBlock.lua")
 -- SF-14 ZONE YIELD: the payout half of the SF-2M family. Per-cell
 -- yieldEfficiency capture at growth time (riding the family's shared read,
 -- Time Guard simulation cadence) and the area-weighted harvest read that
--- supersedes the SF-16 scalar freeze on the spatial path. Inert unless the
--- growth_modulation release gate is open and the mask is enabled.
+-- supersedes the SF-16 scalar freeze on the spatial path. Inert while the
+-- mask is disabled.
 source(modDirectory .. "src/ZoneYield.lua")
 -- SF-77 TOPOGRAPHY CACHE: the load-time terrain grid (height, slope, sink,
 -- distance-to-water) consumed by SF-76 (field genesis) and SCS-042 (runoff).
@@ -335,7 +331,6 @@ source(modDirectory .. "src/ui/SoilVersionDialog.lua")
 source(modDirectory .. "src/ui/SoilHelpDialog.lua")
 source(modDirectory .. "src/ui/SoilGuideDialog.lua")
 source(modDirectory .. "src/ui/SoilOverlayHelpDialog.lua")
-source(modDirectory .. "src/ui/SoilReleaseDialog.lua")
 source(modDirectory .. "src/ui/SoilTuningPanel.lua")
 source(modDirectory .. "src/ui/SoilCropTuningPanel.lua")
 source(modDirectory .. "src/ui/SoilSettingsPanel.lua")
@@ -480,13 +475,7 @@ local function loadedMission(mission, node)
     -- watermark, and so Time Guard has published its g_currentMission handle.
     -- Both no-op when their mod is absent; the system stays inert rather than
     -- minting a private clock or a second copy of the state.
-    -- RELEASE GATE: the ground-material family (SF-43/44/46/49) and Read the Dirt
-    -- (SF-26/37/38) are LOCKED. When not released, their bridges are not registered
-    -- either - the family is not wired into Time Guard / StateLedger / NetworkSync at
-    -- all, matching the "inert = not wired" rule. The modules stay loaded but idle.
-    local groundLive = ReleaseGate.isSystemLive("ground_material")
-    local dirtLive = ReleaseGate.isSystemLive("read_the_dirt")
-    if SoilMaterialDownBridge and groundLive then
+    if SoilMaterialDownBridge then
         local md = sfm and sfm.soilSystem and sfm.soilSystem.materialDown
         if md then
             -- [RSF-F215] The career marker and the new-career flag first: the deliveries
@@ -519,7 +508,7 @@ local function loadedMission(mission, node)
     -- anything reads the mask, and so Time Guard has published its handle. All
     -- three no-op when their mod is absent; the mask then lives in the
     -- STANDALONE FALLBACK (session-transient, client-local).
-    if SoilScoutingBridge and dirtLive then
+    if SoilScoutingBridge then
         local scouting = sfm and sfm.soilSystem and sfm.soilSystem.spatialScouting
         if scouting then
             SoilScoutingBridge.registerLedger(scouting)
@@ -962,9 +951,9 @@ Mission00.loadMission00Finished = Utils.appendedFunction(Mission00.loadMission00
 -- hide/show button below: the physical key stays gated to MasterHUD, but a per-mod
 -- hide is reachable from the Control Center so a player can disable just this HUD.
 --
--- SF_HANDFUL is wired even though it is gated on crouching and the experimental
--- opt-in, because onHandfulInput raises its own blinking warning explaining why
--- when a gate blocks it. The player gets an answer either way, never silence.
+-- SF_HANDFUL is wired even though it is gated on crouching, because
+-- onHandfulInput raises its own blinking warning explaining why when a gate
+-- blocks it. The player gets an answer either way, never silence.
 -- ---------------------------------------------------------
 local function registerControlCenterActions()
     local registry = g_currentMission ~= nil and g_currentMission.rfActionRegistry or nil

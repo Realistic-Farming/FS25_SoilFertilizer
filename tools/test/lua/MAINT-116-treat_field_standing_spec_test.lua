@@ -20,7 +20,7 @@
 -- is the real SoilScoutDialog:onClickApply on a stub instance (no GUI is rendered).
 --
 --!env: modenv
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/DiseaseSystem.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/settings/SoilSettingsGUI.lua, src/ui/SoilScoutDialog.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/DiseaseSystem.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/hooks/HookManager.lua, src/SoilFertilityManager.lua, src/settings/SoilSettingsGUI.lua, src/ui/SoilScoutDialog.lua, src/OrganicCertification.lua, src/config/SettingsSchema.lua, src/network/NetworkEvents.lua
 
 local SFS = SoilFertilitySystem
 UIHelper = UIHelper or { formatCurrencyValue = function(v) return tostring(v) end }

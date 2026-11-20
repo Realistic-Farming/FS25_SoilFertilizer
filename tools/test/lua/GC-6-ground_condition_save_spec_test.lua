@@ -30,7 +30,7 @@
 --      real method): lastSeenVersion alone, edited in place, so a paired save stays paired
 --
 --!env: modenv
---!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/GC-6-savegame_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/SoilNativeSave.lua, src/ground/GroundConditionSave.lua, src/SoilFertilityManager.lua, src/ui/SoilVersionDialog.lua
+--!load: tools/test/lua/RSF-F208-s3-engine_model.lua, tools/test/lua/GC-6-savegame_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/HayBet.lua, src/YardLadder.lua, src/integrations/MaterialDownCodec.lua, src/integrations/SoilMaterialDownBridge.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/ground/GroundConditionCells.lua, src/ground/GroundConditionCoordinator.lua, src/ground/SoilNativeSave.lua, src/ground/GroundConditionSave.lua, src/SoilFertilityManager.lua, src/ui/SoilVersionDialog.lua
 
 -- The bench runs inside one function: the concatenated sources' file-level locals with this
 -- file's would pass Lua's 200-local limit for a single function.

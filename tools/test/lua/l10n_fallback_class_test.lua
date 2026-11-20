@@ -23,7 +23,7 @@
 --   E  the establishment notification
 --   M  source witness: main.lua sources the helper before its first consumer
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilL10n.lua, src/ui/SoilHUD.lua, src/EstablishmentFailure.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/utils/SoilL10n.lua, src/ui/SoilHUD.lua, src/EstablishmentFailure.lua
 --!text: src/main.lua
 
 local SENTENCE = "Missing '"

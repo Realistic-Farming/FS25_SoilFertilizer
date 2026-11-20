@@ -9,7 +9,7 @@
 --   * the gate is the durable fieldEverScouted bit, not the per-outbreak diseaseDiscovered
 --     flag, so resistance history survives a fresh infection
 --   * a pure client reads UNKNOWN until the server has delivered the field once
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/SpatialScouting.lua, src/SoilFertilitySystem.lua, src/ResistanceBands.lua, src/HybridStrains.lua
 
 local R  = SoilConstants.RESISTANCE
 local B  = R.BANDS

@@ -111,11 +111,6 @@ MUTATIONS = [
        "    if not turnedOn or not anyWorkAreaActive(sprayer) then\n", 1)],
      "section 3: a pass Soil's overlap prevention blocked is read as a boundary, not native inactivity", "E11.15, E11.20"),
 
-    # Design on #1029 (ledger 932ac42): the readers do not switch before SF-73 unlocks.
-    ("reader-gate-dropped", "sys",
-     [("    local okGate, open = pcall(ta.isGateOpen, ta)\n    if not okGate or open ~= true then return nil end\n", "", 1)],
-     "Design on #1029: the crop-need reader answers while SF-73 is LOCKED, so the readers switch before the unlock",
-     "E13.2-E13.5"),
 
     # Design's condition on #1029 (DESIGN-CHECK row 136): a lift or switch-off clears the held region.
     ("inactive-keeps-held-anchor", "ta",

@@ -5,7 +5,7 @@
 -- Advice never gates or writes; silent when SCS is absent (never guessing); the
 -- weaker forecast-only form when the moisture read is unavailable.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/DurationScaling.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/DurationScaling.lua, src/SoilFertilitySystem.lua
 
 g_currentMission = { _isServer = true, environment = { currentMonotonicDay = 10 } }
 function g_currentMission:getIsServer() return self._isServer end

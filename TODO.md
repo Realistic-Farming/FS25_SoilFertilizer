@@ -453,3 +453,10 @@
 - [x] `src/specializations/SFNozzleEffects.lua`: `effectData.ssClosed` set at pass 3's "full" exit and the chemical check's "no target" exit; `SFNozzleEffects.sfCheckWholeBoomClosed`, called from `onUpdate`. Strings `sf_ss_closed_full` and `sf_ss_closed_notarget` in all 27 language files.
 - [x] Group B of `SF-1154-see_spray_pass3_lookahead_spec_test.lua` (B1 to B7, B3b/c); development fails the B rows. `mutate_sf1154b_boom_message.py`: 7 mutants, all killed (M2 only after B3b was added).
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-19: the release gate removed
+
+- [x] `src/ReleaseGate.lua`, `src/ui/SoilReleaseDialog.lua` and `xml/gui/SoilReleaseDialog.xml` removed; every gated call site runs unconditionally (main.lua bridges, the ground-material and Read the Dirt arms, CD-9/10/12, spatial soil, growth modulation, SF-73 target mode and its HUD, PDA and crop-need reads).
+- [x] `experimentalSystems` out of `SettingsSchema`, `Settings`, `SoilSettingsPanel` (section, description, the drawn confirmation) and `SoilSettingsGUI` (`SoilRelease`, the command locks); 12 keys out of all 27 language files.
+- [x] Benches: the two gate-only benches removed; the rows that pinned the locked state removed or rebuilt (the W1b legacy baseline is now AUTO off); `src/ReleaseGate.lua` out of every load list; the gate mutants out of the old batteries.
+- [~] In game (owed): the TESTING row for this PR.

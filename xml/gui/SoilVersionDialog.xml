@@ -46,41 +46,25 @@
                    position="21px -42px"/>
       </GuiElement>
 
-      <!-- ─────────────── RIGHT COLUMN (top): RELEASE STATUS (live) ─────────────── -->
-      <GuiElement profile="sfVer_statusSection" position="315px -90px">
-        <Bitmap profile="sfVer_statusBg" position="0px 0px"/>
-        <Text profile="sfVer_sectionHeader" text="Release status" position="0px -10px"/>
-
-        <!-- Dynamic status lines added here by Lua at onOpen -->
-        <BoxLayout profile="sfVer_statusBox" id="sfVer_statusBox" position="21px -38px"/>
-
-        <Text profile="sfVer_statusHint"
-              text="Toggle these in Settings &gt; Experimental, at your own risk."
-              position="21px -222px"/>
-      </GuiElement>
-
-      <!-- ─────────────── RIGHT COLUMN (bottom): EXPLORE ─────────────── -->
-      <GuiElement profile="sfVer_exploreSection" position="315px -342px">
+      <!-- ─────────────── RIGHT COLUMN: EXPLORE ─────────────── -->
+      <GuiElement profile="sfVer_exploreSection" position="315px -90px">
         <Bitmap profile="sfVer_exploreBg" position="0px 0px"/>
         <Text profile="sfVer_sectionHeader" text="Explore" position="0px -10px"/>
 
         <Text profile="sfVer_exLabel" text="Field Guide"     position="21px -44px"/>
         <Text profile="sfVer_exDesc"  text="The full manual, every system explained" position="180px -44px"/>
 
-        <Text profile="sfVer_exLabel" text="Release Gate"    position="21px -74px"/>
-        <Text profile="sfVer_exDesc"  text="Unlock experimental systems in Settings" position="180px -74px"/>
+        <Text profile="sfVer_exLabel" text="Read the Dirt"   position="21px -74px"/>
+        <Text profile="sfVer_exDesc"  text="Kneel and press Shift+G to read a spot"  position="180px -74px"/>
 
-        <Text profile="sfVer_exLabel" text="Read the Dirt"   position="21px -104px"/>
-        <Text profile="sfVer_exDesc"  text="Kneel and press Shift+G to read a spot"  position="180px -104px"/>
+        <Text profile="sfVer_exLabel" text="Soil Monitor"    position="21px -104px"/>
+        <Text profile="sfVer_exDesc"  text="Live N, P, K and pH as you drive"        position="180px -104px"/>
 
-        <Text profile="sfVer_exLabel" text="Soil Monitor"    position="21px -134px"/>
-        <Text profile="sfVer_exDesc"  text="Live N, P, K and pH as you drive"        position="180px -134px"/>
+        <Text profile="sfVer_exLabel" text="Treatment Plan"  position="21px -134px"/>
+        <Text profile="sfVer_exDesc"  text="What to spray on each field"             position="180px -134px"/>
 
-        <Text profile="sfVer_exLabel" text="Treatment Plan"  position="21px -164px"/>
-        <Text profile="sfVer_exDesc"  text="What to spray on each field"             position="180px -164px"/>
-
-        <Text profile="sfVer_exLabel" text="Soil Map"        position="21px -194px"/>
-        <Text profile="sfVer_exDesc"  text="Every value, per field"                  position="180px -194px"/>
+        <Text profile="sfVer_exLabel" text="Soil Map"        position="21px -164px"/>
+        <Text profile="sfVer_exDesc"  text="Every value, per field"                  position="180px -164px"/>
       </GuiElement>
 
       <!-- ─────────────── FOOTER BAND (edge to edge) ─────────────── -->
@@ -159,38 +143,12 @@
       <elementSpacing value="4px"/>
     </Profile>
 
-    <!-- RIGHT top: live release-status section -->
-    <Profile name="sfVer_statusSection" extends="emptyPanel" with="anchorTopCenter">
-      <size value="570px 244px"/>
-    </Profile>
-    <Profile name="sfVer_statusBg" extends="baseReference" with="anchorTopCenter">
-      <size value="570px 244px"/>
-      <imageColor value="0.06 0.10 0.14 0.9"/>
-    </Profile>
-    <Profile name="sfVer_statusBox" extends="emptyPanel" with="anchorTopLeft">
-      <size value="528px 178px"/>
-      <flowDirection value="vertical"/>
-      <useFullVisibility value="false"/>
-      <alignmentX value="left"/>
-      <elementSpacing value="3px"/>
-    </Profile>
-    <Profile name="sfVer_statusLine" extends="fs25_textDefault" with="anchorTopLeft">
-      <size value="528px 19px"/>
-      <textSize value="13px"/>
-      <textColor value="0.85 0.85 0.85 1"/>
-    </Profile>
-    <Profile name="sfVer_statusHint" extends="fs25_textDefault" with="anchorTopLeft">
-      <size value="528px 18px"/>
-      <textSize value="12px"/>
-      <textColor value="0.58 0.60 0.66 1"/>
-    </Profile>
-
-    <!-- RIGHT bottom: explore section (warm tint) -->
+    <!-- RIGHT: explore section (warm tint), as tall as the changelog column -->
     <Profile name="sfVer_exploreSection" extends="emptyPanel" with="anchorTopCenter">
-      <size value="570px 288px"/>
+      <size value="570px 540px"/>
     </Profile>
     <Profile name="sfVer_exploreBg" extends="baseReference" with="anchorTopCenter">
-      <size value="570px 288px"/>
+      <size value="570px 540px"/>
       <imageColor value="0.10 0.08 0.07 0.9"/>
     </Profile>
 

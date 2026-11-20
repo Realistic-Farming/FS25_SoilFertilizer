@@ -34,7 +34,6 @@
 --   A  FARM_ACCESS on farm B's cut field: nothing written; B's PDA on the host and a client
 --   S  a resown field hides the pause; a field reporting no crop stores nothing
 --   I  priming and holds write nothing
---   K  locked, and relocked: nothing new
 --   C  a client: the real event stream, its own stamp; the epoch rule
 --   O  one stamp per entry over a long pause; a re-entry stamps again
 --   M  the memory: reset clears it, only its own functions name it, never saved, no wire field
@@ -45,7 +44,7 @@
 -- dedicated-server delivery, or a door race between installed mods. The TESTING row names
 -- those observations.
 --
---!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/network/NetworkEvents.lua, src/ui/SoilHUD.lua, src/ui/RfPdaSoilPanel.lua
+--!load: tools/test/lua/SF-995-engine_model.lua, src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SprayerRateManager.lua, src/target/TargetNutrientCore.lua, src/target/TargetFootprint.lua, src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua, src/network/NetworkEvents.lua, src/ui/SoilHUD.lua, src/ui/RfPdaSoilPanel.lua
 --!text: src/target/TargetApplication.lua, src/SoilFertilitySystem.lua, src/network/NetworkEvents.lua, translations/translation_br.xml, translations/translation_cs.xml, translations/translation_ct.xml, translations/translation_cz.xml, translations/translation_da.xml, translations/translation_de.xml, translations/translation_ea.xml, translations/translation_en.xml, translations/translation_es.xml, translations/translation_fc.xml, translations/translation_fi.xml, translations/translation_fr.xml, translations/translation_hu.xml, translations/translation_id.xml, translations/translation_it.xml, translations/translation_jp.xml, translations/translation_kr.xml, translations/translation_nl.xml, translations/translation_no.xml, translations/translation_pl.xml, translations/translation_pt.xml, translations/translation_ro.xml, translations/translation_ru.xml, translations/translation_sv.xml, translations/translation_tr.xml, translations/translation_uk.xml, translations/translation_vi.xml
 
 local GROUP_N = 0
@@ -397,7 +396,6 @@ local function newWorld(opts)
   local settings = { enabled = true, autoRateControl = true, showNotifications = true, nutrientCycles = true,
                      replenishmentRate = 3, tuningFertilizerEfficiency = 3, overlapPrevention = opts.overlap == true,
                      multiTankApplication = true }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = {
     time = 1000, terrainSize = ENGINE.TERRAIN,
     missionInfo = { helperBuyFertilizer = opts.buy == true, helperSlurrySource = 1, helperManureSource = 1 },
@@ -604,7 +602,6 @@ local function clientWorld(opts)
   local serverFields = W.ss.fieldData
   g_server = nil
   local settings = { enabled = true, autoRateControl = true, showNotifications = true }
-  settings.allowsExperimentalSystems = function() return opts.gate ~= false end
   g_currentMission = { time = opts.time or 50000, missionDynamicInfo = { isMultiplayer = true }, terrainSize = ENGINE.TERRAIN }
   local ss = setmetatable({ fieldData = {}, settings = settings, isInitialized = true,
                             herbicideAppliedDay = {}, insecticideAppliedDay = {}, fungicideAppliedDay = {} },
@@ -857,30 +854,6 @@ group(function()
   run(W.v, 1)
   T.ok("I3 [reached] then a hold", TargetNutrientCore.isHold(W.ss:getApplicationTargetResult(W.v)))
   T.eq("I4 a hold writes no pause", H.count(W.ss), 0)
-end)
-
--- =====================================================================
--- K. Locked, and relocked: nothing new
--- =====================================================================
-group(function()
-  serverWorld({ ground = H.CUT_BARLEY, gate = false })
-  autoOn(W.v)
-  run(W.v, 2)
-  local page = openPda(newPage(true), 7)
-  T.eq("K1 locked: no pause is written", H.count(W.ss), 0)
-  T.eq("K2 NAMED: the card stays hidden and the heading is today's",
-       tostring(cardVisible(page)) .. "/" .. tostring(page.treatTargetsHeading.text),
-       "false/" .. tostring(EN.rf_pda_treatment_targets_heading or "Target levels"))
-end)
-group(function()
-  serverWorld({ ground = H.CUT_BARLEY })
-  autoOn(W.v)
-  run(W.v, 1)
-  W.settings.allowsExperimentalSystems = function() return false end
-  T.eq("K3 NAMED: relocked with a stored pause: the read answers nil", H.pause(W.ss, 7), nil)
-  T.eq("K4 and the card hides", cardVisible(openPda(newPage(true), 7)), false)
-  W.settings.allowsExperimentalSystems = function() return true end
-  T.ok("K5 [reached] unlocked again, the pause is still there", H.pause(W.ss, 7) ~= nil)
 end)
 
 -- =====================================================================

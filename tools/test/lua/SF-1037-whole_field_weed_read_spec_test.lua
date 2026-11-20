@@ -31,7 +31,7 @@
 --   * FieldSentry (src/FieldSentry.lua, loaded as the mod loads it). Groups M and Z set a
 --     field's meadow toggle and sleep flag only through FieldSentry's own setters.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/FieldSentry.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/SoilFertilitySystem.lua
 
 local saved = {
   g_server = g_server, g_fieldManager = g_fieldManager, g_fruitTypeManager = g_fruitTypeManager,

@@ -123,7 +123,7 @@ function D.captureInput(system, day)
         growthMult = cm.growthMult, dryThreshold = cm.dryThreshold, dryDecayMult = cm.dryDecayMult, rainBonusMult = cm.rainBonusMult,
         pressureMult = (diff and diff.pressureMult) or 1.0,
         tuningDiseaseGrowth = tuningMult(settings, "tuningDiseaseGrowth", "ZERO_MULT"),
-        hybridLive = ReleaseGate ~= nil and type(ReleaseGate.isSystemLive) == "function" and ReleaseGate.isSystemLive("cd10_hybrids") == true,
+        hybridLive = true,
         decayPerDay = SoilConstants.RESISTANCE.DECAY_MONTHLY ^ (1 / dpm),
         low = dp.LOW or 20,
     }

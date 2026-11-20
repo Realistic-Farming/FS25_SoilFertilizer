@@ -6,9 +6,8 @@
 -- the one handle that crosses the mod boundary. This pins that delegate.
 --
 -- The delegate is NEUTRAL, not a claim: nil means "we do not know", never
--- "it was dry". A closed ground_material gate, a missing or unarmed wetness
--- subsystem, a throwing read, and an empty record all return nil.
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/ReleaseGate.lua, src/SoilFertilityManager.lua
+-- "it was dry". A missing or unarmed wetness subsystem, a throwing read, and an empty record all return nil.
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/maps/SoilValueMaps.lua, src/MaterialDown.lua, src/MaterialWetness.lua, src/SoilFertilityManager.lua
 
 g_server = g_server or {}
 
@@ -72,18 +71,7 @@ mwAngry.waterDaysInLast = function() error("boom") end
 local mgrAngry = makeManager(mwAngry)
 T.eq("throwing read is nil", mgrAngry:getWaterDaysInLast(6), nil)
 
--- ── 7. The ground_material gate closed is nil ─────────────
--- ground_material is in the EXPERIMENTAL set, so a settings object that refuses
--- experimental systems closes it. The record exists; the gate still wins.
-local savedSfm = _G.g_SoilFertilityManager
-_G.g_SoilFertilityManager = {
-  settings = { allowsExperimentalSystems = function() return false end },
-}
-local mgrGated = makeManager(makeArmedWetness())
-T.eq("gate closed is nil even with a record", mgrGated:getWaterDaysInLast(6), nil)
-_G.g_SoilFertilityManager = savedSfm
-
--- ── 8. ThroughDay is forwarded untouched ──────────────────
+-- ── 7. ThroughDay is forwarded untouched ──────────────────
 -- The plumbing is additive and nil-defaulted: the explicit cursor reaches the
 -- record as-is, exactly what SCS-037 round 2 will call with.
 local mgrFwd = makeManager(makeArmedWetness())

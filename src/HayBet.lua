@@ -104,8 +104,7 @@ function HayBet:onSettle(ctx)
     -- day says, once, at info level: the fields visited, the engine reads the readers made
     -- (native volume reads and cell condition reads, counted in MaterialWetness), the
     -- whole settle's milliseconds by the engine's clock (getTimeSec, seconds, the clock
-    -- the engine's own frame budgets use) and the costliest single field. The family is
-    -- armed only with Experimental Systems on, so with the gate off nothing is logged.
+    -- the engine's own frame budgets use) and the costliest single field.
     local clock = type(getTimeSec) == "function" and getTimeSec or nil
     local v0, c0 = MaterialWetness.nativeReads or 0, MaterialWetness.cellReads or 0
     local t0 = clock ~= nil and clock() or nil

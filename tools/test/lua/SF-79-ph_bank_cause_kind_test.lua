@@ -19,7 +19,7 @@
 -- caller with no cause). Groups C and D are the two save paths, XML and the
 -- StateLedger mirror, with an older save's cause-less remainder dropped and said.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/maps/SoilValueMaps.lua, src/SoilFertilitySystem.lua, src/PositionalPH.lua
 
 local savedEnv = g_currentMission.environment
 g_currentMission.environment = { currentDay = 5 }

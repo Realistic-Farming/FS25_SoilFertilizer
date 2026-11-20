@@ -27,7 +27,7 @@
 --   Streumaster fw212tdProfi.xml:193-271 and fw212tdProfi.i3d:579-599
 --   Bredal k105.xml:198, :235-301, :329-361 and k105.i3d:382-401
 --
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/utils/SoilUtils.lua, src/SoilFertilitySystem.lua, src/hooks/HookManager.lua
 
 local saved = {
     Sprayer = Sprayer, Utils = Utils, g_fillTypeManager = g_fillTypeManager,

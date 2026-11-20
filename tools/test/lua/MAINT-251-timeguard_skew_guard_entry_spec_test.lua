@@ -27,7 +27,7 @@
 --   E1  a current Time Guard (simulation listed): all three register under simulation
 --   E2  a v1.0.0.0 Time Guard (no simulation): none registers, nothing is coerced, the fallback stays
 --   E3  a Time Guard with no scheduler table: all three register as before (the read is nil-safe)
---!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ReleaseGate.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/maps/SoilValueMaps.lua, src/integrations/OptionScalingResolver.lua, src/EstablishmentFailure.lua, src/ViabilityMask.lua, src/GrowthCredit.lua, src/SoilFertilityManager.lua
+--!load: src/utils/Logger.lua, src/utils/SoilL10n.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/maps/SoilValueMaps.lua, src/integrations/OptionScalingResolver.lua, src/EstablishmentFailure.lua, src/ViabilityMask.lua, src/GrowthCredit.lua, src/SoilFertilityManager.lua
 
 local function group(name, fn)
   local ok, err = pcall(fn)
