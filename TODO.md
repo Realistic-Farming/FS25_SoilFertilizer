@@ -431,7 +431,7 @@
 - [x] `src/SoilFertilitySystem.lua`: `checkPassCoverageNotice` replaces the dose comparison at the end of `applyFertilizer`. `src/hooks/HookManager.lua`: the area hook hands the selected rate over (`_passRateMult`) and clears it with `_sf73TargetField`. Two new strings, `sf_notify_pass_body` and `sf_notify_pass_body_est`, in all 27 language files; the unused `sf_notify_treated_body` is removed (the title key stays).
 - [x] Bars: group D of `RSF-F196-unit_rule_test.lua` (rewritten for the retired site 2: D1 to D10, and F8), group W3 of `SF-1063-pass_percent_unsectioned_spec_test.lua` (W3.0 to W3.8, from the hook to the shipped English sentence), OBS 9 and 11 of `RSF-F196-unit_rule_fallback_observable_test.lua`. Development fails 14 of them; `mutate_sf1063_w3.py` kills 10 of 10 mutants running only those three files.
 - [x] W2: AUTO target passes count ground, then take the notice (2026-11-20).
-- [ ] The HUD Pass % line says "estimated" on rigs without sections (its own PR).
+- [x] The HUD Pass % line says "estimated" on rigs without sections (2026-11-20).
 - [~] In game (owed): the TESTING row for this PR.
 
 ## 2026-11-18 (Fred (via Desk)): See & Spray pass 3 read point (#1154)
@@ -474,3 +474,13 @@
 - [x] `src/ui/SoilHUD.lua`: `getRateConfig(fillType, sprayer)` reads it; the rate panel, its four neighbouring steps and the ghost bar use it. No rate: the multiplier alone and no ghost. Edit mode with no sprayer keeps the layout placeholder.
 - [x] Bars: `SF-1063-w4_map_base_rate_test.lua` (groups R, G and C, 52 assertions through the real HUD update, rate panel and nutrient row); the ghost rows of `RSF-F196-unit_rule_test.lua`, `RSF-F196-unit_rule_fallback_observable_test.lua` and `SF-73-ghost_bar_target_mode_spec_test.lua` now register a spray type as production does. `mutate_sf1063_w4.py`: 12 mutants, all killed, on the four files that hold the rows.
 - [~] In game (owed): the TESTING row for this PR.
+
+## 2026-11-20: the HUD Pass line says estimated (#1063)
+
+- [x] `src/SoilFertilitySystem.lua`: `getFieldInfo` carries `sessionCoverageEstimated = not field._geometricCoverageOwner`.
+- [x] `src/ui/SoilHUD.lua`: `update` appends `sf_hud_pass_estimated` to the Pass line when it is set; `drawCoverageLines` draws the coverage rows and fits a wide one to the panel.
+- [x] One new string, `sf_hud_pass_estimated`, in all 27 language files (the word each language's notice uses for "estimated").
+- [x] `src/ui/SoilSprayerInfoPanel.lua`: the stats bar's PASS and session-ha cells carry a "~" when `sessionCoverageEstimated` is set and a pass is under way (session coverage above 0); an idle rig, a reload, a product switch and a client show no "~".
+- [x] Bars: `SF-1063-hud_pass_estimated_test.lua` (groups E, P, D, Q and L, 52 assertions, from a real field record through `getFieldInfo`, `update`, the real `drawPanel` and the real sprayer info panel, idle and under way); group H of `SF-1063-pass_percent_unsectioned_spec_test.lua` reads the flag after the real sprayer ticks; `mutate_sf1063_hud_est.py`: 18 mutants, all killed, on the first bench alone.
+- [~] In game (owed): the TESTING row for this PR.
+- [ ] Known gap (owed, its own MAINTENANCE row): on a sectioned rig the first few ticks of a pass can read as estimated, until the first 10 m boom cell is accepted and sets the owner.

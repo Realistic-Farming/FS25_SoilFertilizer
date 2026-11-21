@@ -754,6 +754,13 @@ function SoilSprayerInfoPanel:draw()
         local fieldArea     = (info and info.fieldArea) or 0
         local sessHa        = sessCov * fieldArea
         local daysSinceHarv = (info and info.daysSinceHarvest) or 0
+        -- #1063: a pass coverage worked out from litres, not counted from boom cells, is an
+        -- estimate, and so is the session area taken from it. The HUD's Pass line says so in
+        -- words; these two cells are narrow, so a "~" says it (no new text to translate).
+        -- Only while a pass is under way (session coverage above 0, as the HUD's own Pass
+        -- line requires): before the first cell is counted, after a reload or a product
+        -- switch, and on a client, the flag is still true but there is nothing to estimate.
+        local approx = (sessCov > 0 and info and info.sessionCoverageEstimated == true) and "~" or ""
 
         local sbY   = panelBot
         local sbH   = statH
@@ -784,7 +791,7 @@ function SoilSprayerInfoPanel:draw()
         -- "PASS" caption below disambiguates this, mirroring the session/day
         -- split already shown in SoilHUD.lua's coverage text.
         local covPct = math.floor(sessCov * 100 + 0.5)
-        local covStr = string.format("%d%%", covPct)
+        local covStr = string.format("%s%d%%", approx, covPct)
         local covCol = (sessCov >= 0.80) and SoilSprayerInfoPanel.C_GOOD
                     or (sessCov >= 0.40) and SoilSprayerInfoPanel.C_FAIR
                     or SoilSprayerInfoPanel.C_LABEL
@@ -823,7 +830,7 @@ function SoilSprayerInfoPanel:draw()
 
         -- ── Cell 2: Session ha sprayed ────────────────────────────
         local cell2X    = panelX + cellW
-        local sessHaStr = string.format("%.2f ha", sessHa)
+        local sessHaStr = string.format("%s%.2f ha", approx, sessHa)
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(unpack(SoilSprayerInfoPanel.C_VALUE))
         renderText(cell2X + cellW * 0.5, sbY + (sbH * 0.35 - statFs) * 0.5, statFs, sessHaStr)
