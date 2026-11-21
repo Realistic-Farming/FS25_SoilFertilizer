@@ -486,3 +486,6 @@
 - [x] Bars: `SF-1063-hud_pass_estimated_test.lua` (groups E, P, D, Q and L, 52 assertions, from a real field record through `getFieldInfo`, `update`, the real `drawPanel` and the real sprayer info panel, idle and under way); group H of `SF-1063-pass_percent_unsectioned_spec_test.lua` reads the flag after the real sprayer ticks; `mutate_sf1063_hud_est.py`: 18 mutants, all killed, on the first bench alone.
 - [~] In game (owed): the TESTING row for this PR.
 - [ ] Known gap (owed, its own MAINTENANCE row): on a sectioned rig the first metres of a pass at field entry can read as estimated, until the first 10 m boom cell is accepted and sets the owner.
+
+## Two comments named the wrong key for the settings panel (2026-11-21)
+- [x] `SoilFertilityManager.lua` and `SoilSettingsUI.lua` called the settings panel's action "Shift+O". `SF_OPEN_SETTINGS` ships on Right Shift + S (`modDesc.xml`), Right Shift + O is `SF_TOGGLE_HUD`, and a player can rebind either. The comments now name the action. Comments only; no code changes.
