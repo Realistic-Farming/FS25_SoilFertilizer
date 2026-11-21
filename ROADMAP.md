@@ -142,7 +142,7 @@
 ## 2026-08-14 (Fred): the drilling-window advisory
 - [x] The field-info line now says whether the coming days are a good or risky window for drilling, from the SCS rain outlook over the season-scaled establishment horizon and the ground moisture against the kill condition. Three hedged verdicts (good / risky / forecast-only), silent when SCS is absent, never gates or writes. Renders in SF's own field-info surface; FarmTablet mirrors the hub read.
 - [x] drilling_advisory_test.lua at 5 assertions; suite 2944/0; deployed 2.5.0.74.
-- [x] The Drilling row no longer repeats its label: the three verdict strings lost their "Drilling: " prefix in all 27 language files, since the row already carries the word as its label. MAINT-200-drilling_row_wording_test.lua builds the real row for each verdict in each language.
+- [x] 2026-11-21, MAINTENANCE row 200: the Drilling row no longer repeats its label. The three verdict strings lost their "Drilling: " prefix in all 27 language files, since the row already carries the word as its label. MAINT-200-drilling_row_wording_test.lua builds the real row for each verdict in each language.
 - [~] In-game (owed): a wet-leaning field under a cloudy sky reads risky; removing SCS silences the line.
 
 ## 2026-08-14 (Fred): SF-55 traffic on wet ground - the build

@@ -13,7 +13,7 @@
 --
 -- Groups:
 --   R  for each of the 27 languages and each of the three verdicts: the row is there, its value
---      is not empty, and the value does not begin with the row's own label
+--      is not empty, it is that verdict's own text, and it does not begin with the row's own label
 --   E  the English values, pinned
 --   F  each file carries each of the three keys and the label key exactly once
 --
@@ -91,6 +91,9 @@ group("R", function()
       T.ok(tag .. ": the Drilling row is built (" .. tostring(err) .. ")", label ~= nil)
       if label ~= nil then
         T.ok(tag .. ": the value is not empty", type(value) == "string" and value ~= "")
+        -- Each of the three worlds reaches its own verdict: a threshold change that sent them all to
+        -- one verdict would leave the other two verdicts' strings unchecked.
+        T.eq(tag .. ": the row shows that verdict's own text", value, LANG[l][KEYS[verdict]])
         local repeats = type(value) == "string" and value:sub(1, #label):lower() == label:lower()
         T.ok(tag .. ": the value does not begin with the row's own label (" .. tostring(value) .. ")", not repeats)
       end
