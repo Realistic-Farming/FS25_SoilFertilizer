@@ -27,6 +27,8 @@
 --      on one row overlap, no run is drawn below the shared floor
 --   H  a very long translation: the same, and the cut text ends with the ellipsis
 --   S  the same at another panel scale and font size, and with a narrowed panel width
+--   C  the colour and the bold state each run is drawn with: the right-hand text is now drawn
+--      first on the title, field, N/P/K and pH rows, so each row puts the state back for the next draw
 --   P  the weed / disease pressure rows (label, "(protected)", the unscouted text)
 --   A  a field put to sleep: the one explanatory line, centred, stays inside the panel
 --   R  the sprayer rate panel's header, target line and burn warnings, each driven through the
@@ -52,7 +54,7 @@ local function unescape(v)
   return (v:gsub("&quot;", '"'):gsub("&lt;", "<"):gsub("&gt;", ">"):gsub("&amp;", "&"))
 end
 local EN = {}
-for k, v in (SOURCE_TEXT["translations/translation_en.xml"] or ""):gmatch('<e k="([^"]+)" v="([^"]*)"') do
+for k, v in (SOURCE_TEXT["translations/translation_en.xml"] or ""):gmatch('<e%s+k="([^"]+)"%s+v="([^"]*)"') do
   EN[k] = unescape(v)
 end
 local PREFIX_UNIT = "Uberlangerwortbestandteil-"   -- 26 characters
@@ -66,10 +68,14 @@ end
 
 -- ── the text model: width = size * 0.3 * characters ─────────────────
 local W_PER = 0.3
-local function widthOf(size, text) return size * W_PER * #tostring(text) end
+-- Bold text is wider (the engine measures with the CURRENT bold state), so a run measured
+-- before bold is set is measured too narrow and then drawn wider than its room.
+local BOLD_FACTOR = 1.15
+local boldNow = false
+local function widthOf(size, text) return size * W_PER * #tostring(text) * (boldNow and BOLD_FACTOR or 1) end
 _G.Utils = _G.Utils or {}
 _G.Utils.limitTextToWidth = function(text, size, width, _trimFront, mark)
-  local per = size * W_PER
+  local per = size * W_PER * (boldNow and BOLD_FACTOR or 1)
   if per <= 0 then return text end
   local room = math.floor(width / per) - #mark
   if room < 0 then room = 0 end
@@ -78,10 +84,13 @@ _G.Utils.limitTextToWidth = function(text, size, width, _trimFront, mark)
 end
 RenderText = RenderText or { ALIGN_LEFT = 0, ALIGN_CENTER = 1, ALIGN_RIGHT = 2 }
 
---- Runs fn with the text functions stubbed; every renderText is recorded with the alignment
---- and the width it was drawn at. Returns the pcall result and the records.
+--- Runs fn with the text functions stubbed; every renderText is recorded with the alignment,
+--- the colour and the bold state it was drawn with, and the width it was drawn at. Returns the
+--- pcall result and the records.
 local function recording(fn)
   local drawn, align = {}, RenderText.ALIGN_LEFT
+  local color = { 1, 1, 1, 1 }
+  boldNow = false
   local saved = { renderText, setTextAlignment, setTextColor, setTextBold, getTextWidth }
   renderText = function(x, y, size, t)
     local w = widthOf(size, t)
@@ -89,13 +98,15 @@ local function recording(fn)
     if align == RenderText.ALIGN_RIGHT then left, right = x - w, x
     elseif align == RenderText.ALIGN_CENTER then left, right = x - w / 2, x + w / 2
     else left, right = x, x + w end
-    drawn[#drawn + 1] = { x = x, y = y, size = size, text = t, left = left, right = right, w = w }
+    drawn[#drawn + 1] = { x = x, y = y, size = size, text = t, left = left, right = right, w = w,
+                          bold = boldNow, color = color }
   end
   setTextAlignment = function(a) align = a end
-  setTextColor = function() end
-  setTextBold = function() end
+  setTextColor = function(r, g, b, a) color = { r, g, b, a == nil and 1 or a } end
+  setTextBold = function(b) boldNow = (b == true) end
   getTextWidth = widthOf
   local ok, err = pcall(fn)
+  boldNow = false
   renderText, setTextAlignment, setTextColor, setTextBold, getTextWidth = saved[1], saved[2], saved[3], saved[4], saved[5]
   return ok, err, drawn
 end
@@ -314,6 +325,62 @@ group("E", function()
 end)
 
 -- =====================================================================
+-- GROUP C: the colour and bold state each run is drawn with
+-- =====================================================================
+local function sameRGB(a, b) return a ~= nil and b ~= nil and math.abs(a[1] - b[1]) < EPS and math.abs(a[2] - b[2]) < EPS and math.abs(a[3] - b[3]) < EPS end
+local function sameRGBA(a, b) return sameRGB(a, b) and math.abs((a[4] or 1) - (b[4] or 1)) < EPS end
+group("C", function()
+  setTexts(0)
+  local hud = frame()
+  local info = hud.cachedFieldInfo   -- the table the panel draws (update() may have replaced the one frame() built)
+  local ok, err, drawn = drawAll(hud)
+  T.ok("C0 the panel drew (" .. tostring(err) .. ")", ok and #drawn > 10)
+  local function run(text) for _, t in ipairs(drawn) do if t.text == text then return t end end end
+
+  local title = run(EN.sf_hud_title)
+  T.ok("C1 the title is bold", title ~= nil and title.bold == true)
+  T.ok("C2 and white (put back after the badge's colour)", title ~= nil and sameRGBA(title.color, { 1, 1, 1, 1 }))
+
+  local statusLabel, statusCol = hud:overallStatus(info)
+  local badge = run(g_i18n:getText("sf_report_rec_" .. statusLabel:lower()))   -- as the code reads it
+  local top = {}
+  for _, d in ipairs(drawn) do if #top < 4 then top[#top + 1] = d.text:sub(1, 22) .. (d.bold and "(b)" or "") end end
+  T.ok("C3 the status badge (" .. tostring(statusLabel) .. ", first runs: " .. table.concat(top, " | ") .. ") is bold", badge ~= nil and badge.bold == true)
+  T.ok("C4 and in its own status colour at full alpha", badge ~= nil and sameRGB(badge.color, statusCol) and math.abs(badge.color[4] - 1.0) < EPS)
+
+  local field = run(string.format(EN.sf_hud_field, 7))
+  T.ok("C5 the field text is not bold", field ~= nil and field.bold == false)
+  T.ok("C6 and in the label colour (put back after the crop's colour)", field ~= nil and sameRGBA(field.color, SoilHUD.C_LABEL))
+  local crop = run("Winter wheat")
+  T.ok("C7 the crop name is in the dim colour", crop ~= nil and sameRGBA(crop.color, SoilHUD.C_DIM))
+
+  -- N, P, K and pH: the status text is drawn first at 0.80 alpha, then the value at full alpha.
+  local function rowState(tag, valueText, status, rgb)
+    local value = run(valueText)
+    -- the status words repeat across rows, so take the one on the value's own row
+    local st
+    for _, d in ipairs(drawn) do
+      if d.text == SoilHUD.statusText(status) and value ~= nil and math.abs(d.y - value.y) < 0.0015 * hud.scale then st = d end
+    end
+    T.ok(tag .. " value: in its status colour at full alpha (put back after the status text's 0.80)",
+         value ~= nil and sameRGB(value.color, rgb) and math.abs(value.color[4] - 1.0) < EPS)
+    T.ok(tag .. " status text: the same colour at 0.80 alpha",
+         st ~= nil and sameRGB(st.color, rgb) and math.abs(st.color[4] - 0.80) < EPS)
+    T.ok(tag .. " neither is bold", value ~= nil and st ~= nil and value.bold == false and st.bold == false)
+  end
+  if info.cropTargets == nil then
+    rowState("C8 N", "88/110", info.nitrogen.status, hud:statusColor(info.nitrogen.status))
+    rowState("C9 P", "42/60", info.phosphorus.status, hud:statusColor(info.phosphorus.status))
+    rowState("C10 K", "130/160", info.potassium.status, hud:statusColor(info.potassium.status))
+  else
+    T.ok("C8 the fixture's field has no crop targets (the colours above are the plain status colours)", false)
+  end
+  local ph = info.pH
+  local phStatus = (ph == nil) and "Unknown" or ((ph >= 6.5 and ph <= 7.0) and "Good" or ((ph >= 5.5 and ph <= 7.5) and "Fair" or "Poor"))
+  rowState("C11 pH", ph ~= nil and string.format("%.1f", ph) or "--", phStatus, ph ~= nil and hud:pHColor(ph) or { 0.5, 0.5, 0.5, 1.0 })
+end)
+
+-- =====================================================================
 -- GROUPS M, H, S: long translations on the real panel
 -- =====================================================================
 local function longChecks(tag, prefixCount, opts)
@@ -351,7 +418,7 @@ end)
 group("S", function()
   longChecks("S1", 2, { scale = 1.5, fontSize = 3 })
   longChecks("S2", 2, { scale = 0.8, fontSize = 1 })
-  longChecks("S3", 2, { widthMult = 0.8 })
+  longChecks("S3", 2, { widthMult = SoilHUD.MIN_WIDTH_MULT })   -- the narrowest panel the HUD allows
 end)
 
 -- =====================================================================
@@ -427,8 +494,11 @@ group("R", function()
     local ok, err, drawn = recording(function() hud:drawSprayerRatePanel() end)
     T.ok("R0 " .. kind .. ": the rate panel drew (" .. tostring(err) .. ")", ok and #drawn >= 1)
     T.ok("R0 " .. kind .. ": " .. what .. " is on the screen", anyRun(drawn, pred) ~= nil)
+    return drawn
   end
-  english("off",    "the AUTO: OFF header", function(x) return x:find("AUTO", 1, true) ~= nil and x:find("OFF", 1, true) ~= nil end)
+  local offDrawn = english("off",    "the AUTO: OFF header", function(x) return x:find("AUTO", 1, true) ~= nil and x:find("OFF", 1, true) ~= nil end)
+  local header = anyRun(offDrawn, function(x) return x:find("AUTO", 1, true) ~= nil and x:find("OFF", 1, true) ~= nil end)
+  T.ok("R0 the rate panel's header is drawn bold (set before it is measured)", header ~= nil and header.bold == true)
   english("auto",   "the target line", function(x) return x:sub(1, #EN.sf_sprayer_target) == EN.sf_sprayer_target end)
   english("may",    "the burn-possible warning", function(x) return x == EN.sf_sprayer_burn_possible end)
   english("always", "the burn-guaranteed warning", function(x) return x == EN.sf_sprayer_burn_guaranteed end)

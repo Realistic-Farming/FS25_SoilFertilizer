@@ -2078,8 +2078,6 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     local ppmMult = SoilConstants.PPM_DISPLAY and SoilConstants.PPM_DISPLAY[baseLabel] or 1.0
     local valX    = barX + barW + 0.006*s
 
-    setTextColor(displayCol[1], displayCol[2], displayCol[3], 1.0)
-
     -- Base value string is pre-formatted in refreshFieldData (cachedValStr); only the
     -- optional ghost-bar delta suffix is computed live here because it depends on the
     -- current sprayer state which changes independently of the 0.5s field-detect cycle.

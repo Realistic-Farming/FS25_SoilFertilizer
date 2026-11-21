@@ -152,6 +152,57 @@ MUTATIONS = [
  ("M31-rate-burn-may-unfitted", HUD,
   [("g_i18n:getText(\"sf_sprayer_burn_possible\"), pw * 0.94)", "g_i18n:getText(\"sf_sprayer_burn_possible\"), nil)", 1)],
   "the may-burn warning has no width again"),
+
+ # State: the right-hand text is drawn first on four rows, so each row puts the colour (and the
+ # title row the bold state) back for the draw that follows. Group C records both per run.
+ ("M32-title-colour-not-restored", HUD,
+  [("    setTextAlignment(RenderText.ALIGN_LEFT)\n    setTextColor(1, 1, 1, 1)\n    SoilHUD.drawFitted(tx, ty - 0.006*s,",
+    "    setTextAlignment(RenderText.ALIGN_LEFT)\n    SoilHUD.drawFitted(tx, ty - 0.006*s,", 1)],
+  "the title is drawn in the badge's colour"),
+
+ ("M33-title-not-bold", HUD,
+  [("    setTextBold(true)\n    local badgeW = 0\n", "    local badgeW = 0\n", 1)],
+  "the title and the badge are not bold"),
+
+ ("M34-badge-colour-dropped", HUD,
+  [("        setTextColor(statusCol[1], statusCol[2], statusCol[3], 1.0)\n        badgeW = SoilHUD.drawFitted(",
+    "        badgeW = SoilHUD.drawFitted(", 1)],
+  "the status badge is drawn in whatever colour was left"),
+
+ ("M35-field-colour-not-restored", HUD,
+  [("    setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])\n    SoilHUD.drawFitted(tx, cy, 0.010 * fontMult * s, fieldText or \"\", innerW - cropW)",
+    "    SoilHUD.drawFitted(tx, cy, 0.010 * fontMult * s, fieldText or \"\", innerW - cropW)", 1)],
+  "the field text is drawn in the crop's dim colour"),
+
+ ("M36-crop-colour-dropped", HUD,
+  [("        setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])\n        cropW = ",
+    "        cropW = ", 1)],
+  "the crop name is drawn in the previous colour"),
+
+ ("M37-nutrient-value-alpha-not-restored", HUD,
+  [("    setTextAlignment(RenderText.ALIGN_LEFT)\n    setTextColor(displayCol[1], displayCol[2], displayCol[3], 1.0)\n    SoilHUD.drawFitted(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, valStr,",
+    "    setTextAlignment(RenderText.ALIGN_LEFT)\n    SoilHUD.drawFitted(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, valStr,", 1)],
+  "an N, P, K value is drawn at the status text's 0.80 alpha"),
+
+ ("M38-nutrient-status-alpha-dropped", HUD,
+  [("    setTextColor(displayCol[1], displayCol[2], displayCol[3], 0.80)\n    local statusW = SoilHUD.drawFitted(rightEdge, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s,\n        SoilHUD.statusText(displayStatus)",
+    "    local statusW = SoilHUD.drawFitted(rightEdge, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s,\n        SoilHUD.statusText(displayStatus)", 1)],
+  "an N, P, K status text is drawn at full alpha"),
+
+ ("M39-ph-value-alpha-not-restored", HUD,
+  [("    setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)\n    SoilHUD.drawFitted(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,\n        phKnown",
+    "    SoilHUD.drawFitted(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,\n        phKnown", 1)],
+  "the pH value is drawn at the status text's 0.80 alpha"),
+
+ ("M40-ph-status-alpha-dropped", HUD,
+  [("    setTextColor(pHCol[1], pHCol[2], pHCol[3], 0.80)\n    local statusW",
+    "    local statusW", 1)],
+  "the pH status text is drawn in the previous colour"),
+
+ ("M41-rate-header-not-bold", HUD,
+  [("    setTextBold(true)\n    setTextAlignment(RenderText.ALIGN_CENTER)\n    setTextColor(1, 1, 1, 0.90)\n    if isAuto then",
+    "    setTextAlignment(RenderText.ALIGN_CENTER)\n    setTextColor(1, 1, 1, 0.90)\n    if isAuto then", 1)],
+  "the rate panel's header is not bold (and is measured as if it were not)"),
 ]
 
 # Mutants that cannot be killed by any input, judged by reading and kept so the list stays honest.
