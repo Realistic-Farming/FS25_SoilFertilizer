@@ -758,8 +758,10 @@ function SoilSprayerInfoPanel:draw()
         -- estimate, and so is the session area taken from it. The HUD's Pass line says so in
         -- words; these two cells are narrow, so a "~" says it (no new text to translate).
         -- Only while a pass is under way (session coverage above 0, as the HUD's own Pass
-        -- line requires): before the first cell is counted, after a reload or a product
-        -- switch, and on a client, the flag is still true but there is nothing to estimate.
+        -- line requires): before anything is counted, after a reload or a product switch,
+        -- and on a client, the flag is still true but there is nothing to estimate. (On a
+        -- sectioned rig the first metres of a pass are counted by the 2 m overlap cells before
+        -- the first boom cell sets the owner: a known, owed gap, see getFieldInfo.)
         local approx = (sessCov > 0 and info and info.sessionCoverageEstimated == true) and "~" or ""
 
         local sbY   = panelBot

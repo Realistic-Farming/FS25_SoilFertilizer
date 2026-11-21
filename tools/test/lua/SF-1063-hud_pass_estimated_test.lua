@@ -351,8 +351,8 @@ group("Q", function()
   local ok2, _, texts2 = panelTexts(cnt)
   T.ok("Q6 coverage counted from boom cells: 57% and 2.28 ha, no tilde", ok2 and has(texts2, "57%") and has(texts2, "2.28 ha")
        and not has(texts2, "~57%") and not has(texts2, "~2.28 ha"))
-  -- Before the first boom cell is counted, after a reload or a product switch, and on a client,
-  -- the session coverage is 0 and the flag is still true: nothing to estimate, so no tilde.
+  -- Before anything is counted, after a reload or a product switch, and on a client, the
+  -- session coverage is 0 and the flag is still true: nothing to estimate, so no tilde.
   local _, idle = frame({ day = 0, session = 0, product = nil })
   local ok3, _, texts3 = panelTexts(idle)
   T.eq("Q7 an idle rig (no pass yet): the flag reads true", idle.sessionCoverageEstimated, true)

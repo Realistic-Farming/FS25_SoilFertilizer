@@ -618,8 +618,8 @@ end
 -- =====================================================================
 -- getFieldInfo's sessionCoverageEstimated is the notice's own test (no boom-cell owner). These
 -- rows read it after the same real passes the notice rows run, so the labels follow what the
--- sprayer hook actually wrote. Before the first boom cell is counted it reads true with a
--- session coverage of 0, which is why a label needs a coverage above 0.
+-- sprayer hook actually wrote. Before anything is counted it reads true with a session
+-- coverage of 0, which is why a label needs a coverage above 0.
 do
   newWorld({ product = FERT })
   local idle = W.ss:getFieldInfo(7)
