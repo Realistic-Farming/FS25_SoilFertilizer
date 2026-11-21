@@ -17,7 +17,7 @@ local SoilSettingsUI_mt = Class(SoilSettingsUI)
 -- Capture mod name at load time - (SoilFertilizerModName or g_currentModName) is only valid during loading.
 
 -- The 3 settings injected into the vanilla settings page (Shift+Esc).
--- Everything else lives in the custom SoilSettingsPanel (Shift+O).
+-- Everything else lives in the custom SoilSettingsPanel (the SF_OPEN_SETTINGS action).
 local VANILLA_SETTINGS = { "enabled", "showNotifications", "debugMode" }
 
 -- Resolve a translation key. g_i18n DOES know this mod's keys: mods.lua:453

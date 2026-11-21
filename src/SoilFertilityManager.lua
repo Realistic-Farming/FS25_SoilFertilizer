@@ -731,7 +731,7 @@ function SoilFertilityManager:onToggleHUDInput()
     end
 end
 
--- Input callback for Settings Panel (Shift+O)
+-- Input callback for the SF_OPEN_SETTINGS action (the Settings Panel; Right Shift + S by default)
 function SoilFertilityManager:onOpenSettingsInput()
     if not (self.settings and self.settings.enabled) then return end
     if self.settingsPanel then
