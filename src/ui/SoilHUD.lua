@@ -1601,6 +1601,24 @@ function SoilHUD:draw()
 
 end
 
+--- Draws one run of text that must not be wider than maxWidth (#771). A string that is too
+--- wide is drawn smaller, down to the shared floor, and only then cut with an ellipsis, the
+--- way the game's own text elements resize; a string that fits is drawn exactly as renderText
+--- would. The caller sets bold, colour and alignment first, because the measuring reads the
+--- current bold state. Returns the width the text was drawn at, so a neighbour can be given
+--- what is left of the row.
+---@return number width
+function SoilHUD.drawFitted(x, y, size, text, maxWidth)
+    text = text or ""
+    local drawSize = size
+    if UIHelper ~= nil and UIHelper.fitText ~= nil then
+        text, drawSize = UIHelper.fitText(text, size, maxWidth)
+    end
+    renderText(x, y, drawSize, text)
+    if type(getTextWidth) ~= "function" then return 0 end
+    return getTextWidth(drawSize, text) or 0
+end
+
 --- The coverage rows (the daily coverage and the per-pass Pass line), left-aligned in the
 --- panel, one LINE_H slot each. A row wider than the panel's inner width is drawn smaller
 --- rather than spilling past its edge, as the rate panel's target block does (#1063).
@@ -1689,18 +1707,26 @@ function SoilHUD:drawPanel()
     local asleep = info ~= nil and info.simDisabled == true
 
     -- Title + overall status badge
-    setTextBold(true)
-    setTextColor(1, 1, 1, 1)
-    renderText(tx, ty - 0.006*s, 0.012 * fontMult * s, g_i18n:getText("sf_hud_title"))
+    -- Every text run below goes through SoilHUD.drawFitted with the width it has: a long
+    -- translation is drawn smaller, then cut with an ellipsis, instead of running into its
+    -- neighbour or past the panel edge (#771). Where a left and a right text share a row, the
+    -- right one is fitted first (at most 45% of the row) and the left one gets what is left.
+    local innerW = pw - 2 * pad
+    local gap    = pad * 0.5
 
+    setTextBold(true)
+    local badgeW = 0
     if info and not asleep then
         local statusLabel, statusCol = self:overallStatus(info)
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(statusCol[1], statusCol[2], statusCol[3], 1.0)
-        renderText(px + pw - pad, ty - 0.006*s, 0.011 * fontMult * s, g_i18n:getText("sf_report_rec_" .. statusLabel:lower()))
+        badgeW = SoilHUD.drawFitted(px + pw - pad, ty - 0.006*s, 0.011 * fontMult * s,
+            g_i18n:getText("sf_report_rec_" .. statusLabel:lower()), innerW * 0.45) + gap
     end
-    setTextBold(false)
     setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(1, 1, 1, 1)
+    SoilHUD.drawFitted(tx, ty - 0.006*s, 0.012 * fontMult * s, g_i18n:getText("sf_hud_title"), innerW - badgeW)
+    setTextBold(false)
 
     -- Current Y cursor (below title bar)
     local cy = py + ph - titleH - pad
@@ -1710,14 +1736,15 @@ function SoilHUD:drawPanel()
     local cropText  = self._fmt_cropText
 
     cy = cy - SoilHUD.LINE_H * s
-    setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    renderText(tx, cy, 0.010 * fontMult * s, fieldText or "")
+    local cropW = 0
     if cropText then
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
-        renderText(px + pw - pad, cy, 0.010 * fontMult * s, cropText)
+        cropW = SoilHUD.drawFitted(px + pw - pad, cy, 0.010 * fontMult * s, cropText, innerW * 0.45) + gap
         setTextAlignment(RenderText.ALIGN_LEFT)
     end
+    setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
+    SoilHUD.drawFitted(tx, cy, 0.010 * fontMult * s, fieldText or "", innerW - cropW)
 
     if asleep then
         -- Asleep / disabled field (#692): one explanatory line in place of the soil metrics,
@@ -1728,8 +1755,8 @@ function SoilHUD:drawPanel()
         cy = cy - SoilHUD.LINE_H * s
         setTextAlignment(RenderText.ALIGN_CENTER)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], SoilHUD.C_DIM[4])
-        renderText(px + pw * 0.5, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
-            g_i18n:getText("sf_hud_asleep"))
+        SoilHUD.drawFitted(px + pw * 0.5, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s,
+            g_i18n:getText("sf_hud_asleep"), innerW)
         setTextAlignment(RenderText.ALIGN_LEFT)
         cy = cy - pad * 0.8
         self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
@@ -1743,7 +1770,7 @@ function SoilHUD:drawPanel()
         self:drawRect(px + pad, cy, pw - pad*2, SoilHUD.getSeparatorHeight(), SoilHUD.C_DIVIDER)
         setTextAlignment(RenderText.ALIGN_RIGHT)
         setTextColor(SoilHUD.C_DIM[1], SoilHUD.C_DIM[2], SoilHUD.C_DIM[3], 0.60)
-        renderText(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"))
+        SoilHUD.drawFitted(px + pw - pad, cy + 0.001*s, 0.007 * fontMult * s, g_i18n:getText("sf_hud_unit_ppm"), innerW * 0.3)
         setTextAlignment(RenderText.ALIGN_LEFT)
         cy = cy - pad * 0.8
     end
@@ -1774,9 +1801,10 @@ function SoilHUD:drawPanel()
         local omLabelX = tx
         local omValX   = tx + 0.018*s
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-        renderText(omLabelX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"))
+        SoilHUD.drawFitted(omLabelX, cy, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_om"), 0.030*s)
         setTextColor(omCol[1], omCol[2], omCol[3], 1.0)
-        renderText(omValX + 0.015*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "")
+        SoilHUD.drawFitted(omValX + 0.015*s, cy, 0.010 * fontMult * s, self._fmt_omStr or "",
+            px + pw - pad - (omValX + 0.015*s))
 
         local hasDetailRows = self:getDetailRowCount(info) > 0
         if hasDetailRows then
@@ -1844,7 +1872,7 @@ function SoilHUD:drawPanel()
                 setTextAlignment(RenderText.ALIGN_LEFT)
                 setTextColor(cr, cg, cb, 1.0)
                 cy = cy - SoilHUD.LINE_H * s
-                renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, compText)
+                SoilHUD.drawFitted(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, compText, innerW)
             end
         end
 
@@ -1855,7 +1883,7 @@ function SoilHUD:drawPanel()
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(0.88, 0.25, 0.25, 1.0)  -- red: this is a penalty
             cy = cy - SoilHUD.LINE_H * s
-            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText)
+            SoilHUD.drawFitted(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnText, innerW)
         end
 
         -- Amendment burn-risk row (#684) - heads-up that liming/manuring NOW would scorch the
@@ -1866,7 +1894,7 @@ function SoilHUD:drawPanel()
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(0.95, 0.62, 0.15, 1.0)  -- amber: a warning, not yet a penalty
             cy = cy - SoilHUD.LINE_H * s
-            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnRiskText)
+            SoilHUD.drawFitted(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, burnRiskText, innerW)
         end
 
         -- Yield efficiency summary (nil when no managed crop)
@@ -1884,7 +1912,7 @@ function SoilHUD:drawPanel()
             setTextAlignment(RenderText.ALIGN_LEFT)
             setTextColor(yr, yg, yb, 1.0)
             cy = cy - SoilHUD.LINE_H * s
-            renderText(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, yieldText)
+            SoilHUD.drawFitted(px + pad, cy + (SoilHUD.LINE_H - 0.010) * 0.5 * s, 0.010 * fontMult * s, yieldText, innerW)
         end
 
         -- Divider before hint
@@ -1905,7 +1933,7 @@ function SoilHUD:drawPanel()
     if SoilLiveHint ~= nil and SoilLiveHint.rewrite ~= nil then
         hintText = SoilLiveHint.rewrite(hintText, { "SF_HUD_DRAG" })
     end
-    renderText(px + pw * 0.5, cy, 0.009 * fontMult * s, hintText)
+    SoilHUD.drawFitted(px + pw * 0.5, cy, 0.009 * fontMult * s, hintText, innerW)
 
     -- Reset text state
     setTextBold(false)
@@ -2050,8 +2078,6 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
     local ppmMult = SoilConstants.PPM_DISPLAY and SoilConstants.PPM_DISPLAY[baseLabel] or 1.0
     local valX    = barX + barW + 0.006*s
 
-    setTextColor(displayCol[1], displayCol[2], displayCol[3], 1.0)
-
     -- Base value string is pre-formatted in refreshFieldData (cachedValStr); only the
     -- optional ghost-bar delta suffix is computed live here because it depends on the
     -- current sprayer state which changes independently of the 0.5s field-detect cycle.
@@ -2066,13 +2092,18 @@ function SoilHUD:drawNutrientRow(label, baseLabel, nutrient, px, cy, pw, s, font
             valStr = valStr .. string.format(" (+%d)", projPpm)
         end
     end
-    renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, valStr)
-
-    -- Status label
+    -- Status label first (right edge, at most 45% of the room right of the value's start),
+    -- then the value gets the rest of the row (#771).
+    local rightEdge = px + pw - pad
+    local rowRoom   = rightEdge - valX
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(displayCol[1], displayCol[2], displayCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, SoilHUD.statusText(displayStatus))
+    local statusW = SoilHUD.drawFitted(rightEdge, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s,
+        SoilHUD.statusText(displayStatus), rowRoom * 0.45)
     setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(displayCol[1], displayCol[2], displayCol[3], 1.0)
+    SoilHUD.drawFitted(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, valStr,
+        rowRoom - statusW - pad * 0.5)
 
     return cy
 end
@@ -2094,7 +2125,7 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     -- Label
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    renderText(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"))
+    SoilHUD.drawFitted(tx, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s, g_i18n:getText("sf_hud_label_ph"), 0.013*s)
 
     local barX  = tx + 0.015*s
     local barY  = cy + (rowH - barH) * 0.5
@@ -2143,22 +2174,24 @@ function SoilHUD:drawPHRow(info, px, cy, pw, s, fontMult, fillType)
     local optX = barX + optNorm * barW
     self:drawRect(optX - divW*0.5, barY - 0.001*s, divW, barH + 0.002*s, {0.85, 0.85, 0.85, 0.70})
 
-    -- Numeric value
+    -- Numeric value and status text (right-aligned). The status is fitted first, then the
+    -- value gets the rest of the row (#771).
     local valX = barX + barW + 0.006*s
-    setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
-    renderText(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
-               phKnown and string.format("%.1f", pH) or "--")
-
-    -- Status text (right-aligned)
     local phStatus
     if not phKnown then phStatus = "Unknown"
     elseif pH >= 6.5 and pH <= 7.0 then phStatus = "Good"
     elseif pH >= 5.5 and pH <= 7.5 then phStatus = "Fair"
     else phStatus = "Poor" end
+    local rightEdge = px + pw - pad
+    local rowRoom   = rightEdge - valX
     setTextAlignment(RenderText.ALIGN_RIGHT)
     setTextColor(pHCol[1], pHCol[2], pHCol[3], 0.80)
-    renderText(px + pw - pad, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s, SoilHUD.statusText(phStatus))
+    local statusW = SoilHUD.drawFitted(rightEdge, cy + (rowH - 0.009*s) * 0.5, 0.009 * fontMult * s,
+        SoilHUD.statusText(phStatus), rowRoom * 0.45)
     setTextAlignment(RenderText.ALIGN_LEFT)
+    setTextColor(pHCol[1], pHCol[2], pHCol[3], 1.0)
+    SoilHUD.drawFitted(valX, cy + (rowH - 0.010*s) * 0.5, 0.010 * fontMult * s,
+        phKnown and string.format("%.1f", pH) or "--", rowRoom - statusW - pad * 0.5)
 
     return cy
 end
@@ -2174,6 +2207,7 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     local barW     = self:getMetricBarWidth(pw, s, 0.038, 0.035)
     local textSize = 0.010 * fontMult * s
     local tx       = px + pad
+    local rightEdge = px + pw - pad
 
     -- Pre-decrement so the row occupies [cy, cy+rowH] - same pattern as drawNutrientRow,
     -- which ensures bars are centred within their own row and not in the row above (#HUD).
@@ -2183,10 +2217,10 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     -- of the bar + %, so neither the severity nor the name leaks on the free monitor.
     if hiddenText then
         setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-        renderText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey))
+        SoilHUD.drawFitted(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey), 0.036*s)
         setTextAlignment(RenderText.ALIGN_LEFT)
         setTextColor(SoilHUD.C_FAIR[1], SoilHUD.C_FAIR[2], SoilHUD.C_FAIR[3], 1.0)
-        renderText(tx + 0.038*s, cy + (rowH - textSize) * 0.5, textSize, hiddenText)
+        SoilHUD.drawFitted(tx + 0.038*s, cy + (rowH - textSize) * 0.5, textSize, hiddenText, rightEdge - (tx + 0.038*s))
         return cy
     end
 
@@ -2197,9 +2231,9 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     elseif pressure < wp.MEDIUM then col = SoilHUD.C_FAIR
     else                             col = SoilHUD.C_POOR end
 
-    -- Label - vertically centred in row
+    -- Label - vertically centred in row, no wider than the gap before the bar
     setTextColor(SoilHUD.C_LABEL[1], SoilHUD.C_LABEL[2], SoilHUD.C_LABEL[3], SoilHUD.C_LABEL[4])
-    renderText(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey))
+    SoilHUD.drawFitted(tx, cy + (rowH - textSize) * 0.5, textSize, g_i18n:getText(labelKey), 0.036*s)
 
     -- Bar - centred in row, horizontally aligned with nutrient bars
     local barX = tx + 0.038*s
@@ -2220,7 +2254,8 @@ function SoilHUD:drawPressureRow(labelKey, pressure, isProtected, px, cy, pw, s,
     if isProtected then label = label .. " " .. g_i18n:getText("sf_hud_protected") end
     setTextAlignment(RenderText.ALIGN_LEFT)
     setTextColor(col[1], col[2], col[3], 1.0)
-    renderText(barX + barW + 0.006*s, cy + (rowH - textSize) * 0.5, textSize, label)
+    SoilHUD.drawFitted(barX + barW + 0.006*s, cy + (rowH - textSize) * 0.5, textSize, label,
+        rightEdge - (barX + barW + 0.006*s))
 
     return cy
 end
@@ -2893,8 +2928,8 @@ function SoilHUD:drawSprayerRatePanel()
     if isAuto then
         setTextColor(0.4, 1.0, 0.4, 1.0)
     end
-    renderText(cx, panelY + panelH - headerH * 0.5 - self:py(3)*s,
-        0.009 * fontMult * s, headerText)
+    SoilHUD.drawFitted(cx, panelY + panelH - headerH * 0.5 - self:py(3)*s,
+        0.009 * fontMult * s, headerText, pw * 0.94)
     setTextBold(false)
 
     -- SF-73 section 7: the target block, one row per line, under the header. A row too
@@ -2968,7 +3003,7 @@ function SoilHUD:drawSprayerRatePanel()
                 if profile.K and profile.K > 0 then targetText = targetText .. math.floor(targets.K * (ppm.K or 1) + 0.5) .. "K " end
                 if profile.pH and profile.pH > 0 then targetText = targetText .. targets.pH .. "pH " end
                 setTextColor(0.7, 0.9, 0.7, 0.8)
-                renderText(cx, scrollY - self:py(6)*s, 0.008 * fontMult * s, targetText)
+                SoilHUD.drawFitted(cx, scrollY - self:py(6)*s, 0.008 * fontMult * s, targetText, pw * 0.94)
             end
         end
     end
@@ -3024,10 +3059,10 @@ function SoilHUD:drawSprayerRatePanel()
     setTextAlignment(RenderText.ALIGN_CENTER)
     if burnGuaranteed then
         setTextColor(1.0, 0.15, 0.15, 1.0)
-        renderText(cx, warnY, warnFontSize, g_i18n:getText("sf_sprayer_burn_guaranteed"))
+        SoilHUD.drawFitted(cx, warnY, warnFontSize, g_i18n:getText("sf_sprayer_burn_guaranteed"), pw * 0.94)
     elseif burnPossible then
         setTextColor(0.95, 0.65, 0.10, 1.0)
-        renderText(cx, warnY, warnFontSize, g_i18n:getText("sf_sprayer_burn_possible"))
+        SoilHUD.drawFitted(cx, warnY, warnFontSize, g_i18n:getText("sf_sprayer_burn_possible"), pw * 0.94)
     end
 
     setTextAlignment(RenderText.ALIGN_LEFT)
