@@ -8648,7 +8648,7 @@ function SoilFertilitySystem:getFieldInfo(fieldId, x, z)
         -- cells both do); on a client, where no sync carries the session coverage, that is
         -- never so, the HUD draws no Pass line and the panel shows 0% with no "~". One gap is
         -- known: on a sectioned rig the first metres of a pass are counted by the 2 m overlap
-        -- cells before the first 10 m cell sets the owner, so for a few ticks the flag reads
+        -- cells before the first 10 m cell sets the owner, so in those first metres the flag reads
         -- true with a small coverage above 0 and the labels say estimated (owed, MAINTENANCE
         -- row of 2026-11-20).
         sessionCoverageEstimated = not field._geometricCoverageOwner,

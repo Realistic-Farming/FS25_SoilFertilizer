@@ -14,7 +14,7 @@
 # The selection goes through a filtered copy of run-tests.mjs written beside it and deleted
 # in `finally` (the runner has no per-file option; --loads src/SoilFertilitySystem.lua would
 # run about 130 files per mutant). A filter can only turn a kill into a survivor, never fake
-# one, so a SURVIVED result in SoilHUD.lua is re-run once under --loads of that file (17 files)
+# one, so a SURVIVED result in SoilHUD.lua or SoilSprayerInfoPanel.lua is re-run once under --loads of that file (17 or 4 files)
 # before it is called real. A SURVIVED result in SoilFertilitySystem.lua is reported as it
 # stands: the one other reader of the new field, group H of SF-1063-pass_percent_unsectioned_spec_test.lua, is not in this selection.
 #
@@ -220,7 +220,7 @@ for mid, rel, edits, why in MUTATIONS:
     try:
         rc, fails, crashes = run_suite(None)
         if rc == 0 and rel in (HUD, PNL):
-            # the filter can only hide a kill: a survivor in the HUD file is re-run under --loads
+            # the filter can only hide a kill: a survivor in the HUD or panel file is re-run under --loads
             rc, fails, crashes = run_suite(rel)
     finally:
         with open(path, "wb") as f:
