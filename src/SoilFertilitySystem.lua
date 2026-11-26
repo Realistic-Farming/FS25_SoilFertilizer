@@ -5896,6 +5896,34 @@ local RWE_LEACH_MULTIPLIERS = {
 -- into the same leach factor, so watering is a trade-off rather than a free yield lever.
 -- Firewall: SF is the sole writer of its N/P/K; it only READS SCS moisture, never writes it.
 -- When SCS is absent (moisture nil) this is byte-identical to the original rain-only leach.
+--- Potassium leach factor for a field's soil class (SoilConstants.RAIN.K_LEACH_BY_SOIL),
+--- plus the class it used. Probe order mirrors HookManager:_seedRateSoilFactor
+--- (getFieldSoilType, then getSoilType). Neutral 1.0 / nil when SCS is absent, throws,
+--- or returns a class the table does not list, so those fields leach as before.
+---@param fieldId number
+---@return number factor
+---@return string|nil soilClass
+function SoilFertilitySystem:potassiumLeachSoilFactor(fieldId)
+    local tbl = SoilConstants.RAIN and SoilConstants.RAIN.K_LEACH_BY_SOIL
+    if not tbl then return 1.0, nil end
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    if not csMgr then return 1.0, nil end
+    -- Called per field on the leach path: no closures, method passed straight to pcall
+    -- (a missing method makes pcall return false, which falls through to neutral).
+    local soilClass
+    local ok, a = pcall(csMgr.getFieldSoilType, csMgr, fieldId)
+    if ok and type(a) == "string" then soilClass = a end
+    if soilClass == nil then
+        local ok2, b = pcall(csMgr.getSoilType, csMgr, fieldId)
+        if ok2 and type(b) == "string" then soilClass = b end
+    end
+    if soilClass == nil then return 1.0, nil end
+    soilClass = string.lower(soilClass)
+    local f = tbl[soilClass]
+    if type(f) ~= "number" or f < 0 then return 1.0, nil end
+    return f, soilClass
+end
+
 function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     if not self.settings.enabled or not self.settings.rainEffects then return end
     rainScale = rainScale or 0
@@ -5983,8 +6011,10 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                     -- N loses at the field's blended source rate
                     -- (anhydrous slow ... AN fast); 1.0 = upstream when no source recorded.
                     local nLeach = leachFactor * rain.NITROGEN_MULTIPLIER * (field.nLeachMult or 1.0)
+                    -- K is held on clay exchange sites and washes through sand; scales K only.
+                    local kLeach = leachFactor * rain.POTASSIUM_MULTIPLIER * self:potassiumLeachSoilFactor(fieldId)
                     field.nitrogen   = math.max(limits.MIN, field.nitrogen   - nLeach)
-                    field.potassium  = math.max(limits.MIN, field.potassium  - (leachFactor * rain.POTASSIUM_MULTIPLIER))
+                    field.potassium  = math.max(limits.MIN, field.potassium  - kLeach)
                     field.phosphorus = math.max(limits.MIN, field.phosphorus - (leachFactor * rain.PHOSPHORUS_MULTIPLIER))
                     -- [SF-79] pH acidification goes through the positional writer.
                     if type(self._phApplyField) == "function" then
@@ -6009,7 +6039,7 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                             SpatialNutrients:queueBandedDelta(self, fieldId, field,
                                 "nitrogen",  -nLeach)
                             SpatialNutrients:queueBandedDelta(self, fieldId, field,
-                                "potassium", -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                                "potassium", -kLeach)
                             -- pH rides the same banded distribution downward.
                             SpatialNutrients:queueBandedDelta(self, fieldId, field,
                                 "pH",        -(leachFactor * rain.PH_ACIDIFICATION))
@@ -6019,7 +6049,7 @@ function SoilFertilitySystem:applyRainEffects(dt, rainScale)
                             self:_vmFlushFieldDeltas(fieldId, field)
                         else
                             self:_vmQueueFieldDelta(field, "nitrogen",   -nLeach)
-                            self:_vmQueueFieldDelta(field, "potassium",  -(leachFactor * rain.POTASSIUM_MULTIPLIER))
+                            self:_vmQueueFieldDelta(field, "potassium",  -kLeach)
                             self:_vmQueueFieldDelta(field, "phosphorus", -(leachFactor * rain.PHOSPHORUS_MULTIPLIER))
                             self:_vmQueueFieldDelta(field, "pH",         -(leachFactor * rain.PH_ACIDIFICATION))
                             self:_vmFlushFieldDeltas(fieldId, field)

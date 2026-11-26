@@ -1398,6 +1398,18 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
                 info.fertilizerApplied,
                 info.needsFertilization and "Yes" or "No"
             )
+            -- Soil class and its potassium leach factor, so a field whose K holds
+            -- (clay) or drains (sand) after rain reads as soil, not as a bug.
+            local soilSys = g_SoilFertilityManager.soilSystem
+            if type(soilSys.potassiumLeachSoilFactor) == "function" then
+                local kf, soilClass = soilSys:potassiumLeachSoilFactor(fid)
+                if soilClass ~= nil then
+                    local note = (kf < 1.0 and "holds potassium")
+                        or (kf > 1.0 and "potassium leaches faster")
+                        or "reference"
+                    fInfo = fInfo .. string.format("\nSoil Class: %s (%s, K leaching x%.2f)", soilClass, note, kf)
+                end
+            end
             print(fInfo)
             SoilSettingsGUI.writeFieldDump(fid, info)
             return fInfo
