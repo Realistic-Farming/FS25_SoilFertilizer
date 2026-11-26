@@ -109,7 +109,7 @@ do
 end
 
 -- ---------------------------------------------------------------------
--- Production entry point: onEnvironmentUpdate -> applyRainEffects, two fields with
+-- Production entry point: onEnvironmentUpdate -> applyRainEffects, three fields with
 -- different classes. The SCS stub looks the class up BY FIELD ID the way
 -- CropStressManager:getFieldSoilType does (soilSystem.fieldData[id].soilType), so a
 -- wrong or nil id reaching the helper turns the factor neutral and fails here.
