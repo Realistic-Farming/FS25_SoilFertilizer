@@ -5878,6 +5878,38 @@ function SoilFertilitySystem:_processOneDailyField(fieldId, field)
 end
 
 
+--- Potassium leach factor for a field's soil class (SoilConstants.RAIN.K_LEACH_BY_SOIL),
+--- plus the class it used. Probe order mirrors HookManager:_seedRateSoilFactor
+--- (getFieldSoilType, then getSoilType). Neutral 1.0 / nil when SCS is absent, throws,
+--- or returns a class the table does not list, so those fields leach as before.
+--- Called per field on the leach path, so: no closures, and each method is checked
+--- before it is called (SCS has no getSoilType today; calling nil through pcall would
+--- raise and catch an error for every field on every rainy frame).
+---@param fieldId number
+---@return number factor
+---@return string|nil soilClass
+function SoilFertilitySystem:potassiumLeachSoilFactor(fieldId)
+    local tbl = SoilConstants.RAIN and SoilConstants.RAIN.K_LEACH_BY_SOIL
+    if not tbl then return 1.0, nil end
+    local csMgr = g_currentMission and g_currentMission.cropStressManager
+    if not csMgr then return 1.0, nil end
+    local soilClass
+    if type(csMgr.getFieldSoilType) == "function" then
+        local ok, a = pcall(csMgr.getFieldSoilType, csMgr, fieldId)
+        if ok and type(a) == "string" then soilClass = a end
+    end
+    if soilClass == nil and type(csMgr.getSoilType) == "function" then
+        local ok2, b = pcall(csMgr.getSoilType, csMgr, fieldId)
+        if ok2 and type(b) == "string" then soilClass = b end
+    end
+    if soilClass == nil then return 1.0, nil end
+    soilClass = string.lower(soilClass)
+    local f = tbl[soilClass]
+    if type(f) ~= "number" or f < 0 then return 1.0, nil end
+    return f, soilClass
+end
+
+
 -- Apply rain effects
 -- PHASE 1: Only leach owned/active fields - unowned parcels don't need
 -- per-frame nutrient calculations since no player is managing them.
@@ -5896,34 +5928,6 @@ local RWE_LEACH_MULTIPLIERS = {
 -- into the same leach factor, so watering is a trade-off rather than a free yield lever.
 -- Firewall: SF is the sole writer of its N/P/K; it only READS SCS moisture, never writes it.
 -- When SCS is absent (moisture nil) this is byte-identical to the original rain-only leach.
---- Potassium leach factor for a field's soil class (SoilConstants.RAIN.K_LEACH_BY_SOIL),
---- plus the class it used. Probe order mirrors HookManager:_seedRateSoilFactor
---- (getFieldSoilType, then getSoilType). Neutral 1.0 / nil when SCS is absent, throws,
---- or returns a class the table does not list, so those fields leach as before.
----@param fieldId number
----@return number factor
----@return string|nil soilClass
-function SoilFertilitySystem:potassiumLeachSoilFactor(fieldId)
-    local tbl = SoilConstants.RAIN and SoilConstants.RAIN.K_LEACH_BY_SOIL
-    if not tbl then return 1.0, nil end
-    local csMgr = g_currentMission and g_currentMission.cropStressManager
-    if not csMgr then return 1.0, nil end
-    -- Called per field on the leach path: no closures, method passed straight to pcall
-    -- (a missing method makes pcall return false, which falls through to neutral).
-    local soilClass
-    local ok, a = pcall(csMgr.getFieldSoilType, csMgr, fieldId)
-    if ok and type(a) == "string" then soilClass = a end
-    if soilClass == nil then
-        local ok2, b = pcall(csMgr.getSoilType, csMgr, fieldId)
-        if ok2 and type(b) == "string" then soilClass = b end
-    end
-    if soilClass == nil then return 1.0, nil end
-    soilClass = string.lower(soilClass)
-    local f = tbl[soilClass]
-    if type(f) ~= "number" or f < 0 then return 1.0, nil end
-    return f, soilClass
-end
-
 function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     if not self.settings.enabled or not self.settings.rainEffects then return end
     rainScale = rainScale or 0
