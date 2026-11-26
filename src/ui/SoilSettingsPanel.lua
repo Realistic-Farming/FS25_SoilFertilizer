@@ -2,7 +2,7 @@
 -- FS25 Soil & Fertilizer - Settings Panel
 -- =========================================================
 -- Fully custom-drawn settings panel. No XML - pure overlay.
--- Open/close: SHIFT+O
+-- Open/close: the SF_OPEN_SETTINGS action (Right Shift + S by default)
 -- Landing page → category tile → settings list.
 -- =========================================================
 -- Author: TisonK
