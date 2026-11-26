@@ -153,9 +153,9 @@ function SoilSettingsUI:onFrameOpen(frame)
     local isAdmin = self:isPlayerAdmin()
 
     -- Section header with hint to open full settings panel
-    -- The old "(SHIFT+O ...)" named the WRONG action's key: SF_OPEN_SETTINGS
-    -- ships on Right Shift+S, while Right Shift+O is SF_TOGGLE_HUD. Read the
-    -- chord live from Soil's own helper rather than printing any default.
+    -- The old "(SHIFT+O ...)" named a key SF_OPEN_SETTINGS does not ship on
+    -- (Right Shift+S by default). Read the chord live from Soil's own
+    -- helper rather than printing any default.
     local sfHint = ""
     if SoilLiveHint ~= nil and SoilLiveHint.chord ~= nil then
         local c = SoilLiveHint.chord("SF_OPEN_SETTINGS")

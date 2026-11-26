@@ -487,5 +487,5 @@
 - [~] In game (owed): the TESTING row for this PR.
 - [ ] Known gap (owed, its own MAINTENANCE row): on a sectioned rig the first metres of a pass at field entry can read as estimated, until the first 10 m boom cell is accepted and sets the owner.
 
-## Two comments named the wrong key for the settings panel (2026-11-21)
-- [x] `SoilFertilityManager.lua` and `SoilSettingsUI.lua` called the settings panel's action "Shift+O". `SF_OPEN_SETTINGS` ships on Right Shift + S (`modDesc.xml`), Right Shift + O is `SF_TOGGLE_HUD`, and a player can rebind either. The comments now name the action. Comments only; no code changes.
+## Comments named the wrong key for the settings panel (2026-11-21)
+- [x] `SoilFertilityManager.lua`, `SoilSettingsPanel.lua` and `SoilSettingsUI.lua` called the settings panel's action "Shift+O". `SF_OPEN_SETTINGS` ships on Right Shift + S (`modDesc.xml`) and a player can rebind it. The comments now name the action. Comments only; no code changes.

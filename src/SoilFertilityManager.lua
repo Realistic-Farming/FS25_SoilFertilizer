@@ -303,7 +303,7 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
         end
 
 
-        -- Settings panel (SHIFT+O)
+        -- Settings panel (opened by the SF_OPEN_SETTINGS action)
         if SoilSettingsPanel then
             self.settingsPanel = SoilSettingsPanel.new(self.settings)
             SoilLogger.info("Settings panel created")
