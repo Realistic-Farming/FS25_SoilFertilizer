@@ -483,3 +483,10 @@ Not in this fix, by Tyson's rulings of 2026-10-03: per-bag shop pictures (every 
 - [x] Bar: `MAINT-343-see_spray_herbicide_engine_weed_spec_test.lua` (33 assertions, from the real `onUpdate` through `getIsWorkAreaActive` and `getSprayerUsage`), red on development before the change. `mutate_maint343.py` kills 13 of 13 mutants.
 - [~] Not proved: the game's own `processSprayerArea` and tank drain, a real map's weed layer returning the state the bar returns, and anything on the installed game. The field-level check for a sprayer with no nozzle nodes (`sfCheckFieldSeeSpraysTarget`) still reads Soil's pressure only.
 - The in-game check is the TESTING row for this PR. Design origin: none.
+
+## 2026-11-27: one shared weed-state boundary for See & Spray herbicide (MAINTENANCE row 346)
+
+- [x] The first native weed state that means "weeds gone" (0, or 7 and up; `maps_weed.xml`: a herbicide turns states 1 to 6 into 0 or 7 to 9) was a literal in the sprayer credit hook and a separate copy in the per-nozzle decision. It is now one constant, `SoilConstants.SEE_AND_SPRAY.WEED_STATE_WITHERED_FROM`, read by both, so they cannot disagree about which weed states are a target. No behaviour change.
+- [x] Bars: `MAINT-346-weed_state_boundary_hook_spec_test.lua` (5 assertions, from the real credit-hook chain) and group W8 of `MAINT-343-see_spray_herbicide_engine_weed_spec_test.lua` (the nozzle side), three assertions red on development before the change. `mutate_maint346.py` kills 5 of 5 mutants; `mutate_maint343.py` follows the constant and still kills 13 of 13.
+- [~] Not proved: a map whose weed table differs from the base-game one would still be read by both with the same boundary. Deriving it from the map's own herbicide table is not part of this change.
+- The in-game check is the TESTING row for this PR (none needed). Design origin: none.

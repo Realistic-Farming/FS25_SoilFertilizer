@@ -312,3 +312,16 @@ do
   for i = before + 1, #LOG do if LOG[i]:find("closed", 1, true) then again = again + 1 end end
   T.eq("W7.6 a closing after the gap logs once more", again, 1)
 end
+
+-- =====================================================================
+-- W8. One boundary for the hook and the nozzle path (MAINTENANCE row 346)
+-- =====================================================================
+do
+  local SS = SoilConstants.SEE_AND_SPRAY
+  local saved = SS.WEED_STATE_WITHERED_FROM
+  SS.WEED_STATE_WITHERED_FROM = 3
+  T.eq("W8.1 with the shared boundary moved to 3, native state 3 is 'weeds gone' for the nozzle path", (opened(3, 40)), 0)
+  SS.WEED_STATE_WITHERED_FROM = 5
+  T.eq("W8.2 moved to 5, state 3 is a target again", (opened(3, 0)), 3)
+  SS.WEED_STATE_WITHERED_FROM = saved
+end
