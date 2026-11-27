@@ -444,7 +444,8 @@ SoilConstants.RAIN = {
     -- barely moves on clay and washes through sand; nitrate (an anion) is not held
     -- this way, so this scales K ONLY. Ratios sand 1.0 : loam 0.5 : clay 0.3, from
     -- Extended_PF's K_RETENTION, re-referenced to loam so a field with no class
-    -- (SCS absent, unknown string) leaches exactly as before.
+    -- (SCS not installed, unknown string) leaches exactly as before. SCS switched off
+    -- in its settings still reports the class, as for SEED_RATE_BY_SOIL.
     K_LEACH_BY_SOIL = {
         sandy = 2.0,
         loamy = 1.0,

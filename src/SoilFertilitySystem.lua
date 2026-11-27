@@ -5880,8 +5880,9 @@ end
 
 --- Potassium leach factor for a field's soil class (SoilConstants.RAIN.K_LEACH_BY_SOIL),
 --- plus the class it used. Probe order mirrors HookManager:_seedRateSoilFactor
---- (getFieldSoilType, then getSoilType). Neutral 1.0 / nil when SCS is absent, throws,
---- or returns a class the table does not list, so those fields leach as before.
+--- (getFieldSoilType, then getSoilType). Neutral 1.0 / nil when SCS is not installed, throws,
+--- or returns a class the table does not list, so those fields leach as before. SCS
+--- switched off in its settings still reports the class (as for seed rate and wetness).
 --- Called per field on the leach path, so: no closures, and each method is checked
 --- before it is called (SCS has no getSoilType today; calling nil through pcall would
 --- raise and catch an error for every field on every rainy frame).
