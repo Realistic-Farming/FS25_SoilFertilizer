@@ -747,11 +747,6 @@ function SFNozzleEffects.pass3ReadPoint(vehicle, probeX, probeZ, valueMaps)
     return centreOf(probeX + hx * d), centreOf(probeZ + hz * d)
 end
 
---- #1174: the first weed state that is the engine's "weeds gone". maps_weed.xml: a herbicide turns
---- states 1 to 6 into 0 or 7 to 9, and 7 to 9 are the withered result. The credit hook reads the same
---- boundary (HookManager.installSeeAndSprayHook: `ws == 0 or ws >= 7`).
-SFNozzleEffects.WEED_STATE_WITHERED_FROM = 7
-
 --- #1174: the engine's own weed state at a world point, or nil when it cannot be read. It is the
 --- call FieldState:update makes (FieldState.lua:107), without the rest of that update's reads,
 --- because this runs for every nozzle every frame. A map with no weed layer answers 0 everywhere
@@ -947,7 +942,7 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
         local engineState = SFNozzleEffects.readEngineWeedState(px, pz)
         if engineState ~= nil then
             effectData.ssWeedRead = "engine"
-            if engineState > 0 and engineState < SFNozzleEffects.WEED_STATE_WITHERED_FROM then return true, 1 end
+            if engineState > 0 and engineState < ssCfg.WEED_STATE_WITHERED_FROM then return true, 1 end
         else
             effectData.ssWeedRead = "pressure"
             if weedVal >= ssCfg.WEED_THRESHOLD

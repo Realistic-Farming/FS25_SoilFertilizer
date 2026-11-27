@@ -2174,7 +2174,7 @@ function HookManager:installSeeAndSprayHook()
                             local ws = fs.weedState or -1
                             if ws >= 0 then
                                 groundTruth = true
-                                weedsGone = (ws == 0 or ws >= 7)
+                                weedsGone = (ws == 0 or ws >= ssCfg.WEED_STATE_WITHERED_FROM)
                             end
                         end
                     end

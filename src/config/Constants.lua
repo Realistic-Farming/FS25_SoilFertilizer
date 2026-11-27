@@ -2044,6 +2044,11 @@ SoilConstants.SEE_AND_SPRAY = {
     -- ramps from MIN_RATE up to MAX_RATE. Only used when per-vehicle Variable Rate
     -- is enabled; otherwise See & Spray stays hard on/off.
     FULL_RATE_PRESSURE = 50,
+    -- The first native weed state that means "weeds gone" (MAINTENANCE row 346). maps_weed.xml: a
+    -- herbicide turns states 1 to 6 into 0 or 7 to 9, and 7 to 9 are the withered result. The credit hook
+    -- (HookManager.installSeeAndSprayHook) and the per-nozzle decision (SFNozzleEffects) both read this one
+    -- value, so they cannot disagree about which weed states are a target.
+    WEED_STATE_WITHERED_FROM = 7,
 }
 
 -- ========================================

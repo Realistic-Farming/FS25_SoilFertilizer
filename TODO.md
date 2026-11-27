@@ -499,3 +499,9 @@
 - [x] Bar `MAINT-343-see_spray_herbicide_engine_weed_spec_test.lua` (33 assertions) and `mutate_maint343.py` (13 of 13 killed). The four other tests that name `SFNozzleEffects` stay green (99 assertions). Targeted runs only; the whole suite was not rerun.
 - [~] In game (owed): the TESTING row for this PR.
 - [ ] Known gap, not part of this change: `sfCheckFieldSeeSpraysTarget`, the field-level check for a sprayer with no nozzle nodes, still reads Soil's weed pressure only.
+
+## One shared weed-state boundary for See & Spray herbicide (2026-11-27)
+- [x] `Constants.lua`: `SEE_AND_SPRAY.WEED_STATE_WITHERED_FROM = 7`. `HookManager.installSeeAndSprayHook` and `SFNozzleEffects:sfUpdateNozzleEffectState` both read it; the nozzle path's own copy is gone. No behaviour change.
+- [x] Bars `MAINT-346-weed_state_boundary_hook_spec_test.lua` (5 assertions) and group W8 of the MAINT-343 bar; `mutate_maint346.py` (5 of 5 killed) and `mutate_maint343.py` (13 of 13). The four other tests that name `SFNozzleEffects` stay green. Targeted runs only; the whole suite was not rerun.
+- [~] In game: none needed, the behaviour is unchanged.
+- [ ] Known gap, not part of this change: deriving the boundary from the map's own herbicide table, for a map whose weed table differs.
