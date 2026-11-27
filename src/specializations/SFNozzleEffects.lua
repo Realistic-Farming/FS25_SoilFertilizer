@@ -625,6 +625,16 @@ function SFNozzleEffects.sfCheckWholeBoomClosed(vehicle, spec)
     if spec._ssWholeClosed then return end
     spec._ssWholeClosed = true
     local now = g_time or 0
+    -- #1174: the decision appeared nowhere in log.txt, so a report could not say whether See & Spray
+    -- had closed the boom or why. One line per closing (the boom must reopen to log again) and not
+    -- more often than SS_MESSAGE_GAP_MS, so a boom that flaps across patchy weeds cannot fill the
+    -- log. On every machine, whether or not a message is shown. The weed reading is the first nozzle's.
+    if spec._ssLogAt == nil or now - spec._ssLogAt >= SFNozzleEffects.SS_MESSAGE_GAP_MS then
+        spec._ssLogAt = now
+        local weedRead = effects[1] and effects[1].ssWeedRead or "n/a"
+        SoilLogger.info("See & Spray closed every nozzle on vehicle %s: %s (weed reading: %s)",
+            tostring(vehicle.id), tostring(reason), tostring(weedRead))
+    end
     if spec._ssMessageAt ~= nil and now - spec._ssMessageAt < SFNozzleEffects.SS_MESSAGE_GAP_MS then return end
     if type(vehicle.getIsActiveForInput) ~= "function" or not vehicle:getIsActiveForInput(true, true) then return end
     local ss = g_SoilFertilityManager and g_SoilFertilityManager.soilSystem
@@ -737,6 +747,27 @@ function SFNozzleEffects.pass3ReadPoint(vehicle, probeX, probeZ, valueMaps)
     return centreOf(probeX + hx * d), centreOf(probeZ + hz * d)
 end
 
+--- #1174: the first weed state that is the engine's "weeds gone". maps_weed.xml: a herbicide turns
+--- states 1 to 6 into 0 or 7 to 9, and 7 to 9 are the withered result. The credit hook reads the same
+--- boundary (HookManager.installSeeAndSprayHook: `ws == 0 or ws >= 7`).
+SFNozzleEffects.WEED_STATE_WITHERED_FROM = 7
+
+--- #1174: the engine's own weed state at a world point, or nil when it cannot be read. It is the
+--- call FieldState:update makes (FieldState.lua:107), without the rest of that update's reads,
+--- because this runs for every nozzle every frame. A map with no weed layer answers 0 everywhere
+--- (WeedSystem:getWeedStateAtWorldPos), which would read as "no weeds" and close every nozzle for
+--- good, so it is checked first: no layer, no reading, and Soil's own pressure decides.
+---@return number|nil
+function SFNozzleEffects.readEngineWeedState(x, z)
+    local weedSystem = g_currentMission and g_currentMission.weedSystem
+    if weedSystem == nil or type(x) ~= "number" or type(z) ~= "number" then return nil end
+    local okLayer, hasLayer = pcall(weedSystem.getMapHasWeed, weedSystem)
+    if not okLayer or hasLayer ~= true then return nil end
+    local okState, state = pcall(weedSystem.getWeedStateAtWorldPos, weedSystem, x, z)
+    if not okState or type(state) ~= "number" or state < 0 then return nil end
+    return state
+end
+
 -- Per-nozzle decision: returns (isActive, amountScale).
 -- Checks in order: sprayer state → section active → field boundary → See & Spray threshold.
 function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, lastSpeed)
@@ -745,6 +776,9 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
     -- "full" (pass 3, the ground ahead already has enough) or "notarget" (the chemical check).
     -- Any other closing (switched off, too slow, a section or field boundary) leaves it nil.
     effectData.ssClosed = nil
+    -- #1174: where the weed reading behind a HERBICIDE decision came from this pass: "engine" (the
+    -- engine's weed map) or "pressure" (Soil's own, when the map cannot be read). nil otherwise.
+    effectData.ssWeedRead = nil
 
     if not isTurnedOn                                      then return false, 1 end
     if (tonumber(lastSpeed) or 0) < 0.25                  then return false, 1 end
@@ -905,8 +939,21 @@ function SFNozzleEffects:sfUpdateNozzleEffectState(effectData, dt, isTurnedOn, l
 
     if isPest    and pestVal    >= ssCfg.PEST_THRESHOLD    then return true, 1 end
     if isDisease and diseaseVal >= ssCfg.DISEASE_THRESHOLD then return true, 1 end
-    if isWeed    and weedVal    >= ssCfg.WEED_THRESHOLD
-        and not (fd.herbicideDaysLeft and fd.herbicideDaysLeft > 0) then return true, 1 end
+    if isWeed then
+        -- #1174: the engine's weed map is the ground truth, as it is for the credit hook
+        -- (HookManager.installSeeAndSprayHook): a state of 0, or 7 and up, is no target; anything
+        -- else is. Soil's own pressure, which a new field starts at 0 and only the daily batch fills
+        -- from that map, decides only when the map cannot be read.
+        local engineState = SFNozzleEffects.readEngineWeedState(px, pz)
+        if engineState ~= nil then
+            effectData.ssWeedRead = "engine"
+            if engineState > 0 and engineState < SFNozzleEffects.WEED_STATE_WITHERED_FROM then return true, 1 end
+        else
+            effectData.ssWeedRead = "pressure"
+            if weedVal >= ssCfg.WEED_THRESHOLD
+                and not (fd.herbicideDaysLeft and fd.herbicideDaysLeft > 0) then return true, 1 end
+        end
+    end
 
     effectData.ssClosed = "notarget"
     return false, 1
