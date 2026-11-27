@@ -442,8 +442,8 @@ SoilConstants.RAIN = {
     -- Potassium leach by soil class (SCS getFieldSoilType), loam = 1.0 reference.
     -- K+ is a cation held on clay and organic-matter exchange sites (CEC), so it
     -- barely moves on clay and washes through sand; nitrate (an anion) is not held
-    -- this way, so this scales K ONLY. Ratios sand 1.0 : loam 0.5 : clay 0.3, from
-    -- Extended_PF's K_RETENTION, re-referenced to loam so a field with no class
+    -- this way, so this scales K ONLY. Relative K loss sand 1.0 : loam 0.5 : clay 0.3
+    -- (sand:clay ~3.3, gentler than the ~10x CEC gap), re-referenced to loam so a field with no class
     -- (SCS not installed, unknown string) leaches exactly as before. SCS switched off
     -- in its settings still reports the class, as for SEED_RATE_BY_SOIL.
     K_LEACH_BY_SOIL = {

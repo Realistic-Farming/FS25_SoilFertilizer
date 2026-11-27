@@ -46,7 +46,7 @@ end
 T.eq("table: loam is the 1.0 reference", KT.loamy, 1.0)
 T.ok("table: clay holds potassium (factor below loam)", KT.clay < KT.loamy)
 T.ok("table: sand leaches potassium (factor above loam)", KT.sandy > KT.loamy)
-T.near("table: sand:clay keeps Extended_PF's 1.0:0.3 ratio", KT.sandy / KT.clay, 1.0 / 0.3, 1e-9)
+T.near("table: sand:clay keeps the 1.0:0.3 ratio", KT.sandy / KT.clay, 1.0 / 0.3, 1e-9)
 
 -- ---------------------------------------------------------------------
 -- Neutral paths: byte-identical to the pre-change leach.
