@@ -1380,12 +1380,27 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
             -- by PPM_DISPLAY (N×3, P×0.6, K×4) and this report previously did not, so the
             -- two surfaces disagreed on every field. pH and OM are already in real units.
             local ppm = SoilConstants.PPM_DISPLAY or { N = 1, P = 1, K = 1 }
+            -- Soil class and its potassium leach factor, so a field whose K holds
+            -- (clay) or drains (sand) after rain reads as soil, not as a bug.
+            -- Left out when SCS has no class for the field.
+            local soilClassLine = ""
+            local soilSys = g_SoilFertilityManager.soilSystem
+            if type(soilSys.potassiumLeachSoilFactor) == "function" then
+                local kf, soilClass = soilSys:potassiumLeachSoilFactor(fid)
+                if soilClass ~= nil then
+                    local note = (kf < 1.0 and "holds potassium")
+                        or (kf > 1.0 and "potassium leaches faster")
+                        or "reference"
+                    soilClassLine = string.format("Soil Class: %s (%s, K leaching x%.2f)\n", soilClass, note, kf)
+                end
+            end
             local fInfo = string.format(
                 "=== Field %d Soil Information ===\n" ..
                 "Nitrogen: %d ppm (%s)\nPhosphorus: %d ppm (%s)\nPotassium: %d ppm (%s)\n" ..
                 "Organic Matter: %.1f%%\npH: %s\n" ..
                 "Last Crop: %s\nDays Since Harvest: %d\nFertilizer Applied: %.0fL\n" ..
                 "Needs Fertilization: %s\n" ..
+                "%s" ..
                 "================================",
                 fid,
                 math.floor(info.nitrogen.value   * ppm.N + 0.5), info.nitrogen.status,
@@ -1396,7 +1411,8 @@ function SoilSettingsGUI:consoleCommandFieldInfo(fieldId)
                 info.lastCrop or "None",
                 info.daysSinceHarvest,
                 info.fertilizerApplied,
-                info.needsFertilization and "Yes" or "No"
+                info.needsFertilization and "Yes" or "No",
+                soilClassLine
             )
             print(fInfo)
             SoilSettingsGUI.writeFieldDump(fid, info)
