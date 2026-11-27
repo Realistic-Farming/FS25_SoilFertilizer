@@ -254,6 +254,7 @@ source(modDirectory .. "src/TopographyCache.lua")
 source(modDirectory .. "src/target/TargetNutrientCore.lua")
 source(modDirectory .. "src/target/TargetFootprint.lua")
 source(modDirectory .. "src/target/TargetApplication.lua")
+source(modDirectory .. "src/FrozenGround.lua")          -- #1177: pauses leaching on frozen ground
 source(modDirectory .. "src/SoilFertilitySystem.lua")
 -- SF-79 POSITIONAL PH: the chemical-soil authority is the pH value map; the field
 -- number is a report derived from its written pixels. Hangs the private writer
@@ -1225,6 +1226,19 @@ function soilStatus()
 
         local pfBridge = g_SoilFertilityManager.pfBridge
         local pfStatus = (pfBridge and pfBridge.isActive) and "ACTIVE - SF disabled" or "not detected"
+        -- #1177: map-wide frozen-ground state, with the streak towards the next change.
+        local groundStatus = "unknown"
+        local fgState = g_SoilFertilityManager.soilSystem and g_SoilFertilityManager.soilSystem.frozenGround
+        if fgState ~= nil then
+            local fgc = SoilConstants.FROZEN_GROUND or {}
+            if fgState:isFrozen() then
+                groundStatus = string.format("frozen, leaching paused (%d/%d warm days to thaw)",
+                    fgState.warmDays, fgc.DAYS_TO_THAW or 2)
+            else
+                groundStatus = string.format("thawed (%d/%d cold days to freeze)",
+                    fgState.coldDays, fgc.DAYS_TO_FREEZE or 2)
+            end
+        end
         print(string.format(
             "=== Soil & Fertilizer Status ===\n" ..
             "Mode: %s\n" ..
@@ -1238,6 +1252,7 @@ function soilStatus()
             "Notifications: %s\n" ..
             "Seasonal Effects: %s\n" ..
             "Rain Effects: %s\n" ..
+            "Ground: %s\n" ..
             "Plowing Bonus: %s\n" ..
             "================================",
             isMultiplayer and "Multiplayer" or "Singleplayer",
@@ -1251,6 +1266,7 @@ function soilStatus()
             tostring(s.showNotifications),
             tostring(s.seasonalEffects),
             tostring(s.rainEffects),
+            groundStatus,
             tostring(s.plowingBonus)
         ))
     else
