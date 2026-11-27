@@ -16,9 +16,10 @@
 -- on the row-166 world (a real scanFields field, a real settings object, the field's own coverage).
 -- The product is UAN32, a custom product, and the two tables the refill reads about it, the identity
 -- catalogue (customProductIndices) and the price map (customFillTypePrices), are filled by the real
--- HookManager:registerCustomSprayTypes (the one production caller of the catalogue and price
--- rebuilds), never written by hand. Base-game FERTILIZER is not used: production puts it in neither
--- table, so a FERTILIZER pass stops at the refill's gate and never reaches the AI test.
+-- HookManager:registerCustomSprayTypes (the production load path that rebuilds both; the purchase
+-- refill hook rebuilds the price map too), never written by hand. Base-game FERTILIZER is not used:
+-- production puts it in neither table, so a FERTILIZER pass stops at the refill's gate and never
+-- reaches the AI test.
 --
 -- What is MODELLED (the engine, not Soil):
 --   * the fill type manager's getFillTypeIndexByName, as FillTypeManager.lua:305 has it (upper-cases
