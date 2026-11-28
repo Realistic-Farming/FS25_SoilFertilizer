@@ -1528,5 +1528,23 @@
     "views_unique": 91,
     "clones_total": 33,
     "clones_unique": 21
+  },
+  "2026-11-25": {
+    "views_total": 123,
+    "views_unique": 74,
+    "clones_total": 37,
+    "clones_unique": 21
+  },
+  "2026-11-26": {
+    "views_total": 234,
+    "views_unique": 87,
+    "clones_total": 34,
+    "clones_unique": 21
+  },
+  "2026-11-27": {
+    "views_total": 183,
+    "views_unique": 80,
+    "clones_total": 63,
+    "clones_unique": 25
   }
 }
