@@ -3745,26 +3745,34 @@ function SoilFertilitySystem:rerollAllFields()
     return count
 end
 
--- Re-roll the starting soil profile of every field the local player's farm does NOT
--- own, leaving owned fields (and all the fertilisation work done on them) untouched.
--- Companion to rerollAllFields for players who want to vary the rest of the map after
--- the 2.4.2.6 spread change without wiping the soil they built up themselves (#632).
--- Ownership is read via g_farmlandManager:getFarmlandOwner, the same idiom the spray
--- hook uses. If the player's farm can't be resolved we abort rather than risk wiping
--- owned fields. Returns: rerolled count, skipped (owned) count.
+-- Re-roll the starting soil profile of every field that NO farm owns, leaving owned
+-- fields (and all the fertilisation work done on them) untouched. Companion to
+-- rerollAllFields for players who want to vary the rest of the map after the 2.4.2.6
+-- spread change without wiping the soil they built up themselves (#632).
+--
+-- "Unowned" means FarmlandManager:getFarmlandOwner answers NO_OWNER_FARM_ID (0), the
+-- engine's answer for land nobody has bought (and for unknown ids). It does NOT mean
+-- "not owned by the farm running the command": on a multiplayer server that reading
+-- re-rolled every other farm's fields along with the open land. Anything that is not a
+-- clean 0 (a farm id, nil, a non-number, a getter that raises) is treated as owned and
+-- kept. With no farmland manager at all nothing can be proven unowned, so we abort.
+-- Returns: rerolled count, skipped (owned or NPC-managed) count.
 function SoilFertilitySystem:rerollUnownedFields()
-    local playerFarmId = g_currentMission and g_currentMission:getFarmId()
-    if not playerFarmId or playerFarmId == 0 then
-        SoilLogger.warning("rerollUnownedFields: no valid player farm id - aborting to protect owned fields")
+    local fm = g_farmlandManager
+    if fm == nil or type(fm.getFarmlandOwner) ~= "function" then
+        SoilLogger.warning("rerollUnownedFields: farmland manager unavailable - aborting to protect owned fields")
         return 0, 0
     end
+    local noOwner = (FarmlandManager ~= nil and type(FarmlandManager.NO_OWNER_FARM_ID) == "number")
+        and FarmlandManager.NO_OWNER_FARM_ID or 0
 
     local rerolled, skipped = 0, 0
     for fieldId, field in pairs(self.fieldData) do
         if type(fieldId) == "number" and type(field) == "table" then
-            local owner = g_farmlandManager and g_farmlandManager:getFarmlandOwner(fieldId)
-            if owner == playerFarmId then
-                -- Player's own field - leave its soil and progress alone.
+            local ok, owner = pcall(fm.getFarmlandOwner, fm, fieldId)
+            if not ok or owner ~= noOwner then
+                -- Owned by some farm (any farm, not only ours), or the owner could not
+                -- be read: leave its soil and progress alone.
                 skipped = skipped + 1
             elseif NpcSoilBridge and NpcSoilBridge:isNPCManaged(fieldId) == true then
                 -- B5: designated NPC ground is SKIPPED, never rerolled. This
@@ -3796,7 +3804,7 @@ function SoilFertilitySystem:rerollUnownedFields()
             end
         end
     end
-    SoilLogger.info("rerollUnownedFields: re-rolled %d unowned field(s), kept %d owned", rerolled, skipped)
+    SoilLogger.info("rerollUnownedFields: re-rolled %d unowned field(s), kept %d owned or NPC-managed", rerolled, skipped)
     return rerolled, skipped
 end
 
