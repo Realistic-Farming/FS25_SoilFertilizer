@@ -188,6 +188,34 @@ group("P4", function()
     saveGame(s2)
     T.eq("P4i the player's own choice (off) is still what is on disk", onDisk(), false)
 
+    -- The reviewer's case: SoilDisable during PF (ends the force), THEN a reset. PF is
+    -- still installed, so the reset must still leave on/off alone.
+    DISK = {}
+    local _, s5a = loadGame(false); saveGame(s5a)
+    local mgr5, s5 = loadGame(true)
+    local inits5 = 0
+    mgr5.soilSystem.isInitialized = true
+    mgr5.soilSystem.initialize = function() inits5 = inits5 + 1 end
+    viaEvent("enabled", false)
+    gui:consoleCommandResetSettings()
+    T.eq("P4k SoilDisable then a reset during PF: still off live, sim not started", tostring(s5.enabled) .. "/" .. inits5, "false/0")
+    saveGame(s5)
+    T.eq("P4l and the player's explicit off is what is on disk", onDisk(), false)
+
+    -- A pure-client admin's reset: the server's answer is not back yet when the console
+    -- decides whether to re-initialize, so it must decide from what it sent.
+    DISK = {}
+    local _, s6a = loadGame(false); s6a.enabled = false; saveGame(s6a)
+    local mgr6, s6 = loadGame(false)
+    local inits6 = 0
+    mgr6.soilSystem.isInitialized = true
+    mgr6.soilSystem.initialize = function() inits6 = inits6 + 1 end
+    local savedClient = g_client
+    g_client = { getServerConnection = function() return { sendEvent = function() end } end }  -- request in flight
+    gui:consoleCommandResetSettings()
+    g_client = savedClient
+    T.eq("P4m a client admin's reset re-initializes though its enabled is still false", tostring(s6.enabled) .. "/" .. inits6, "false/1")
+
     -- Without PF, the same reset still resets enabled and re-initializes, as before.
     DISK = {}
     local _, s3a = loadGame(false); s3a.enabled = false; saveGame(s3a)

@@ -1534,14 +1534,18 @@ function SoilSettingsGUI:consoleCommandResetSettings()
         -- mutated local state on MP clients - the server never heard about it and
         -- the client desynced until the next full sync.
         local settings = g_SoilFertilityManager.settings
+        -- What `enabled` will be once the reset lands. Decided from what is SENT, not
+        -- read back afterwards: on an MP client the server's answer has not arrived yet.
+        local enabledAfter = settings.enabled
         for _, def in ipairs(SettingsSchema.definitions) do
             local exempt = type(settings.isResetExempt) == "function" and settings:isResetExempt(def.id)
             if not exempt then
                 requestSettingChange(def.id, def.default)
+                if def.id == "enabled" then enabledAfter = def.default end
             end
         end
-        -- Only a running mod re-initializes: a reset never starts the sim next to PF.
-        if g_SoilFertilityManager.soilSystem and settings.enabled then
+        -- A reset never starts the sim next to PF; otherwise it re-initializes as before.
+        if g_SoilFertilityManager.soilSystem and enabledAfter then
             g_SoilFertilityManager.soilSystem:initialize()
         end
         if g_SoilFertilityManager.settingsUI then

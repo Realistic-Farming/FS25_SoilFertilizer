@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Precision Farming turns Soil off for the session, not the save: does the bar catch the wrong fixes?
 
-Nine mutants, each a plausible way to get the session-only rule wrong, and each must
+Eleven mutants, each a plausible way to get the session-only rule wrong, and each must
 send SF-pf_reenable_spec_test.lua RED:
 
   M1  saveSettings writes the live value again      the forced false reaches disk (the bug).
@@ -14,6 +14,8 @@ send SF-pf_reenable_spec_test.lua RED:
   M7  the remembered choice is always true          a player who had it off is turned on.
   M8  a reset is not exempt for `enabled`           SoilResetSettings starts Soil next to PF.
   M9  a reset re-initializes unconditionally        the sim starts though the mod stays off.
+  M10 the reset exemption ends with the force       SoilDisable, then Reset, starts Soil by PF.
+  M11 a reset re-inits from the live value          a client admin's reset leaves it dead.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -64,9 +66,14 @@ MUTATIONS = [
      [("    if self._forcedOffReason == nil then\n        self._enabledOnDisk = (self.enabled == true)\n",
        "    if self._forcedOffReason == nil then\n        self._enabledOnDisk = true\n", 1)]),
     ("M8 a reset is not exempt for enabled", SETTINGS,
-     [("    return id == \"enabled\" and self._forcedOffReason ~= nil\n", "    return false\n", 1)]),
+     [("    return id == \"enabled\" and self._sessionForcedBy ~= nil\n", "    return false\n", 1)]),
+    ("M10 the exemption ends with the force", SETTINGS,
+     [("    return id == \"enabled\" and self._sessionForcedBy ~= nil\n", "    return id == \"enabled\" and self._forcedOffReason ~= nil\n", 1)]),
+    ("M11 a reset re-inits from the live value", GUI,
+     [("        if g_SoilFertilityManager.soilSystem and enabledAfter then\n",
+       "        if g_SoilFertilityManager.soilSystem and settings.enabled then\n", 1)]),
     ("M9 a reset re-initializes unconditionally", GUI,
-     [("        if g_SoilFertilityManager.soilSystem and settings.enabled then\n",
+     [("        if g_SoilFertilityManager.soilSystem and enabledAfter then\n",
        "        if g_SoilFertilityManager.soilSystem then\n", 1)]),
 ]
 

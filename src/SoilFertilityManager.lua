@@ -628,7 +628,7 @@ function SoilFertilityManager:onMissionStarted()
         end
 
         if not self.settings.enabled then
-            SoilLogger.info("Mod disabled in settings - skipping soil system init")
+            SoilLogger.info("Mod disabled in settings - skipping soil system init (type SoilEnable in the console to turn it back on)")
             return
         end
 
