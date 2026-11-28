@@ -399,6 +399,9 @@ SoilFertilityManager.GUI_INIT_ORDER = {
 ---
 --- A failed PANEL is retired for the session (deleted, its field cleared: every caller
 --- already checks for nil, the same state as a client whose module failed to load).
+--- Except the settings panel: it is the player's only in-game settings UI, its draw and
+--- update already wait for `initialized`/`isVisible`, and open() retries initialize, so
+--- it is kept and a one-off failure can recover on the next Shift+O.
 --- A failed soilHUD is KEPT: besides the Soil Monitor it is the field-detection and
 --- sprayer-cache service auto-rate, scout and handful read, and the anchor of the on-foot
 --- keys, and none of that needs initialize. It just stays uninitialized, so draw,
@@ -412,6 +415,9 @@ function SoilFertilityManager:onMissionLoaded()
             local ok, err = pcall(part.initialize, part)
             if not ok and key == "soilHUD" then
                 SoilLogger.error("Error during mission load - the Soil Monitor failed to initialize and is hidden for this session (the soil simulation, auto-rate, scout and handful keep running): %s",
+                    tostring(err))
+            elseif not ok and key == "settingsPanel" then
+                SoilLogger.error("Error during mission load - the settings panel failed to initialize; it will retry when opened (Shift+O). The soil simulation keeps running: %s",
                     tostring(err))
             elseif not ok then
                 SoilLogger.error("Error during mission load - %s failed to initialize and is off for this session (the soil simulation keeps running): %s",
@@ -737,7 +743,8 @@ function SoilFertilityManager:onToggleHUDInput()
         return
     end
     if not (self.settings and self.settings.enabled) then return end
-    if self.soilHUD then
+    -- An uninitialized monitor draws nothing: "Soil HUD shown" would be a lie.
+    if self.soilHUD and self.soilHUD.initialized then
         self.soilHUD:toggleVisibility()
     end
 end

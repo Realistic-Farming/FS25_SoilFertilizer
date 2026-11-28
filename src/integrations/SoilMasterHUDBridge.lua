@@ -148,7 +148,7 @@ function SoilMasterHUDBridge.drawCabTools()
 
     -- The application-rate strip alone, not the whole Soil Monitor: SoilHUD:draw
     -- would bring the monitor back, which is exactly what hide-all removes.
-    if sfm.soilHUD and sfm.soilHUD.drawSprayerRatePanel then
+    if sfm.soilHUD and sfm.soilHUD.initialized and sfm.soilHUD.drawSprayerRatePanel then
         sfm.soilHUD:drawSprayerRatePanel()
     end
     if sfm.variableRatePanel then sfm.variableRatePanel:draw() end

@@ -343,6 +343,10 @@ function SoilHUD:getLayoutPath()
 end
 
 function SoilHUD:saveLayout()
+    -- hud.xml is per player profile and shared by every savegame. An uninitialized HUD
+    -- (the mod loaded disabled, or initialize raised) never read it, so writing would
+    -- replace the player's layout with the constructor defaults.
+    if not self.initialized then return end
     local path = self:getLayoutPath()
     if not path then return end
     local xml = XMLFile.create("sf_hud", path, "hudLayout")
@@ -378,11 +382,18 @@ function SoilHUD:saveLayout()
 
         -- Sub-panel collapsed states
         local sfm = g_SoilFertilityManager
+        -- A panel retired this session (its initialize raised) keeps the state it loaded
+        -- with, instead of dropping the key and coming back expanded next time.
+        local kept = self.savedCollapsed or {}
         if sfm and sfm.variableRatePanel then
             xml:setBool("hudLayout.collapsed_varRate", sfm.variableRatePanel.collapsed)
+        elseif kept.varRate ~= nil then
+            xml:setBool("hudLayout.collapsed_varRate", kept.varRate)
         end
         if sfm and sfm.smartSensorPanel then
             xml:setBool("hudLayout.collapsed_smartSensor", sfm.smartSensorPanel.collapsed)
+        elseif kept.smartSensor ~= nil then
+            xml:setBool("hudLayout.collapsed_smartSensor", kept.smartSensor)
         end
 
         xml:save()

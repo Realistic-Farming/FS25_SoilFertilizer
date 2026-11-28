@@ -102,11 +102,11 @@ end)
 -- ── H3: init AND delete raise: still retired, still contained. ───────────────────
 group("H3", function()
     WARNS = {}
-    local mgr = newMgr({ settingsPanel = "both", harvesterPanel = "init" })
+    local mgr = newMgr({ tuningPanel = "both", harvesterPanel = "init" })
     local ok = pcall(mgr.onMissionLoaded, mgr)
     T.ok("H3a a raising delete does not escape", ok)
-    T.eq("H3b both failing parts are cleared", tostring(mgr.settingsPanel) .. "/" .. tostring(mgr.harvesterPanel), "nil/nil")
-    T.ok("H3c the failed cleanup is logged", #WARNS == 1 and WARNS[1]:find("settingsPanel", 1, true) ~= nil)
+    T.eq("H3b both failing parts are cleared", tostring(mgr.tuningPanel) .. "/" .. tostring(mgr.harvesterPanel), "nil/nil")
+    T.ok("H3c the failed cleanup is logged", #WARNS == 1 and WARNS[1]:find("tuningPanel", 1, true) ~= nil)
     T.eq("H3d the mod stays enabled", mgr.settings.enabled, true)
 end)
 
@@ -116,7 +116,7 @@ group("H4", function()
     for _, key in ipairs(ORDER) do all[key] = "init" end
     local mgr, _, saves = newMgr(all)
     mgr:onMissionLoaded()
-    T.eq("H4a every panel is retired, the HUD service is kept", present(mgr), "soilHUD")
+    T.eq("H4a every panel is retired; the HUD service and settings panel are kept", present(mgr), "soilHUD,settingsPanel")
     T.eq("H4b the mod is still enabled and nothing saved", tostring(mgr.settings.enabled) .. "/" .. saves(), "true/0")
 end)
 
@@ -194,4 +194,72 @@ group("H9", function()
     T.eq("H9c the drag key leaves the sub-panels alone when the monitor is uninitialized", entered, 0)
     g_masterHUD = saveMH
     if g_currentMission then g_currentMission.masterHUD = cm end
+end)
+
+-- ── H10: a failed settings panel is kept (open() retries initialize). ─────────────
+group("H10", function()
+    ERRS = {}
+    local mgr, log = newMgr({ settingsPanel = "init" })
+    local panel = mgr.settingsPanel
+    mgr:onMissionLoaded()
+    T.ok("H10a the settings panel object is kept", mgr.settingsPanel == panel)
+    T.eq("H10b it is not deleted", #log.delete, 0)
+    T.ok("H10c the error says it retries on open", #ERRS == 1 and ERRS[1]:find("Shift+O", 1, true) ~= nil)
+end)
+
+-- ── H11: hud.xml is never overwritten by an uninitialized monitor, and a retired
+-- panel's collapsed state survives the save. ───────────────────────────────────────
+group("H11", function()
+    local saveXML, saveSfm = XMLFile, g_SoilFertilityManager
+    local writes = {}
+    XMLFile = { create = function()
+        local data = {}
+        return { setFloat = function(_, k, v) data[k] = v end, setBool = function(_, k, v) data[k] = v end,
+                 save = function() writes[#writes + 1] = data end, delete = function() end }
+    end }
+    g_SoilFertilityManager = { variableRatePanel = nil, smartSensorPanel = { collapsed = false } }
+    local function hud(init)
+        return setmetatable({ initialized = init, panelX = 0.1, panelY = 0.2, scale = 1, visible = true, freePos = {},
+                              savedCollapsed = { varRate = true, smartSensor = true },
+                              getLayoutPath = function() return "/profile/HUD/hud.xml" end }, { __index = SoilHUD })
+    end
+    hud(nil):saveLayout()
+    T.eq("H11a an uninitialized HUD writes no layout", #writes, 0)
+    hud(true):saveLayout()
+    T.eq("H11b an initialized HUD writes it", #writes, 1)
+    T.eq("H11c the retired Variable Rate panel keeps its collapsed=true", writes[1] and writes[1]["hudLayout.collapsed_varRate"], true)
+    T.eq("H11d a live panel writes its own state", writes[1] and writes[1]["hudLayout.collapsed_smartSensor"], false)
+    XMLFile, g_SoilFertilityManager = saveXML, saveSfm
+end)
+
+-- ── H12: J on an uninitialized monitor neither toggles nor toasts nor saves. ──────
+group("H12", function()
+    local toggles = 0
+    local hud = { initialized = nil, toggleVisibility = function() toggles = toggles + 1 end }
+    local mgr = setmetatable({ soilHUD = hud, settings = { enabled = true } }, { __index = SoilFertilityManager })
+    local saveMH = g_masterHUD; g_masterHUD = nil
+    local cm = g_currentMission and g_currentMission.masterHUD
+    if g_currentMission then g_currentMission.masterHUD = nil end
+    mgr:onToggleHUDInput()
+    T.eq("H12a no toggle on an uninitialized monitor", toggles, 0)
+    hud.initialized = true
+    mgr:onToggleHUDInput()
+    T.eq("H12b an initialized one still toggles", toggles, 1)
+    g_masterHUD = saveMH
+    if g_currentMission then g_currentMission.masterHUD = cm end
+end)
+
+-- ── H13: MasterHUD hide-all does not draw the rate strip from an uninitialized HUD. ──
+group("H13", function()
+    local saveSfm, saveHud = g_SoilFertilityManager, SoilMasterHUDBridge._hud
+    local strips = 0
+    SoilMasterHUDBridge._hud = { hudsHidden = true }
+    local hud = { initialized = nil, drawSprayerRatePanel = function() strips = strips + 1 end }
+    g_SoilFertilityManager = { soilHUD = hud }
+    SoilMasterHUDBridge.drawCabTools()
+    T.eq("H13a no rate strip from an uninitialized monitor", strips, 0)
+    hud.initialized = true
+    SoilMasterHUDBridge.drawCabTools()
+    T.eq("H13b an initialized one still draws it", strips, 1)
+    g_SoilFertilityManager, SoilMasterHUDBridge._hud = saveSfm, saveHud
 end)

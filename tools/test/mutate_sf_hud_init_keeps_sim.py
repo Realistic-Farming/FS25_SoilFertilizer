@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """A HUD/panel that fails to initialize no longer turns the mod off: does the bar catch the wrong fixes?
 
-Ten mutants, each a plausible way to get the rule wrong, and each must send
+Fifteen mutants, each a plausible way to get the rule wrong, and each must send
 SF-hud_init_keeps_sim_spec_test.lua RED:
 
   M1  the failure branch disables and saves again   the old behaviour (the bug).
@@ -16,6 +16,11 @@ SF-hud_init_keeps_sim_spec_test.lua RED:
   M8  the drag key ignores `initialized`            sub-panels can enter, never leave.
   M9  the monitor's click-yield loop uses ipairs    stops at a retired harvester panel.
   M10 the fullscreen check uses ipairs              misses an open panel after a hole.
+  M11 the settings panel is retired                 Shift+O is gone for the session.
+  M12 saveLayout ignores `initialized`              hud.xml reset to defaults for every save.
+  M13 a retired panel's collapsed state dropped     it comes back expanded next session.
+  M14 J ignores `initialized`                       "Soil HUD shown" over nothing, and a save.
+  M15 the cab strip ignores `initialized`           MasterHUD hide-all draws a bare strip.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -68,6 +73,19 @@ MUTATIONS = [
        "            for _, panel in ipairs(directPanels) do\n", 1)]),
     ("M10 the fullscreen loop back to ipairs", BRIDGE,
      [("    for i = 1, 3 do\n        local p = panels[i]\n", "    for _, p in ipairs(panels) do\n", 1)]),
+    ("M11 the settings panel is retired", SFM,
+     [('            elseif not ok and key == "settingsPanel" then\n', '            elseif false then\n', 1)]),
+    ("M12 saveLayout ignores initialized", HUD,
+     [("    if not self.initialized then return end\n    local path = self:getLayoutPath()\n",
+       "    local path = self:getLayoutPath()\n", 1)]),
+    ("M13 a retired panel's collapsed state dropped", HUD,
+     [('        elseif kept.varRate ~= nil then\n            xml:setBool("hudLayout.collapsed_varRate", kept.varRate)\n', "", 1)]),
+    ("M14 J ignores initialized", SFM,
+     [("    if self.soilHUD and self.soilHUD.initialized then\n        self.soilHUD:toggleVisibility()\n",
+       "    if self.soilHUD then\n        self.soilHUD:toggleVisibility()\n", 1)]),
+    ("M15 the cab strip ignores initialized", BRIDGE,
+     [("    if sfm.soilHUD and sfm.soilHUD.initialized and sfm.soilHUD.drawSprayerRatePanel then\n",
+       "    if sfm.soilHUD and sfm.soilHUD.drawSprayerRatePanel then\n", 1)]),
 ]
 
 
