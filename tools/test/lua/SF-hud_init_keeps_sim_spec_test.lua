@@ -6,15 +6,18 @@
 -- off in that savegame for good, with only a log line to say why, and every panel after
 -- the one that raised was skipped too.
 --
--- THE RULE. Each part initializes on its own. One that raises is retired for the session:
--- its delete runs guarded and its field on the manager is cleared, the same state as a
--- client whose SoilHUD module failed to load (every caller checks the field for nil). The
--- rest still initialize. settings.enabled is not touched and nothing is saved.
+-- THE RULE. Each part initializes on its own; settings.enabled is not touched and nothing
+-- is saved. A PANEL that raises is retired for the session: its delete runs guarded and its
+-- field on the manager is cleared (every caller checks it for nil). The soilHUD that raises
+-- is KEPT uninitialized: it is also the field-detection / sprayer-cache service and input
+-- anchor, so only its drawing stops (draw, onMouseEvent and enterEditMode check
+-- `initialized`). Two loops that walked panel fields with ipairs stopped at a retired
+-- panel's nil hole; they are covered here too (H7, H8), as is the drag key (H9).
 --
 -- WHO POPULATES THE WORLD. The parts are recording stubs on a stub manager driven through
 -- the real SoilFertilityManager:onMissionLoaded; settings is a stub whose save() counts.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilityManager.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/utils/SoilUtils.lua, src/SoilFertilityManager.lua, src/ui/SoilHUD.lua, src/integrations/SoilMasterHUDBridge.lua
 
 SoilLogger.info = function() end
 SoilLogger.debug = function() end
@@ -69,18 +72,22 @@ local function allBut(skip)
     return table.concat(out, ",")
 end
 
--- ── H1: the HUD (first in order) raises. ─────────────────────────────────────────
+-- ── H1: the HUD (first in order) raises: it is kept, uninitialized; the rest start. ──
 group("H1", function()
     ERRS = {}
     local mgr, log, saves = newMgr({ soilHUD = "init" })
+    local hud = mgr.soilHUD
     local ok = pcall(mgr.onMissionLoaded, mgr)
     T.ok("H1a onMissionLoaded does not raise", ok)
     T.eq("H1b the mod stays enabled", mgr.settings.enabled, true)
     T.eq("H1c and nothing is saved", saves(), 0)
-    T.eq("H1d only the HUD is retired", present(mgr), allBut("soilHUD"))
-    T.eq("H1e every panel after it still initialized", #log.init, #ORDER)
-    T.eq("H1f the HUD's delete ran (and only its)", table.concat(log.delete, ","), "soilHUD")
-    T.ok("H1g the error names the part", #ERRS == 1 and ERRS[1]:find("soilHUD", 1, true) ~= nil)
+    T.ok("H1d the HUD object is kept (field detection, auto-rate, input anchor)", mgr.soilHUD == hud)
+    T.eq("H1e but stays uninitialized, so it draws nothing", hud.initialized, nil)
+    T.eq("H1f it is not deleted", #log.delete, 0)
+    T.eq("H1g every panel after it still initialized", #log.init, #ORDER)
+    T.eq("H1h every panel is present", present(mgr), allBut(nil))
+    T.ok("H1i the error says the monitor is hidden and the sim runs",
+         #ERRS == 1 and ERRS[1]:find("Soil Monitor", 1, true) ~= nil)
 end)
 
 -- ── H2: a panel in the middle raises: those after it still initialize. ───────────
@@ -109,7 +116,7 @@ group("H4", function()
     for _, key in ipairs(ORDER) do all[key] = "init" end
     local mgr, _, saves = newMgr(all)
     mgr:onMissionLoaded()
-    T.eq("H4a no GUI part is left", present(mgr), "")
+    T.eq("H4a every panel is retired, the HUD service is kept", present(mgr), "soilHUD")
     T.eq("H4b the mod is still enabled and nothing saved", tostring(mgr.settings.enabled) .. "/" .. saves(), "true/0")
 end)
 
@@ -136,4 +143,55 @@ group("H6", function()
     T.ok("H6b absent parts do not raise", ok)
     T.eq("H6c the others still initialize", #log2.init, #ORDER - 3)
     T.ok("H6d a part with no initialize is kept, not retired", m2.smartSensorPanel ~= nil)
+end)
+
+-- ── H7: MasterHUD's fullscreen check sees an open panel AFTER a retired one. ────
+group("H7", function()
+    local saveSfm = g_SoilFertilityManager
+    local open = { isOpen = function() return true end }
+    local closed = { isOpen = function() return false end }
+    g_SoilFertilityManager = { settingsPanel = closed, tuningPanel = nil, cropTuningPanel = open }
+    T.eq("H7a crop tuning open, tuning panel retired: fullscreen", SoilMasterHUDBridge.isFullscreen(), true)
+    g_SoilFertilityManager = { settingsPanel = nil, tuningPanel = nil, cropTuningPanel = nil }
+    T.eq("H7b nothing present: not fullscreen", SoilMasterHUDBridge.isFullscreen(), false)
+    g_SoilFertilityManager = saveSfm
+end)
+
+-- ── H8: the monitor yields a click to the sprayer panel even with the harvester retired. ──
+group("H8", function()
+    local saveSfm, saveInput = g_SoilFertilityManager, Input
+    Input = Input or {}
+    Input.MOUSE_BUTTON_LEFT, Input.MOUSE_BUTTON_RIGHT = Input.MOUSE_BUTTON_LEFT or 1, Input.MOUSE_BUTTON_RIGHT or 3
+    local sprayer = { editMode = true, _lastPanelX = 0.4, _lastPanelY = 0.4, _lastPanelW = 0.2, _lastPanelH = 0.2 }
+    g_SoilFertilityManager = { harvesterPanel = nil, sprayerInfoPanel = sprayer }
+    local hud = setmetatable({ initialized = true, editMode = true, visible = true, _dragDiagLogged = true,
+                               settings = { enabled = true, showHUD = true } }, { __index = SoilHUD })
+    local ok, used = pcall(hud.onMouseEvent, hud, 0.5, 0.5, true, false, Input.MOUSE_BUTTON_LEFT, false)
+    T.ok("H8a the click inside the sprayer panel is handled without error", ok)
+    T.eq("H8b and is yielded to it (not claimed by the monitor)", used, false)
+    T.ok("H8c the monitor did not start a drag", not hud.dragging)
+    g_SoilFertilityManager, Input = saveSfm, saveInput
+end)
+
+-- ── H9: an uninitialized monitor never enters edit mode; the drag key does nothing. ──
+group("H9", function()
+    local hud = setmetatable({ initialized = nil, visible = true }, { __index = SoilHUD })
+    hud:enterEditMode()
+    T.ok("H9a enterEditMode on an uninitialized HUD is a no-op", not hud.editMode)
+    local live = setmetatable({ initialized = true, visible = true }, { __index = SoilHUD })
+    live:enterEditMode()
+    T.eq("H9b an initialized HUD still enters edit mode", live.editMode, true)
+
+    local entered = 0
+    local panel = { enterEditMode = function() entered = entered + 1 end, exitEditMode = function() end }
+    local mgr = setmetatable({ soilHUD = hud, sprayerInfoPanel = panel, harvesterPanel = panel,
+                               settings = { enabled = true, showHUD = true } }, { __index = SoilFertilityManager })
+    local saveMH = g_masterHUD; g_masterHUD = nil
+    local cm = g_currentMission and g_currentMission.masterHUD
+    if g_currentMission then g_currentMission.masterHUD = nil end
+    mgr:onHUDDragInput()
+    mgr:onHUDDragInput()
+    T.eq("H9c the drag key leaves the sub-panels alone when the monitor is uninitialized", entered, 0)
+    g_masterHUD = saveMH
+    if g_currentMission then g_currentMission.masterHUD = cm end
 end)

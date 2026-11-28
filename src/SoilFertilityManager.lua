@@ -392,12 +392,17 @@ SoilFertilityManager.GUI_INIT_ORDER = {
 --- Called after mission is loaded (loadMission00Finished).
 --- Initializes HUD and settings panel - fields not yet guaranteed populated at this point.
 ---
---- Each part is initialized on its own. One that raises is switched off for this session
---- (deleted, its field cleared: every caller already checks for nil, the same state as a
---- client whose SoilHUD module failed to load) and the rest still initialize. The soil
+--- Each part is initialized on its own, and one that raises never stops the rest. The soil
 --- simulation is NOT touched. This used to set settings.enabled = false and save it, so a
 --- single HUD error (often a conflict with another mod) turned the whole mod off in that
 --- savegame for good, with nothing on screen to say why.
+---
+--- A failed PANEL is retired for the session (deleted, its field cleared: every caller
+--- already checks for nil, the same state as a client whose module failed to load).
+--- A failed soilHUD is KEPT: besides the Soil Monitor it is the field-detection and
+--- sprayer-cache service auto-rate, scout and handful read, and the anchor of the on-foot
+--- keys, and none of that needs initialize. It just stays uninitialized, so draw,
+--- onMouseEvent and enterEditMode do nothing: only the monitor itself is off.
 function SoilFertilityManager:onMissionLoaded()
     if not self.settings.enabled then return end
 
@@ -405,7 +410,10 @@ function SoilFertilityManager:onMissionLoaded()
         local part = self[key]
         if part ~= nil and type(part.initialize) == "function" then
             local ok, err = pcall(part.initialize, part)
-            if not ok then
+            if not ok and key == "soilHUD" then
+                SoilLogger.error("Error during mission load - the Soil Monitor failed to initialize and is hidden for this session (the soil simulation, auto-rate, scout and handful keep running): %s",
+                    tostring(err))
+            elseif not ok then
                 SoilLogger.error("Error during mission load - %s failed to initialize and is off for this session (the soil simulation keeps running): %s",
                     key, tostring(err))
                 self:_retireGuiPart(key)
@@ -752,6 +760,9 @@ function SoilFertilityManager:onHUDDragInput()
         return
     end
     if not self.soilHUD then return end
+    -- An uninitialized monitor (initialize raised at load) never enters edit mode, so the
+    -- toggle below would only ever ENTER the sub-panels' edit mode and could not leave it.
+    if not self.soilHUD.initialized then return end
     if not self.soilHUD.visible then return end
     if not (self.settings and self.settings.showHUD and self.settings.enabled) then return end
     if self.soilHUD.editMode then

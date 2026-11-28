@@ -267,6 +267,10 @@ end
 
 -- ── Edit mode ────────────────────────────────────────────
 function SoilHUD:enterEditMode()
+    -- An uninitialized HUD draws nothing; edit mode on it would lock the cursor and
+    -- freeze the camera every frame around an invisible panel. (The mod loaded
+    -- disabled, or initialize raised: see SoilFertilityManager:onMissionLoaded.)
+    if not self.initialized then return end
     self.editMode = true
     self.dragging = false
     self.subDragMoved = false
@@ -649,8 +653,10 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         -- yield clicks inside their cached edit rectangles; their own handlers
         -- will claim the event later in the same dispatch.
         if sfm then
+            -- Indexed by count, not ipairs: a panel retired at load leaves a nil hole.
             local directPanels = { sfm.harvesterPanel, sfm.sprayerInfoPanel }
-            for _, panel in ipairs(directPanels) do
+            for i = 1, 2 do
+                local panel = directPanels[i]
                 local px = panel and panel._lastPanelX
                 local py = panel and panel._lastPanelY
                 local pw = panel and panel._lastPanelW

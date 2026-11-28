@@ -2,14 +2,20 @@
 # -*- coding: utf-8 -*-
 """A HUD/panel that fails to initialize no longer turns the mod off: does the bar catch the wrong fixes?
 
-Five mutants, each a plausible way to get the rule wrong, and each must send
+Ten mutants, each a plausible way to get the rule wrong, and each must send
 SF-hud_init_keeps_sim_spec_test.lua RED:
 
   M1  the failure branch disables and saves again   the old behaviour (the bug).
-  M2  the failed part's field is not cleared        a half-built part keeps drawing.
+  M2  the failed part's field is not cleared        a half-built panel keeps drawing.
   M3  the cleanup delete is not guarded             a raising delete escapes the load.
   M4  the loop stops at the first failure           later panels never initialize.
   M5  a part dropped from the init order            that panel is never initialized.
+  M6  a failed HUD is retired like a panel          auto-rate, scout, handful and the
+                                                    on-foot key re-assert go with it.
+  M7  enterEditMode ignores `initialized`           an invisible HUD locks the camera.
+  M8  the drag key ignores `initialized`            sub-panels can enter, never leave.
+  M9  the monitor's click-yield loop uses ipairs    stops at a retired harvester panel.
+  M10 the fullscreen check uses ipairs              misses an open panel after a hole.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -32,6 +38,8 @@ except Exception:
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SFM = os.path.join(ROOT, "src", "SoilFertilityManager.lua")
+HUD = os.path.join(ROOT, "src", "ui", "SoilHUD.lua")
+BRIDGE = os.path.join(ROOT, "src", "integrations", "SoilMasterHUDBridge.lua")
 BAR = "SF-hud_init_keeps_sim_spec_test.lua"
 SELECT = ["--loads", "src/SoilFertilityManager.lua"]
 BAR_RE = re.compile(re.escape(BAR) + r"[^\n(]*\((\d+) passed, (\d+) failed")
@@ -49,6 +57,17 @@ MUTATIONS = [
     ("M5 a part dropped from the init order", SFM,
      [('    "variableRatePanel", "smartSensorPanel", "sprayerInfoPanel", "harvesterPanel",\n',
        '    "variableRatePanel", "smartSensorPanel", "sprayerInfoPanel",\n', 1)]),
+    ("M6 a failed HUD is retired like a panel", SFM,
+     [('            if not ok and key == "soilHUD" then\n', '            if false then\n', 1)]),
+    ("M7 enterEditMode ignores initialized", HUD,
+     [("    if not self.initialized then return end\n    self.editMode = true\n", "    self.editMode = true\n", 1)]),
+    ("M8 the drag key ignores initialized", SFM,
+     [("    if not self.soilHUD.initialized then return end\n", "", 1)]),
+    ("M9 the monitor's yield loop back to ipairs", HUD,
+     [("            for i = 1, 2 do\n                local panel = directPanels[i]\n",
+       "            for _, panel in ipairs(directPanels) do\n", 1)]),
+    ("M10 the fullscreen loop back to ipairs", BRIDGE,
+     [("    for i = 1, 3 do\n        local p = panels[i]\n", "    for _, p in ipairs(panels) do\n", 1)]),
 ]
 
 
@@ -88,7 +107,7 @@ def apply(src, edits):
 
 
 def main():
-    files = [SFM]
+    files = [SFM, HUD, BRIDGE]
     base = {f: digest(f) for f in files}
     p, f, tail = run_bar()
     if p is None or f != 0 or p == 0:
