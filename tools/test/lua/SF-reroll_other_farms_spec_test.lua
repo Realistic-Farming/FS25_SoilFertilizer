@@ -152,6 +152,7 @@ group("R5", function()
     sys:rerollUnownedFields()
     T.eq("R5 with FarmlandManager.NO_OWNER_FARM_ID defined, the same fields", sorted(touched), "4,5")
     FarmlandManager = saved.FM
+g_SoilFertilityManager, g_currentMission.getIsServer, SoilNetworkEvents_BroadcastFieldUpdate = saveMgr, saveIsServer, saveBcast
 end)
 
 -- ── R6: entries that are not fields are ignored, as before. ───────────────────
@@ -177,34 +178,49 @@ group("R7", function()
 end)
 
 -- ── R8: the console door. An abort is reported as one and saves nothing; a re-roll
--- saves and pushes the new values to joined clients. ──────────────────────────
+-- saves and sends the re-rolled fields (and only those) to joined clients. ─────────
+local saveMgr, saveIsServer, saveBcast = g_SoilFertilityManager, g_currentMission.getIsServer, SoilNetworkEvents_BroadcastFieldUpdate
 group("R8", function()
-    local saves, broadcasts = 0, 0
-    local saveMgr, saveIsServer = g_SoilFertilityManager, g_currentMission.getIsServer
+    local saves, sent = 0, {}
     g_currentMission.getIsServer = function() return true end
+    SoilNetworkEvents_BroadcastFieldUpdate = function(id, field)
+        sent[#sent + 1] = tostring(id) .. (type(field) == "table" and "" or "!nofield")
+    end
     local fd = sixFields()
     local sys = newSys(fd)
-    sys.broadcastAllFieldData = function() broadcasts = broadcasts + 1 end
     g_SoilFertilityManager = { soilSystem = sys, saveSoilData = function() saves = saves + 1 end }
     local gui = setmetatable({}, { __index = SoilSettingsGUI })
 
     g_farmlandManager = nil
     local msg = gui:consoleCommandRerollUnownedFields()
     T.ok("R8a an abort says so", msg:find("aborted", 1, true) ~= nil and msg:find("saved", 1, true) == nil)
-    T.eq("R8b and neither saves nor broadcasts", saves .. "/" .. broadcasts, "0/0")
+    T.eq("R8b and neither saves nor sends", saves .. "/" .. #sent, "0/0")
 
     world(OWNERS, 1)
     msg = gui:consoleCommandRerollUnownedFields()
     T.ok("R8c a re-roll reports its counts", msg:find("2 field", 1, true) ~= nil and msg:find("no farm owns", 1, true) ~= nil)
-    T.eq("R8d saves once and broadcasts once", saves .. "/" .. broadcasts, "1/1")
+    table.sort(sent)
+    T.eq("R8d saves once and sends exactly the re-rolled fields, with their data", saves .. "/" .. table.concat(sent, ","), "1/4,5")
 
-    for id = 1, 6 do OWNERS[id] = OWNERS[id] == 0 and 9 or OWNERS[id] end   -- nothing left open
-    world(OWNERS, 1)
+    local allOwned = {}
+    for id, owner in pairs(OWNERS) do allOwned[id] = (owner == 0) and 9 or owner end
+    world(allOwned, 1)
+    sent = {}
     gui:consoleCommandRerollUnownedFields()
-    T.eq("R8e nothing re-rolled: saved, but no broadcast", saves .. "/" .. broadcasts, "2/1")
-    g_SoilFertilityManager, g_currentMission.getIsServer = saveMgr, saveIsServer
+    T.eq("R8e nothing re-rolled: saved, nothing sent", saves .. "/" .. #sent, "2/0")
+end)
+
+-- ── R9: NPC ground answered with a truthy non-boolean is still kept. ───────────
+group("R9", function()
+    world(OWNERS, 1)
+    NpcSoilBridge = { isNPCManaged = function(_, id) if id == 5 then return 3 end return nil end }  -- an npc id
+    local fd = sixFields()
+    local sys, touched = newSys(fd)
+    sys:rerollUnownedFields()
+    T.eq("R9 a truthy NPC answer keeps the field", sorted(touched), "4,6")
 end)
 
 g_farmlandManager, NpcSoilBridge, TargetApplication = saved.fm, saved.npc, saved.ta
 if g_currentMission then g_currentMission.getFarmId = saved.getFarmId end
 FarmlandManager = saved.FM
+g_SoilFertilityManager, g_currentMission.getIsServer, SoilNetworkEvents_BroadcastFieldUpdate = saveMgr, saveIsServer, saveBcast

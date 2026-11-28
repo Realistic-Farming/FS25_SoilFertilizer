@@ -1908,15 +1908,18 @@ function SoilSettingsGUI:consoleCommandRerollUnownedFields()
     end
 
     local soilSystem = g_SoilFertilityManager.soilSystem
-    local rerolled, skipped = soilSystem:rerollUnownedFields()
+    local rerolled, skipped, rerolledIds = soilSystem:rerollUnownedFields()
     if rerolled == nil then
         return string.format("Re-roll aborted, nothing changed: %s.", tostring(skipped))
     end
     g_SoilFertilityManager:saveSoilData()
-    -- Joined clients mirror fieldData; send them the re-rolled values now instead of
-    -- leaving them on the old ones until they rejoin. No-op outside multiplayer.
-    if rerolled > 0 and type(soilSystem.broadcastAllFieldData) == "function" then
-        soilSystem:broadcastAllFieldData()
+    -- Joined clients mirror fieldData: send them the re-rolled fields now instead of
+    -- leaving them on the old values until they rejoin. Only those fields: a full
+    -- resync would also rebuild every OWNED field's client entry from scratch.
+    if SoilNetworkEvents_BroadcastFieldUpdate and type(rerolledIds) == "table" then
+        for _, fieldId in ipairs(rerolledIds) do
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, soilSystem.fieldData[fieldId])
+        end
     end
 
     return string.format(

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """SoilRerollUnownedFields keeps every farm's soil: does the bar catch the wrong fixes?
 
-Eight mutants, each a plausible way to get the ownership rule wrong, and each must send
+Ten mutants, each a plausible way to get the ownership rule wrong, and each must send
 SF-reroll_other_farms_spec_test.lua RED:
 
   M1  the old rule: keep only the caller's farm     farms 2..n are re-rolled again.
@@ -13,6 +13,8 @@ SF-reroll_other_farms_spec_test.lua RED:
   M6  the NPC lookup not guarded                    a raising bridge aborts the run.
   M7  the abort reported as 0, 0                    the console says "saved" and saves.
   M8  the broadcast dropped                         joined clients keep the old values.
+  M9  every field sent instead of the re-rolled     owned fields' client state rebuilt.
+  M10 a truthy NPC answer re-rolled                 an NPC id (not `true`) loses B5 ground.
 
 Selection: the bar is run with --loads src/settings/SoilSettingsGUI.lua (it loads both
 files), which keeps each run short. A stale .bak next to a source means an earlier run
@@ -50,7 +52,6 @@ GUARD = ("    if fm == nil or type(fm.getFarmlandOwner) ~= \"function\" then\n"
          "        SoilLogger.warning(\"rerollUnownedFields: farmland manager unavailable - aborting to protect owned fields\")\n"
          "        return nil, \"the farmland manager is not available\"\n"
          "    end\n")
-NPC = "            elseif NpcSoilBridge and NpcSoilBridge:isNPCManaged(fieldId) == true then\n"
 
 MUTATIONS = [
     ("M1 keep only the caller's farm", SFS,
@@ -68,7 +69,11 @@ MUTATIONS = [
     ("M7 the abort reported as 0, 0", SFS,
      [("        return nil, \"the farmland manager is not available\"\n", "        return 0, 0\n", 1)]),
     ("M8 the broadcast dropped", GUI,
-     [("        soilSystem:broadcastAllFieldData()\n", "", 1)]),
+     [("            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, soilSystem.fieldData[fieldId])\n", "", 1)]),
+    ("M9 a full resync instead of the re-rolled fields", GUI,
+     [("        for _, fieldId in ipairs(rerolledIds) do\n", "        for fieldId in pairs(soilSystem.fieldData) do\n", 1)]),
+    ("M10 a truthy NPC answer re-rolled", SFS,
+     [("    return (not ok) or (isNpc ~= nil and isNpc ~= false)\n", "    return (not ok) or isNpc == true\n", 1)]),
 ]
 
 

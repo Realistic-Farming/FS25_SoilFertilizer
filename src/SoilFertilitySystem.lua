@@ -3752,7 +3752,7 @@ end
 function SoilFertilitySystem:_rerollKeepsNpcGround(fieldId)
     if not NpcSoilBridge then return false end
     local ok, isNpc = pcall(NpcSoilBridge.isNPCManaged, NpcSoilBridge, fieldId)
-    return (not ok) or isNpc == true
+    return (not ok) or (isNpc ~= nil and isNpc ~= false)
 end
 
 -- Re-roll the starting soil profile of every field that NO farm owns, leaving owned
@@ -3768,7 +3768,8 @@ end
 -- kept, and an NPC-bridge lookup that raises keeps the field too. With no farmland
 -- manager at all nothing can be proven unowned, so we abort.
 -- Contract (mission) fields are unowned land, so they ARE re-rolled.
--- Returns: rerolled count, skipped (owned or NPC-managed) count; nil, reason on abort.
+-- Returns: rerolled count, skipped (owned or NPC-managed) count, list of re-rolled field
+-- ids; nil, reason on abort.
 function SoilFertilitySystem:rerollUnownedFields()
     local fm = g_farmlandManager
     if fm == nil or type(fm.getFarmlandOwner) ~= "function" then
@@ -3778,7 +3779,7 @@ function SoilFertilitySystem:rerollUnownedFields()
     local noOwner = (FarmlandManager ~= nil and type(FarmlandManager.NO_OWNER_FARM_ID) == "number")
         and FarmlandManager.NO_OWNER_FARM_ID or 0
 
-    local rerolled, skipped = 0, 0
+    local rerolled, skipped, rerolledIds = 0, 0, {}
     for fieldId, field in pairs(self.fieldData) do
         if type(fieldId) == "number" and type(field) == "table" then
             local ok, owner = pcall(fm.getFarmlandOwner, fm, fieldId)
@@ -3813,11 +3814,12 @@ function SoilFertilitySystem:rerollUnownedFields()
                     TargetApplication.freezeBaseline(field)
                 end
                 rerolled = rerolled + 1
+                rerolledIds[#rerolledIds + 1] = fieldId
             end
         end
     end
     SoilLogger.info("rerollUnownedFields: re-rolled %d unowned field(s), kept %d owned or NPC-managed", rerolled, skipped)
-    return rerolled, skipped
+    return rerolled, skipped, rerolledIds
 end
 
 -- ── Zone Data Pre-Population ──────────────────────────────────────────────────
