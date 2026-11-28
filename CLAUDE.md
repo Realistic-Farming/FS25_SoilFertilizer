@@ -381,7 +381,7 @@ Type `soilfertility` in the developer console (`~` key) for the full list. Key c
 | Command | Description |
 |---------|-------------|
 | `SoilRerollFields` | Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632) |
-| `SoilRerollUnownedFields` | Re-roll starting soil only for fields you don't own (#632) |
+| `SoilRerollUnownedFields` | Re-roll starting soil only for fields no farm owns; every farm's fields are kept (#632) |
 | `soilRecoverField [fieldId]` | Recover a field to default values |
 | `SoilFieldSentry [fieldId]` | FieldSentry: show a field's sim status, or list slept fields (#651) |
 | `SoilBlacklistField <fieldId> [true\|false]` | FieldSentry: sleep/wake a field's soil sim (#651) |

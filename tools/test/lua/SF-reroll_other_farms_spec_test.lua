@@ -16,7 +16,7 @@
 -- bar is about WHICH fields are touched. SF-79-reroll_ph_routing_test.lua covers what a
 -- re-roll writes to the pH map.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/SoilFertilitySystem.lua, src/settings/SoilSettingsGUI.lua
 
 local SFS = SoilFertilitySystem
 SoilLogger.info = function() end
@@ -135,8 +135,9 @@ group("R4", function()
         WARN = {}
         local fd = sixFields()
         local sys, touched = newSys(fd)
-        local rerolled, skipped = sys:rerollUnownedFields()
-        T.eq("R4a " .. fm .. ": nothing re-rolled", #touched .. "/" .. rerolled .. "/" .. skipped, "0/0/0")
+        local rerolled, why = sys:rerollUnownedFields()
+        T.eq("R4a " .. fm .. ": nothing re-rolled, abort signalled", #touched .. "/" .. tostring(rerolled), "0/nil")
+        T.ok("R4d " .. fm .. ": the abort says why", type(why) == "string" and why:find("farmland manager") ~= nil)
         T.eq("R4b " .. fm .. ": every field unchanged", fd[4].nitrogen, 70)
         T.ok("R4c " .. fm .. ": a warning says why", #WARN == 1 and WARN[1]:find("aborting") ~= nil)
     end
@@ -162,6 +163,46 @@ group("R6", function()
     local sys, touched = newSys(fd)
     sys:rerollUnownedFields()
     T.eq("R6 a string key and a non-table entry are skipped silently", sorted(touched), "4,5")
+end)
+
+-- ── R7: an NPC bridge that raises keeps the field and does not abort the run. ──
+group("R7", function()
+    world(OWNERS, 1)
+    NpcSoilBridge = { isNPCManaged = function(_, id) if id == 5 then error("bridge raised") end return id == 6 end }
+    local fd = sixFields()
+    local sys, touched = newSys(fd)
+    local ok = pcall(sys.rerollUnownedFields, sys)
+    T.ok("R7a a raising NPC bridge does not abort the re-roll", ok)
+    T.eq("R7b the field it raised on is kept; other open land is re-rolled", sorted(touched), "4")
+end)
+
+-- ── R8: the console door. An abort is reported as one and saves nothing; a re-roll
+-- saves and pushes the new values to joined clients. ──────────────────────────
+group("R8", function()
+    local saves, broadcasts = 0, 0
+    local saveMgr, saveIsServer = g_SoilFertilityManager, g_currentMission.getIsServer
+    g_currentMission.getIsServer = function() return true end
+    local fd = sixFields()
+    local sys = newSys(fd)
+    sys.broadcastAllFieldData = function() broadcasts = broadcasts + 1 end
+    g_SoilFertilityManager = { soilSystem = sys, saveSoilData = function() saves = saves + 1 end }
+    local gui = setmetatable({}, { __index = SoilSettingsGUI })
+
+    g_farmlandManager = nil
+    local msg = gui:consoleCommandRerollUnownedFields()
+    T.ok("R8a an abort says so", msg:find("aborted", 1, true) ~= nil and msg:find("saved", 1, true) == nil)
+    T.eq("R8b and neither saves nor broadcasts", saves .. "/" .. broadcasts, "0/0")
+
+    world(OWNERS, 1)
+    msg = gui:consoleCommandRerollUnownedFields()
+    T.ok("R8c a re-roll reports its counts", msg:find("2 field", 1, true) ~= nil and msg:find("no farm owns", 1, true) ~= nil)
+    T.eq("R8d saves once and broadcasts once", saves .. "/" .. broadcasts, "1/1")
+
+    for id = 1, 6 do OWNERS[id] = OWNERS[id] == 0 and 9 or OWNERS[id] end   -- nothing left open
+    world(OWNERS, 1)
+    gui:consoleCommandRerollUnownedFields()
+    T.eq("R8e nothing re-rolled: saved, but no broadcast", saves .. "/" .. broadcasts, "2/1")
+    g_SoilFertilityManager, g_currentMission.getIsServer = saveMgr, saveIsServer
 end)
 
 g_farmlandManager, NpcSoilBridge, TargetApplication = saved.fm, saved.npc, saved.ta

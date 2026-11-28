@@ -1907,8 +1907,17 @@ function SoilSettingsGUI:consoleCommandRerollUnownedFields()
         return "Re-roll must be run on the server/host (it owns the field data)."
     end
 
-    local rerolled, skipped = g_SoilFertilityManager.soilSystem:rerollUnownedFields()
+    local soilSystem = g_SoilFertilityManager.soilSystem
+    local rerolled, skipped = soilSystem:rerollUnownedFields()
+    if rerolled == nil then
+        return string.format("Re-roll aborted, nothing changed: %s.", tostring(skipped))
+    end
     g_SoilFertilityManager:saveSoilData()
+    -- Joined clients mirror fieldData; send them the re-rolled values now instead of
+    -- leaving them on the old ones until they rejoin. No-op outside multiplayer.
+    if rerolled > 0 and type(soilSystem.broadcastAllFieldData) == "function" then
+        soilSystem:broadcastAllFieldData()
+    end
 
     return string.format(
         "Re-rolled starting soil for %d field(s) no farm owns and saved; " ..
