@@ -271,6 +271,7 @@ function SoilTuningPanel:requestChange(id, value)
     if SoilNetworkEvents_RequestSettingChange then
         SoilNetworkEvents_RequestSettingChange(id, value)
     else
+        if type(self.settings.noteExplicitChange) == "function" then self.settings:noteExplicitChange(id) end
         self.settings[id] = value
         self.settings:save()
     end

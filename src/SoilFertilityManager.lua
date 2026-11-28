@@ -608,7 +608,9 @@ function SoilFertilityManager:onMissionStarted()
             self.hasPrecisionFarming = self.pfBridge:initialize()
             if self.hasPrecisionFarming then
                 SoilLogger.warning("Precision Farming is active for this savegame. Soil & Fertilizer is not compatible with it and will disable itself.")
-                self.settings.enabled = false
+                -- Off for this session only: the player's own on/off choice stays in the
+                -- settings file, so a later load without PF starts the mod again by itself.
+                self.settings:forceOffForSession("precisionFarming")
                 self._disabledByPF = true  -- track that WE disabled it, not the player
 
                 -- Queue incompatibility dialog with a delay to ensure GUI is stable
@@ -618,20 +620,15 @@ function SoilFertilityManager:onMissionStarted()
                     self._pendingIncompatDelay  = 3500
                 end
                 return
-            else
-                -- PF is absent. Re-enable only if we were the ones who disabled it
-                -- (i.e. the player didn't manually turn the mod off themselves).
-                if self._disabledByPF then
-                    SoilLogger.info("Precision Farming not detected - re-enabling Soil & Fertilizer")
-                    self.settings.enabled = true
-                    self._disabledByPF = false
-                    self.settings:save()
-                end
             end
+            -- PF is absent. Nothing to undo: forceOffForSession never wrote the forced
+            -- `false` to disk, so `enabled` as loaded is the player's own choice. (The old
+            -- re-enable branch here read _disabledByPF, which is always nil on a fresh
+            -- manager, so it never ran.)
         end
 
         if not self.settings.enabled then
-            SoilLogger.info("Mod disabled in settings - skipping soil system init")
+            SoilLogger.info("Mod disabled in settings - skipping soil system init (type SoilEnable in the console to turn it back on)")
             return
         end
 

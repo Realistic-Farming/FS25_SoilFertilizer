@@ -131,6 +131,67 @@ function Settings:save()
     self.manager:saveLocalSettings(self)
 end
 
+--- Turn the mod off for THIS SESSION ONLY, for a reason the mod detected itself (today:
+--- Precision Farming is active). The player's own on/off choice is what keeps reaching
+--- the settings file, so the next load decides afresh: with PF gone, a mod the player had
+--- on comes back on by itself. Before this, the forced `false` was written by the very
+--- next save, and the "re-enable once PF is gone" check could never fire on a later load
+--- because the flag that remembered WHO turned it off lived only in memory.
+--- Calling it again keeps the choice remembered the first time.
+---@param reason string|nil
+function Settings:forceOffForSession(reason)
+    if self._forcedOffReason == nil then
+        self._enabledOnDisk = (self.enabled == true)
+    end
+    self._forcedOffReason = tostring(reason or "forced")
+    -- A fact about this session that outlives the force: noteExplicitChange ends the
+    -- force, but PF is still installed, so a later reset must still leave on/off alone.
+    self._sessionForcedBy = self._forcedOffReason
+    self.enabled = false
+end
+
+---@return string|nil reason the mod is forced off this session, or nil
+function Settings:getForcedOffReason()
+    return self._forcedOffReason
+end
+
+--- Every door that applies a PLAYER'S OR ADMIN'S change to a server-shared setting calls
+--- this first (the setting-change event, the host's direct apply, SettingsHub, and the
+--- network-not-ready fallbacks). A deliberate change to `enabled`, on or off, ends a
+--- session force: from then on the live value is the player's choice and is what saves.
+--- Mirrors of the server's value (the setting/full sync on a client) do not call it.
+---@param id string
+function Settings:noteExplicitChange(id)
+    if id == "enabled" then
+        self._forcedOffReason, self._enabledOnDisk = nil, nil
+    end
+end
+
+--- A "reset to defaults" (SoilResetSettings, and the settings panel's admin Reset, which
+--- calls it) sends every setting's default through the change doors. In a session where
+--- the mod was forced off (Precision Farming is installed), `enabled`'s default (true)
+--- would look like a deliberate enable and start Soil next to PF, so the reset leaves
+--- on/off alone for the whole session, even after the player has made their own on/off
+--- choice. Every other setting still resets. PF detection runs on every peer, so a client
+--- and the host answer the same.
+---@param id string
+---@return boolean
+function Settings:isResetExempt(id)
+    return id == "enabled" and self._sessionForcedBy ~= nil
+end
+
+--- The value SettingsManager:saveSettings writes for a server-shared setting. Only
+--- `enabled` while forced off differs from the live value: the player's remembered
+--- choice is written instead of the forced `false`. No side effects.
+---@param id string
+---@return any
+function Settings:getPersistedValue(id)
+    if id == "enabled" and self._forcedOffReason ~= nil then
+        return self._enabledOnDisk
+    end
+    return self[id]
+end
+
 ---@param saveImmediately boolean
 function Settings:resetToDefaults(saveImmediately)
     saveImmediately = saveImmediately ~= false

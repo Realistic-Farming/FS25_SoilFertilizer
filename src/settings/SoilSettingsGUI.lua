@@ -14,8 +14,10 @@ local function requestSettingChange(settingId, value)
     if SoilNetworkEvents_RequestSettingChange then
         SoilNetworkEvents_RequestSettingChange(settingId, value)
     else
-        g_SoilFertilityManager.settings[settingId] = value
-        g_SoilFertilityManager.settings:save()
+        local settings = g_SoilFertilityManager.settings
+        if type(settings.noteExplicitChange) == "function" then settings:noteExplicitChange(settingId) end
+        settings[settingId] = value
+        settings:save()
     end
 end
 
@@ -1531,10 +1533,19 @@ function SoilSettingsGUI:consoleCommandResetSettings()
         -- per-category reset). Calling settings:resetToDefaults() directly only
         -- mutated local state on MP clients - the server never heard about it and
         -- the client desynced until the next full sync.
+        local settings = g_SoilFertilityManager.settings
+        -- What `enabled` will be once the reset lands. Decided from what is SENT, not
+        -- read back afterwards: on an MP client the server's answer has not arrived yet.
+        local enabledAfter = settings.enabled
         for _, def in ipairs(SettingsSchema.definitions) do
-            requestSettingChange(def.id, def.default)
+            local exempt = type(settings.isResetExempt) == "function" and settings:isResetExempt(def.id)
+            if not exempt then
+                requestSettingChange(def.id, def.default)
+                if def.id == "enabled" then enabledAfter = def.default end
+            end
         end
-        if g_SoilFertilityManager.soilSystem then
+        -- A reset never starts the sim next to PF; otherwise it re-initializes as before.
+        if g_SoilFertilityManager.soilSystem and enabledAfter then
             g_SoilFertilityManager.soilSystem:initialize()
         end
         if g_SoilFertilityManager.settingsUI then

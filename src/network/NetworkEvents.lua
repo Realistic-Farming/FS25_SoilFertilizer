@@ -90,7 +90,8 @@ function SoilSettingChangeEvent:run(connection)
         local settings = g_SoilFertilityManager.settings
         local oldValue = settings[self.settingName]
 
-        -- Update the setting
+        -- Update the setting (an admin's deliberate change: ends a session force)
+        if type(settings.noteExplicitChange) == "function" then settings:noteExplicitChange(self.settingName) end
         settings[self.settingName] = self.settingValue
         settings:save()
 
@@ -1671,8 +1672,10 @@ function SoilNetworkEvents_RequestSettingChange(settingName, value)
     else
         -- Server/Singleplayer: apply directly
         if g_SoilFertilityManager and g_SoilFertilityManager.settings then
-            g_SoilFertilityManager.settings[settingName] = value
-            g_SoilFertilityManager.settings:save()
+            local settings = g_SoilFertilityManager.settings
+            if type(settings.noteExplicitChange) == "function" then settings:noteExplicitChange(settingName) end
+            settings[settingName] = value
+            settings:save()
 
             SoilLogger.info("Server: Setting '%s' changed to %s", settingName, tostring(value))
 

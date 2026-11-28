@@ -89,6 +89,7 @@ function SoilSettingsUI:requestSettingChange(settingName, value)
     if SoilNetworkEvents_RequestSettingChange then
         SoilNetworkEvents_RequestSettingChange(settingName, value)
     else
+        if type(self.settings.noteExplicitChange) == "function" then self.settings:noteExplicitChange(settingName) end
         self.settings[settingName] = value
         self.settings:save()
         SoilLogger.info("Setting '%s' changed to %s", settingName, tostring(value))

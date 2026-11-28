@@ -185,14 +185,19 @@ function SettingsManager:saveSettings(settingsObject)
 
     local xml = XMLFile.create("sf_Config", xmlPath, self.XMLTAG)
     if xml then
-        -- Auto-save server-shared settings from schema (skip per-player localOnly settings)
+        -- Auto-save server-shared settings from schema (skip per-player localOnly settings).
+        -- getPersistedValue lets a session-only state (the mod forced off because Precision
+        -- Farming is active) stay out of the file; see Settings:forceOffForSession.
+        local hasPersisted = type(settingsObject.getPersistedValue) == "function"
         for _, def in ipairs(SettingsSchema.definitions) do
             if not def.localOnly then
                 local xmlKey = self.XMLTAG .. "." .. def.id
+                local value = settingsObject[def.id]
+                if hasPersisted then value = settingsObject:getPersistedValue(def.id) end
                 if def.type == "boolean" then
-                    xml:setBool(xmlKey, settingsObject[def.id])
+                    xml:setBool(xmlKey, value)
                 elseif def.type == "number" then
-                    xml:setInt(xmlKey, settingsObject[def.id])
+                    xml:setInt(xmlKey, value)
                 end
             end
         end
