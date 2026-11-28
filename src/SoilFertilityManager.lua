@@ -432,6 +432,24 @@ function SoilFertilityManager:onMissionLoaded()
     end
 end
 
+--- The per-frame HUD step of update() (client side only: soilHUD exists there).
+--- A monitor whose initialize raised is kept only as the field-detection service (see
+--- onMissionLoaded). If its update raises too, that service is broken: say so once and
+--- stop, instead of a warning on every frame. An initialized monitor's error is logged
+--- each time, as before.
+---@param dt number
+function SoilFertilityManager:_updateHud(dt)
+    local hud = self.soilHUD
+    if hud == nil or self._hudServiceStopped then return end
+    local success, err = pcall(hud.update, hud, dt)
+    if not success and not hud.initialized then
+        SoilLogger.error("HUD update error on a monitor that failed to initialize - its field detection is off for this session: %s", tostring(err))
+        self._hudServiceStopped = true
+    elseif not success then
+        SoilLogger.warning("HUD update error: %s", tostring(err))
+    end
+end
+
 --- Switch one HUD/panel off for the rest of the session after its initialize raised.
 --- Its delete runs guarded (a half-built part may fail there too), then the field is
 --- cleared so nothing draws, updates or routes input to it.
@@ -1702,16 +1720,7 @@ function SoilFertilityManager:update(dt)
         self.soilMapOverlay:updateMinimapZoom(dt)
     end
 
-    -- FIX: Only update HUD if it exists (client side only)
-    if self.soilHUD then
-        -- Add pcall to prevent crashes if HUD has issues
-        local success, err = pcall(function()
-            self.soilHUD:update(dt)
-        end)
-        if not success then
-            SoilLogger.warning("HUD update error: %s", tostring(err))
-        end
-    end
+    self:_updateHud(dt)
 
     -- Settings panel camera-lock and cursor keepalive
     if self.settingsPanel then

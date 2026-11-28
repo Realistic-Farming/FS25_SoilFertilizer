@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """A HUD/panel that fails to initialize no longer turns the mod off: does the bar catch the wrong fixes?
 
-Sixteen mutants, each a plausible way to get the rule wrong, and each must send
+Eighteen mutants, each a plausible way to get the rule wrong, and each must send
 SF-hud_init_keeps_sim_spec_test.lua RED:
 
   M1  the failure branch disables and saves again   the old behaviour (the bug).
@@ -22,6 +22,8 @@ SF-hud_init_keeps_sim_spec_test.lua RED:
   M13 a retired panel's collapsed state dropped     it comes back expanded next session.
   M14 toggleVisibility ignores `initialized`        J / Control Center: "shown" over nothing.
   M15 the cab strip ignores `initialized`           MasterHUD hide-all draws a bare strip.
+  M16 a failed monitor's update never stops         an error in the log on every frame.
+  M17 update() no longer runs the HUD step          field detection and the cache freeze.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -86,6 +88,10 @@ MUTATIONS = [
     ("M14 toggleVisibility ignores initialized", HUD,
      [("    if not self.initialized then return end\n    self.visible = not self.visible\n",
        "    self.visible = not self.visible\n", 1)]),
+    ("M16 a failed monitor's update never stops", SFM,
+     [("        self._hudServiceStopped = true\n", "", 1)]),
+    ("M17 update() no longer runs the HUD step", SFM,
+     [("    self:_updateHud(dt)\n", "", 1)]),
     ("M15 the cab strip ignores initialized", BRIDGE,
      [("    if sfm.soilHUD and sfm.soilHUD.initialized and sfm.soilHUD.drawSprayerRatePanel then\n",
        "    if sfm.soilHUD and sfm.soilHUD.drawSprayerRatePanel then\n", 1)]),

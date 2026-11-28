@@ -17,6 +17,7 @@
 -- WHO POPULATES THE WORLD. The parts are recording stubs on a stub manager driven through
 -- the real SoilFertilityManager:onMissionLoaded; settings is a stub whose save() counts.
 --
+--!text: src/SoilFertilityManager.lua
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/utils/SoilUtils.lua, src/SoilFertilityManager.lua, src/ui/SoilHUD.lua, src/integrations/SoilMasterHUDBridge.lua
 
 SoilLogger.info = function() end
@@ -263,4 +264,35 @@ group("H13", function()
     SoilMasterHUDBridge.drawCabTools()
     T.eq("H13b an initialized one still draws it", strips, 1)
     g_SoilFertilityManager, SoilMasterHUDBridge._hud = saveSfm, saveHud
+end)
+
+-- ── H14: a kept, uninitialized monitor whose update raises is logged ONCE and then
+-- left alone, not a warning on every frame. An initialized one keeps the old warning. ──
+group("H14", function()
+    local calls = 0
+    local hud = { initialized = nil, update = function() calls = calls + 1; error("still broken") end }
+    local mgr = setmetatable({ soilHUD = hud, settings = { enabled = true } }, { __index = SoilFertilityManager })
+    ERRS, WARNS = {}, {}
+    -- The HUD step update() calls each frame (SoilFertilityManager:_updateHud).
+    for _ = 1, 5 do mgr:_updateHud(16) end
+    T.eq("H14a update was tried once, then stopped", calls, 1)
+    local n = 0
+    for _, e in ipairs(ERRS) do if e:find("failed to initialize", 1, true) then n = n + 1 end end
+    T.eq("H14b and logged once, as an error naming the cause", n, 1)
+
+    local live = { initialized = true, update = function() error("transient") end }
+    local mgr2 = setmetatable({ soilHUD = live, settings = { enabled = true } }, { __index = SoilFertilityManager })
+    WARNS = {}
+    for _ = 1, 3 do mgr2:_updateHud(16) end
+    local w = 0
+    for _, e in ipairs(WARNS) do if e:find("HUD update error", 1, true) then w = w + 1 end end
+    T.eq("H14c an initialized monitor keeps updating (and warning) as before", w, 3)
+end)
+
+-- ── H15: update() still runs the HUD step every frame (source witness: update is too
+-- wide to drive on this bench). ──────────────────────────────────────────────────────
+group("H15", function()
+    local src = SOURCE_TEXT["src/SoilFertilityManager.lua"]
+    local body = src:match("function SoilFertilityManager:update%(dt%)(.-)\nend\n")
+    T.ok("H15 SoilFertilityManager:update calls self:_updateHud(dt)", body ~= nil and body:find("self:_updateHud(dt)", 1, true) ~= nil)
 end)
