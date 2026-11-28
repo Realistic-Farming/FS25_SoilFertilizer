@@ -48,7 +48,11 @@ SoilMasterHUDBridge.active = SoilMasterHUDBridge.active or false   -- survives r
 function SoilMasterHUDBridge.isFullscreen()
     local sfm = g_SoilFertilityManager
     if sfm == nil then return false end
-    for _, p in ipairs({ sfm.settingsPanel, sfm.tuningPanel, sfm.cropTuningPanel }) do
+    -- Indexed by count, not ipairs: a panel retired at load leaves a nil hole, and
+    -- ipairs would stop there and miss an open panel after it.
+    local panels = { sfm.settingsPanel, sfm.tuningPanel, sfm.cropTuningPanel }
+    for i = 1, 3 do
+        local p = panels[i]
         if p ~= nil and type(p.isOpen) == "function" and p:isOpen() then
             return true
         end
@@ -144,7 +148,7 @@ function SoilMasterHUDBridge.drawCabTools()
 
     -- The application-rate strip alone, not the whole Soil Monitor: SoilHUD:draw
     -- would bring the monitor back, which is exactly what hide-all removes.
-    if sfm.soilHUD and sfm.soilHUD.drawSprayerRatePanel then
+    if sfm.soilHUD and sfm.soilHUD.initialized and sfm.soilHUD.drawSprayerRatePanel then
         sfm.soilHUD:drawSprayerRatePanel()
     end
     if sfm.variableRatePanel then sfm.variableRatePanel:draw() end

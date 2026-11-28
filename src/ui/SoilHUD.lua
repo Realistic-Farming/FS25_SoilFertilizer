@@ -267,6 +267,10 @@ end
 
 -- ── Edit mode ────────────────────────────────────────────
 function SoilHUD:enterEditMode()
+    -- An uninitialized HUD draws nothing; edit mode on it would lock the cursor and
+    -- freeze the camera every frame around an invisible panel. (The mod loaded
+    -- disabled, or initialize raised: see SoilFertilityManager:onMissionLoaded.)
+    if not self.initialized then return end
     self.editMode = true
     self.dragging = false
     self.subDragMoved = false
@@ -339,6 +343,10 @@ function SoilHUD:getLayoutPath()
 end
 
 function SoilHUD:saveLayout()
+    -- hud.xml is per player profile and shared by every savegame. An uninitialized HUD
+    -- (the mod loaded disabled, or initialize raised) never read it, so writing would
+    -- replace the player's layout with the constructor defaults.
+    if not self.initialized then return end
     local path = self:getLayoutPath()
     if not path then return end
     local xml = XMLFile.create("sf_hud", path, "hudLayout")
@@ -374,11 +382,18 @@ function SoilHUD:saveLayout()
 
         -- Sub-panel collapsed states
         local sfm = g_SoilFertilityManager
+        -- A panel retired this session (its initialize raised) keeps the state it loaded
+        -- with, instead of dropping the key and coming back expanded next time.
+        local kept = self.savedCollapsed or {}
         if sfm and sfm.variableRatePanel then
             xml:setBool("hudLayout.collapsed_varRate", sfm.variableRatePanel.collapsed)
+        elseif kept.varRate ~= nil then
+            xml:setBool("hudLayout.collapsed_varRate", kept.varRate)
         end
         if sfm and sfm.smartSensorPanel then
             xml:setBool("hudLayout.collapsed_smartSensor", sfm.smartSensorPanel.collapsed)
+        elseif kept.smartSensor ~= nil then
+            xml:setBool("hudLayout.collapsed_smartSensor", kept.smartSensor)
         end
 
         xml:save()
@@ -649,8 +664,10 @@ function SoilHUD:onMouseEvent(posX, posY, isDown, isUp, button, eventUsed)
         -- yield clicks inside their cached edit rectangles; their own handlers
         -- will claim the event later in the same dispatch.
         if sfm then
+            -- Indexed by count, not ipairs: a panel retired at load leaves a nil hole.
             local directPanels = { sfm.harvesterPanel, sfm.sprayerInfoPanel }
-            for _, panel in ipairs(directPanels) do
+            for i = 1, 2 do
+                local panel = directPanels[i]
                 local px = panel and panel._lastPanelX
                 local py = panel and panel._lastPanelY
                 local pw = panel and panel._lastPanelW
@@ -1383,6 +1400,9 @@ end
 
 -- ── Toggle visibility (J key) ────────────────────────────
 function SoilHUD:toggleVisibility()
+    -- An uninitialized monitor draws nothing: flipping `visible` and saying "Soil HUD
+    -- shown" would be a lie. Every door (J, the Control Center action) lands here.
+    if not self.initialized then return end
     self.visible = not self.visible
     local msg = self.visible and "Soil HUD shown" or "Soil HUD hidden"
     if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then
