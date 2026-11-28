@@ -61,7 +61,7 @@ MUTATIONS = [
      [(PCALL, "            local ok, owner = true, fm:getFarmlandOwner(fieldId)\n", 1)]),
     ("M4 the missing-manager abort dropped", SFS, [(GUARD, "", 1)]),
     ("M5 the NPC skip dropped", SFS,
-     [("            elseif rerollKeepsNpcGround(fieldId) then\n", "            elseif false then\n", 1)]),
+     [("            elseif self:_rerollKeepsNpcGround(fieldId) then\n", "            elseif false then\n", 1)]),
     ("M6 the NPC lookup not guarded", SFS,
      [("    local ok, isNpc = pcall(NpcSoilBridge.isNPCManaged, NpcSoilBridge, fieldId)\n",
        "    local ok, isNpc = true, NpcSoilBridge:isNPCManaged(fieldId)\n", 1)]),

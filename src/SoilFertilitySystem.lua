@@ -3746,8 +3746,10 @@ function SoilFertilitySystem:rerollAllFields()
 end
 
 -- B5 for rerollUnownedFields: is this NPC-managed ground (kept)? A bridge that raises
--- keeps the field too, the same fail-closed rule as the owner read.
-local function rerollKeepsNpcGround(fieldId)
+-- keeps the field too, the same fail-closed rule as the owner read. A method, not a
+-- file-level local: the bench joins many src files into one chunk, and Lua 5.1 allows
+-- only 200 locals in a chunk's main function.
+function SoilFertilitySystem:_rerollKeepsNpcGround(fieldId)
     if not NpcSoilBridge then return false end
     local ok, isNpc = pcall(NpcSoilBridge.isNPCManaged, NpcSoilBridge, fieldId)
     return (not ok) or isNpc == true
@@ -3784,7 +3786,7 @@ function SoilFertilitySystem:rerollUnownedFields()
                 -- Owned by some farm (any farm, not only ours), or the owner could not
                 -- be read: leave its soil and progress alone.
                 skipped = skipped + 1
-            elseif rerollKeepsNpcGround(fieldId) then
+            elseif self:_rerollKeepsNpcGround(fieldId) then
                 -- B5: designated NPC ground is SKIPPED, never rerolled. This
                 -- protects the disease/pest reservoir history the feature exists
                 -- to create.
