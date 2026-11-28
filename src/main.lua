@@ -1227,18 +1227,8 @@ function soilStatus()
         local pfBridge = g_SoilFertilityManager.pfBridge
         local pfStatus = (pfBridge and pfBridge.isActive) and "ACTIVE - SF disabled" or "not detected"
         -- #1177: map-wide frozen-ground state, with the streak towards the next change.
-        local groundStatus = "unknown"
         local fgState = g_SoilFertilityManager.soilSystem and g_SoilFertilityManager.soilSystem.frozenGround
-        if fgState ~= nil then
-            local fgc = SoilConstants.FROZEN_GROUND or {}
-            if fgState:isFrozen() then
-                groundStatus = string.format("frozen, leaching paused (%d/%d warm days to thaw)",
-                    fgState.warmDays, fgc.DAYS_TO_THAW or 2)
-            else
-                groundStatus = string.format("thawed (%d/%d cold days to freeze)",
-                    fgState.coldDays, fgc.DAYS_TO_FREEZE or 2)
-            end
-        end
+        local groundStatus = fgState ~= nil and fgState:statusText(isServer) or "unknown"
         print(string.format(
             "=== Soil & Fertilizer Status ===\n" ..
             "Mode: %s\n" ..

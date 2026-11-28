@@ -475,6 +475,7 @@ SoilConstants.FROZEN_GROUND = {
     FREEZE_TEMP_C  = 0.0,  -- a day whose average is at or below this counts as cold
     DAYS_TO_FREEZE = 2,    -- cold days in a row before the ground freezes
     DAYS_TO_THAW   = 2,    -- warmer days in a row before frozen ground thaws
+    MIN_READINGS   = 12,   -- hourly readings a day needs to count (fewer: neither way)
 }
 
 -- Relative N leach rate by N source (1.0 = upstream behaviour).

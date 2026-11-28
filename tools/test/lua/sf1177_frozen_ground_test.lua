@@ -6,6 +6,7 @@
 --   leach or acidification, on both its callers. No WeatherGuard = never frozen.
 --   The state saves on the XML root and in the StateLedger table.
 --!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SoilBlends.lua, src/ResistanceBands.lua, src/HybridStrains.lua, src/FrozenGround.lua, src/SoilFertilitySystem.lua
+--!text: src/main.lua
 
 SoilLogger.info = function() end
 SoilLogger.debug = function() end
@@ -46,7 +47,7 @@ do
   T.eq("sample: a nil reading does not count", fg:sample(2, nil), false)
   T.eq("sample: a NaN reading does not count", fg:sample(3, 0/0), false)
   T.eq("sample: a nil hour key is ignored", fg:sample(nil, -4), false)
-  T.near("sample: the day's average is the one valid reading", fg:onDayChanged(), -4, 1e-12)
+  T.eq("sample: a day with one reading is too short to count", fg:onDayChanged(), nil)
 
   local calls = 0
   local reader = function() calls = calls + 1; return 2 end
@@ -122,7 +123,10 @@ do
   T.eq("table: frozen is saved", t.frozen, true)
   T.eq("table: the warm streak is saved", t.warmDays, 1)
   local back = FrozenGround.new(); back:fromTable(t)
-  T.eq("table: frozen round-trips", back:isFrozen(), true)
+  T.eq("table: frozen round-trips (the stored state)", back.frozen, true)
+  T.eq("table: but it is not frozen until a temperature is read", back:isFrozen(), false)
+  back:sample(9001, -2)
+  T.eq("table: one good reading and it is frozen again", back:isFrozen(), true)
   T.eq("table: the warm streak round-trips", back.warmDays, 1)
   day(back, 3)
   T.eq("table: a restored streak carries on (thaws on the next warm day)", back:isFrozen(), false)
@@ -182,7 +186,10 @@ local function leachSys(frozen, withTracker)
   s._rainWasFilled = false
   if withTracker ~= false then
     s.frozenGround = FrozenGround.new()
-    if frozen then s.frozenGround:fromTable({ frozen = true }) end
+    if frozen then
+      s.frozenGround:fromTable({ frozen = true })
+      s.frozenGround:sample(-1, -5)   -- a live reading: frozen only counts with one
+    end
   end
   return s
 end
@@ -309,7 +316,7 @@ do
   local r = saveSys(false)
   local okLoad, errLoad = pcall(r.loadFromXMLFile, r, xml, "soilData")
   T.ok("xml: loadFromXMLFile runs [" .. tostring(errLoad) .. "]", okLoad)
-  T.eq("xml: frozen loads back", r.frozenGround:isFrozen(), true)
+  T.eq("xml: frozen loads back", r.frozenGround.frozen, true)
   T.eq("xml: the warm streak loads back", r.frozenGround.warmDays, 1)
 
   local o = saveSys(true)
@@ -322,7 +329,7 @@ do
   local l = saveSys(false)
   local okL, errL = pcall(l.applySoilStateTable, l, tbl)
   T.ok("ledger: applySoilStateTable runs [" .. tostring(errL) .. "]", okL)
-  T.eq("ledger: applying the snapshot restores frozen", l.frozenGround:isFrozen(), true)
+  T.eq("ledger: applying the snapshot restores frozen", l.frozenGround.frozen, true)
   local e = saveSys(true)
   pcall(e.applySoilStateTable, e, nil)
   T.eq("ledger: an empty snapshot resets to thawed", e.frozenGround:isFrozen(), false)
@@ -332,3 +339,128 @@ do
   T.eq("ledger: a snapshot from before #1177 loads thawed", older.frozenGround:isFrozen(), false)
   g_currentMission = nil
 end
+
+-- =====================================================================
+-- GROUP I: review fixes on #1178.
+-- =====================================================================
+
+-- I1 (review: important). A frozen save loaded without WeatherGuard must not stay
+-- frozen for good: with no reading, nothing is paused.
+do
+  local s, env = worldSys(nil)               -- no WeatherGuard
+  s.frozenGround:fromTable({ frozen = true, coldDays = 0, warmDays = 0 })
+  local first = runDay(s, env, 1)
+  T.ok("no reading: a frozen save loaded without WeatherGuard leaches on day 1", first > 0)
+  local last
+  for d = 2, 10 do last = runDay(s, env, d) end
+  T.near("no reading: and keeps leaching normally (day 10 = day 1)", last, first, 1e-9)
+  T.eq("no reading: isFrozen() stays false", s.frozenGround:isFrozen(), false)
+end
+
+do
+  -- The normal reload: WeatherGuard present and cold. Frozen from the first frame.
+  local s, env = worldSys(function() return -6 end)
+  s.frozenGround:fromTable({ frozen = true, coldDays = 2, warmDays = 0 })
+  T.eq("reload: a frozen save with WeatherGuard leaches nothing on day 1", runDay(s, env, 1), 0)
+end
+
+do
+  -- WeatherGuard stops answering mid-winter, then comes back.
+  local temp = -6
+  local s, env = worldSys(function() return temp end)
+  runDay(s, env, 1); runDay(s, env, 2)          -- day 2 closes as day 3 starts
+  temp = nil
+  T.ok("lost reading: on day 3 WeatherGuard gives nothing, so leaching runs", runDay(s, env, 3) > 0)
+  T.eq("lost reading: the ground did freeze when day 2 closed (stored state)", s.frozenGround.frozen, true)
+  temp = -6
+  T.eq("lost reading: once readings return on day 4, frozen again: no leaching", runDay(s, env, 4), 0)
+end
+
+-- I2 (review: nit). A day needs MIN_READINGS hourly readings to count.
+do
+  T.eq("short day: the minimum is 12 readings", FG.MIN_READINGS, 12)
+  local fg = FrozenGround.new()
+  local function shortDay(n, t) for _ = 1, n do hourBase = hourBase + 1; fg:sample(hourBase, t) end return fg:onDayChanged() end
+  T.eq("short day: 11 cold readings count neither way", shortDay(11, -5), nil)
+  T.eq("short day: no cold streak from it", fg.coldDays, 0)
+  T.near("short day: 12 cold readings count", shortDay(12, -5), -5, 1e-12)
+  T.eq("short day: the cold streak is 1", fg.coldDays, 1)
+  shortDay(4, 6)
+  T.eq("short day: a short warm day does not break the cold streak", fg.coldDays, 1)
+  shortDay(12, -5)
+  T.eq("short day: so the next full cold day freezes", fg:isFrozen(), true)
+
+  -- The review's case: load at 20:00, four frosty evening hours, two days running.
+  local g = FrozenGround.new()
+  for _ = 1, 2 do
+    for _ = 20, 23 do hourBase = hourBase + 1; g:sample(hourBase, -2) end
+    g:onDayChanged()
+  end
+  T.eq("short day: two late-evening loads with frosty hours do not freeze", g:isFrozen(), false)
+end
+
+-- I3. closeDay logs once per change, and statusText says what is going on.
+do
+  local logged = {}
+  local realInfo = SoilLogger.info
+  SoilLogger.info = function(fmt, ...) logged[#logged + 1] = string.format(fmt, ...) end
+  local fg = FrozenGround.new()
+  local function fullDay(t) for _ = 1, 24 do hourBase = hourBase + 1; fg:sample(hourBase, t) end fg:closeDay() end
+  fullDay(-4); fullDay(-4); fullDay(-4)
+  fullDay(5); fullDay(5)
+  SoilLogger.info = realInfo
+  T.eq("log: one line for the freeze and one for the thaw", #logged, 2)
+  T.ok("log: the freeze line", logged[1] ~= nil and logged[1]:find("Ground froze (day average -4.0 C): leaching paused", 1, true) ~= nil)
+  T.ok("log: the thaw line", logged[2] ~= nil and logged[2]:find("Ground thawed (day average 5.0 C): leaching resumed", 1, true) ~= nil)
+
+  local st = FrozenGround.new()
+  T.eq("status: thawed", st:statusText(true), "thawed (0/2 cold days to freeze)")
+  st:fromTable({ frozen = true, warmDays = 1 })
+  T.eq("status: frozen with no reading says leaching runs", st:statusText(true),
+       "frozen when last read, but no temperature now: leaching runs")
+  st:sample(1, -3)
+  T.eq("status: frozen", st:statusText(true), "frozen, leaching paused (1/2 warm days to thaw)")
+  T.eq("status: on a client it says the server's values apply", st:statusText(false),
+       "frozen, leaching paused (1/2 warm days to thaw) [this client's own reading; the server's soil values apply]")
+end
+
+-- I4. A load replaces any earlier reading: until the next hourly read, the loaded
+-- frozen state does not pause anything.
+do
+  local fg = FrozenGround.new()
+  fg:sample(1, 4)                                  -- a good reading before the load
+  fg:fromTable({ frozen = true })
+  T.eq("load: a just-loaded frozen state waits for a reading", fg:isFrozen(), false)
+end
+
+-- I5. soilStatus, run from main.lua's own text (it cannot be sourced whole).
+do
+  local MAIN = ((SOURCE_TEXT and SOURCE_TEXT["src/main.lua"]) or ""):gsub("\r\n", "\n")
+  local a = MAIN:find("function soilStatus()", 1, true)
+  local b = a and MAIN:find("\nfunction SoilSprayerDebug()", a, true)
+  T.ok("soilStatus: found in main.lua", a ~= nil and b ~= nil)
+  if a and b then
+    local chunk = assert(load(MAIN:sub(a, b), "=src/main.lua soilStatus", "t"))
+    chunk()
+    local fg = FrozenGround.new()
+    fg:fromTable({ frozen = true, warmDays = 1 }); fg:sample(1, -3)
+    g_SoilFertilityManager = {
+      settings = { enabled = true, getDifficultyName = function() return "Realistic" end },
+      soilSystem = { frozenGround = fg },
+    }
+    local out = {}
+    local realPrint = print
+    print = function(x) out[#out + 1] = tostring(x) end
+    g_server = {}
+    soilStatus()
+    g_server = nil
+    soilStatus()
+    print = realPrint
+    T.ok("soilStatus: the server shows the ground line",
+         out[1] ~= nil and out[1]:find("Ground: frozen, leaching paused (1/2 warm days to thaw)\n", 1, true) ~= nil)
+    T.ok("soilStatus: a client's line carries the note",
+         out[2] ~= nil and out[2]:find("[this client's own reading; the server's soil values apply]", 1, true) ~= nil)
+    g_SoilFertilityManager = nil
+  end
+end
+
