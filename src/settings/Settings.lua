@@ -131,6 +131,45 @@ function Settings:save()
     self.manager:saveLocalSettings(self)
 end
 
+--- Turn the mod off for THIS SESSION ONLY, for a reason the mod detected itself (today:
+--- Precision Farming is active). The player's own on/off choice is what keeps reaching
+--- the settings file, so the next load decides afresh: with PF gone, a mod the player had
+--- on comes back on by itself. Before this, the forced `false` was written by the very
+--- next save, and the "re-enable once PF is gone" check could never fire on a later load
+--- because the flag that remembered WHO turned it off lived only in memory.
+--- Calling it again keeps the choice remembered the first time.
+---@param reason string|nil
+function Settings:forceOffForSession(reason)
+    if self._forcedOffReason == nil then
+        self._enabledOnDisk = (self.enabled == true)
+    end
+    self._forcedOffReason = tostring(reason or "forced")
+    self.enabled = false
+end
+
+---@return string|nil reason the mod is forced off this session, or nil
+function Settings:getForcedOffReason()
+    return self._forcedOffReason
+end
+
+--- The value SettingsManager:saveSettings writes for a server-shared setting. Only
+--- `enabled` while forced off differs from the live value: the player's remembered
+--- choice is written instead of the forced `false`. If something turned the mod back ON
+--- this session (SoilEnable, the settings menu, SettingsHub, a reset to defaults), that
+--- explicit choice wins: the force is dropped and the live value is written.
+---@param id string
+---@return any
+function Settings:getPersistedValue(id)
+    if id == "enabled" and self._forcedOffReason ~= nil then
+        if self.enabled ~= false then
+            self._forcedOffReason, self._enabledOnDisk = nil, nil
+            return self.enabled
+        end
+        return self._enabledOnDisk
+    end
+    return self[id]
+end
+
 ---@param saveImmediately boolean
 function Settings:resetToDefaults(saveImmediately)
     saveImmediately = saveImmediately ~= false
