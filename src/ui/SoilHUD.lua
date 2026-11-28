@@ -1400,6 +1400,9 @@ end
 
 -- ── Toggle visibility (J key) ────────────────────────────
 function SoilHUD:toggleVisibility()
+    -- An uninitialized monitor draws nothing: flipping `visible` and saying "Soil HUD
+    -- shown" would be a lie. Every door (J, the Control Center action) lands here.
+    if not self.initialized then return end
     self.visible = not self.visible
     local msg = self.visible and "Soil HUD shown" or "Soil HUD hidden"
     if g_currentMission and g_currentMission.hud and g_currentMission.hud.showBlinkingWarning then

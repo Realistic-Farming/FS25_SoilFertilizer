@@ -77,10 +77,19 @@ local function vehicleWith(camera)
   return { getActiveCamera = function() return camera end }
 end
 
+-- A HUD as edit mode meets it in production: initialized at mission load. (An
+-- uninitialized HUD draws nothing, so enterEditMode refuses it; that rule has its own bar,
+-- SF-hud_init_keeps_sim_spec_test.lua H9.)
+local function liveHud()
+  local h = SoilHUD.new({}, { hudPosition = 1 })
+  h.initialized = true
+  return h
+end
+
 group("H", function()
   local camera = { rotX = 0.4, rotY = 1.2, rotZ = 0.1, rotateNode = 77 }
   g_localPlayer = playerIn(vehicleWith(camera))
-  local hud = SoilHUD.new({}, { hudPosition = 1 })
+  local hud = liveHud()
   hud:enterEditMode()
   T.eq("H1 [reached] a player in a vehicle enters the HUD's edit mode: the active camera's rotation is saved",
     tostring(hud.savedVehicleCamRotX) .. "/" .. tostring(hud.savedVehicleCamRotY), "0.4/1.2")
@@ -96,7 +105,7 @@ group("H", function()
     "0.4/1.2/0.1")
 
   g_localPlayer = playerIn(nil)
-  local hudFoot = SoilHUD.new({}, { hudPosition = 1 })
+  local hudFoot = liveHud()
   hudFoot:enterEditMode()
   ROTATIONS = {}
   hudFoot:update(16)
@@ -104,26 +113,26 @@ group("H", function()
     tostring(hudFoot.savedVehicleCamRotX) .. "/" .. rotationsOn(77), "nil/0")
 
   g_localPlayer = nil
-  local hudNone = SoilHUD.new({}, { hudPosition = 1 })
+  local hudNone = liveHud()
   local ok = pcall(function() hudNone:enterEditMode() hudNone:update(16) end)
   T.eq("H5 with no local player (a dedicated server) entering and updating the edit mode raises nothing, saves nothing",
     tostring(ok) .. "/" .. tostring(hudNone.savedVehicleCamRotX), "true/nil")
 
   g_localPlayer = playerIn({})
-  local hudBare = SoilHUD.new({}, { hudPosition = 1 })
+  local hudBare = liveHud()
   hudBare:enterEditMode()
   g_localPlayer = playerIn(vehicleWith(nil))
-  local hudNoCam = SoilHUD.new({}, { hudPosition = 1 })
+  local hudNoCam = liveHud()
   hudNoCam:enterEditMode()
   T.eq("H6 a vehicle that is not Enterable, and an Enterable with no active camera, save nothing",
     tostring(hudBare.savedVehicleCamRotX) .. "/" .. tostring(hudNoCam.savedVehicleCamRotX), "nil/nil")
 
   -- A player whose state getter raises, or that has none, reads as no vehicle and never raises.
   g_localPlayer = { getCurrentVehicle = function() error("state machine") end }
-  local hudRaise = SoilHUD.new({}, { hudPosition = 1 })
+  local hudRaise = liveHud()
   local okRaise = pcall(function() hudRaise:enterEditMode() end)
   g_localPlayer = { rootNode = 5 }
-  local hudNoGetter = SoilHUD.new({}, { hudPosition = 1 })
+  local hudNoGetter = liveHud()
   local okNoGetter = pcall(function() hudNoGetter:enterEditMode() end)
   T.eq("H7 a getter that raises, and a player with no getter, read as no vehicle without raising",
     tostring(okRaise) .. "/" .. tostring(hudRaise.savedVehicleCamRotX) .. "/" .. tostring(okNoGetter) .. "/" .. tostring(hudNoGetter.savedVehicleCamRotX),
@@ -131,7 +140,7 @@ group("H", function()
 
   -- An Enterable whose camera getter raises reads as no camera.
   g_localPlayer = playerIn({ getActiveCamera = function() error("camera") end })
-  local hudCamRaise = SoilHUD.new({}, { hudPosition = 1 })
+  local hudCamRaise = liveHud()
   local okCamRaise = pcall(function() hudCamRaise:enterEditMode() end)
   T.eq("H8 a vehicle whose camera getter raises reads as no camera without raising",
     tostring(okCamRaise) .. "/" .. tostring(hudCamRaise.savedVehicleCamRotX), "true/nil")

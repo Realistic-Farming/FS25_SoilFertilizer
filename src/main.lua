@@ -999,7 +999,8 @@ local function registerControlCenterActions()
         end,
         run = function()
             local hud = g_SoilFertilityManager ~= nil and g_SoilFertilityManager.soilHUD or nil
-            if hud ~= nil and hud.toggleVisibility ~= nil then
+            -- An uninitialized monitor (initialize raised at load) cannot be shown.
+            if hud ~= nil and hud.initialized and hud.toggleVisibility ~= nil then
                 hud:toggleVisibility()
                 return hud.visible and "Soil HUD shown" or "Soil HUD hidden"
             end
