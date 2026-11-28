@@ -383,47 +383,51 @@ function SoilFertilityManager.new(mission, modDirectory, modName, disableGUI)
     return self
 end
 
+--- The HUD and panels onMissionLoaded initializes, in order. Each is a field on the manager.
+SoilFertilityManager.GUI_INIT_ORDER = {
+    "soilHUD", "settingsPanel", "tuningPanel", "cropTuningPanel",
+    "variableRatePanel", "smartSensorPanel", "sprayerInfoPanel", "harvesterPanel",
+}
+
 --- Called after mission is loaded (loadMission00Finished).
 --- Initializes HUD and settings panel - fields not yet guaranteed populated at this point.
+---
+--- Each part is initialized on its own. One that raises is switched off for this session
+--- (deleted, its field cleared: every caller already checks for nil, the same state as a
+--- client whose SoilHUD module failed to load) and the rest still initialize. The soil
+--- simulation is NOT touched. This used to set settings.enabled = false and save it, so a
+--- single HUD error (often a conflict with another mod) turned the whole mod off in that
+--- savegame for good, with nothing on screen to say why.
 function SoilFertilityManager:onMissionLoaded()
     if not self.settings.enabled then return end
 
-    local success, errorMsg = pcall(function()
-        if self.soilHUD then
-            self.soilHUD:initialize()
+    for _, key in ipairs(SoilFertilityManager.GUI_INIT_ORDER) do
+        local part = self[key]
+        if part ~= nil and type(part.initialize) == "function" then
+            local ok, err = pcall(part.initialize, part)
+            if not ok then
+                SoilLogger.error("Error during mission load - %s failed to initialize and is off for this session (the soil simulation keeps running): %s",
+                    key, tostring(err))
+                self:_retireGuiPart(key)
+            end
         end
-
-        if self.settingsPanel then
-            self.settingsPanel:initialize()
-        end
-
-        if self.tuningPanel then
-            self.tuningPanel:initialize()
-        end
-
-        if self.cropTuningPanel then
-            self.cropTuningPanel:initialize()
-        end
-
-        if self.variableRatePanel then
-            self.variableRatePanel:initialize()
-        end
-        if self.smartSensorPanel then
-            self.smartSensorPanel:initialize()
-        end
-        if self.sprayerInfoPanel then
-            self.sprayerInfoPanel:initialize()
-        end
-        if self.harvesterPanel then
-            self.harvesterPanel:initialize()
-        end
-    end)
-
-    if not success then
-        SoilLogger.error("Error during mission load - %s", tostring(errorMsg))
-        self.settings.enabled = false
-        self.settings:save()
     end
+end
+
+--- Switch one HUD/panel off for the rest of the session after its initialize raised.
+--- Its delete runs guarded (a half-built part may fail there too), then the field is
+--- cleared so nothing draws, updates or routes input to it.
+---@param key string field name from GUI_INIT_ORDER
+function SoilFertilityManager:_retireGuiPart(key)
+    local part = self[key]
+    if part == nil then return end
+    if type(part.delete) == "function" then
+        local ok, err = pcall(part.delete, part)
+        if not ok then
+            SoilLogger.warning("%s cleanup after a failed initialize also failed: %s", key, tostring(err))
+        end
+    end
+    self[key] = nil
 end
 
 --- Bring the live soil system fully online: sim core, minimap heatmap, per-crop tuning,
@@ -432,8 +436,7 @@ end
 --- the monitor AND the minimap layer AND field data - not just the sim core. That gap is why
 --- a save that loaded with the mod disabled stayed half-dead after SoilEnable (minimap layer
 --- and field data never re-initialized). Each subsystem rebuilds its own state, so a repeat
---- call is safe. Guarded so a subsystem error can't propagate (notably it must NOT bubble up
---- to the load() catch that persists enabled=false).
+--- call is safe. Guarded so a subsystem error can't propagate to its caller.
 function SoilFertilityManager:activateSoilSystem()
     if not self.soilSystem then return end
 
