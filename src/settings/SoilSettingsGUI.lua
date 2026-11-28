@@ -1924,7 +1924,8 @@ function SoilSettingsGUI:consoleCommandRerollUnownedFields()
 
     return string.format(
         "Re-rolled starting soil for %d field(s) no farm owns and saved; " ..
-        "left %d field(s) owned by a farm (or NPC-managed) untouched. Reopen the soil map if it looks stale.",
+        "left %d field(s) owned by a farm (or NPC-managed) untouched. Reopen the soil map if it looks stale. " ..
+        "Joined players get the new field values now; their soil map layer refreshes when they rejoin.",
         rerolled, skipped)
 end
 

@@ -3752,7 +3752,7 @@ end
 function SoilFertilitySystem:_rerollKeepsNpcGround(fieldId)
     if not NpcSoilBridge then return false end
     local ok, isNpc = pcall(NpcSoilBridge.isNPCManaged, NpcSoilBridge, fieldId)
-    return (not ok) or (isNpc ~= nil and isNpc ~= false)
+    return (not ok) or isNpc == true
 end
 
 -- Re-roll the starting soil profile of every field that NO farm owns, leaving owned

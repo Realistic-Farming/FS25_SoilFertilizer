@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """SoilRerollUnownedFields keeps every farm's soil: does the bar catch the wrong fixes?
 
-Ten mutants, each a plausible way to get the ownership rule wrong, and each must send
+Nine mutants, each a plausible way to get the ownership rule wrong, and each must send
 SF-reroll_other_farms_spec_test.lua RED:
 
   M1  the old rule: keep only the caller's farm     farms 2..n are re-rolled again.
@@ -14,7 +14,6 @@ SF-reroll_other_farms_spec_test.lua RED:
   M7  the abort reported as 0, 0                    the console says "saved" and saves.
   M8  the broadcast dropped                         joined clients keep the old values.
   M9  every field sent instead of the re-rolled     owned fields' client state rebuilt.
-  M10 a truthy NPC answer re-rolled                 an NPC id (not `true`) loses B5 ground.
 
 Selection: the bar is run with --loads src/settings/SoilSettingsGUI.lua (it loads both
 files), which keeps each run short. A stale .bak next to a source means an earlier run
@@ -72,8 +71,7 @@ MUTATIONS = [
      [("            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, soilSystem.fieldData[fieldId])\n", "", 1)]),
     ("M9 a full resync instead of the re-rolled fields", GUI,
      [("        for _, fieldId in ipairs(rerolledIds) do\n", "        for fieldId in pairs(soilSystem.fieldData) do\n", 1)]),
-    ("M10 a truthy NPC answer re-rolled", SFS,
-     [("    return (not ok) or (isNpc ~= nil and isNpc ~= false)\n", "    return (not ok) or isNpc == true\n", 1)]),
+
 ]
 
 

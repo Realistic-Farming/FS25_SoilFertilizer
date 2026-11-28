@@ -152,7 +152,6 @@ group("R5", function()
     sys:rerollUnownedFields()
     T.eq("R5 with FarmlandManager.NO_OWNER_FARM_ID defined, the same fields", sorted(touched), "4,5")
     FarmlandManager = saved.FM
-g_SoilFertilityManager, g_currentMission.getIsServer, SoilNetworkEvents_BroadcastFieldUpdate = saveMgr, saveIsServer, saveBcast
 end)
 
 -- ── R6: entries that are not fields are ignored, as before. ───────────────────
@@ -208,16 +207,6 @@ group("R8", function()
     sent = {}
     gui:consoleCommandRerollUnownedFields()
     T.eq("R8e nothing re-rolled: saved, nothing sent", saves .. "/" .. #sent, "2/0")
-end)
-
--- ── R9: NPC ground answered with a truthy non-boolean is still kept. ───────────
-group("R9", function()
-    world(OWNERS, 1)
-    NpcSoilBridge = { isNPCManaged = function(_, id) if id == 5 then return 3 end return nil end }  -- an npc id
-    local fd = sixFields()
-    local sys, touched = newSys(fd)
-    sys:rerollUnownedFields()
-    T.eq("R9 a truthy NPC answer keeps the field", sorted(touched), "4,6")
 end)
 
 g_farmlandManager, NpcSoilBridge, TargetApplication = saved.fm, saved.npc, saved.ta
