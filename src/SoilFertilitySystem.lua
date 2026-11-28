@@ -148,6 +148,7 @@ function SoilFertilitySystem.new(settings)
     -- Monotonic day of the last processed daily pass, for skipped-day catch-up.
     -- 0 means "not yet observed" so the first day-change never spuriously catches up.
     self.lastUpdateMonotonicDay = 0
+    self.frozenGround = FrozenGround ~= nil and FrozenGround.new() or nil  -- #1177
     -- SF-76 FIELD GENESIS: when active, the starting soil profile is seeded
     -- FROM TERRAIN (height-relative, slope, sink proximity) instead of the
     -- smooth regional gradient. Set by the manager on a NEW save (no soilData
@@ -2843,6 +2844,7 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
             if elapsed > maxCatchup then elapsed = maxCatchup end
         end
         self.lastUpdateMonotonicDay = monoDay
+        if self.frozenGround ~= nil then self.frozenGround:closeDay() end  -- #1177
         self:updateDailySoil(elapsed)
         -- Advance organic transitions (uses the monotonic day internally).
         if g_SoilFertilityManager and g_SoilFertilityManager.organic then
@@ -2856,6 +2858,10 @@ function SoilFertilitySystem:onEnvironmentUpdate(env, dt)
             if not okCd then self.cd15:fail("onDayChanged", errCd) end
         end
     end
+
+    -- #1177: after the day close (the new day's first hour is the new day's) and
+    -- before the leach (so a reload's first frame already knows the ground).
+    if self.frozenGround ~= nil then self.frozenGround:sampleHour(currentDay, env) end
 
     -- Rain effects (+ SCS-001 irrigation-driven leaching)
     -- #740: getEffectiveRainScale is the real weather, topped up by the short-month climate
@@ -5898,6 +5904,8 @@ local RWE_LEACH_MULTIPLIERS = {
 -- When SCS is absent (moisture nil) this is byte-identical to the original rain-only leach.
 function SoilFertilitySystem:applyRainEffects(dt, rainScale)
     if not self.settings.enabled or not self.settings.rainEffects then return end
+    -- #1177: frozen ground takes in no water. Covers both callers (rain, SCS moisture).
+    if self.frozenGround ~= nil and self.frozenGround:isFrozen() then return end
     rainScale = rainScale or 0
 
     local rain = SoilConstants.RAIN
@@ -8732,6 +8740,7 @@ function SoilFertilitySystem:saveToXMLFile(xmlFile, key)
     -- [SF-73] The unknown-N/P/K schema marker: this save carries the field-owned
     -- N/P/K baselines, so a missing one on load is unavailable, never re-frozen.
     setXMLInt(xmlFile, key .. "#sf73UnknownNPK", 1)
+    if self.frozenGround ~= nil then self.frozenGround:saveXML(xmlFile, key) end  -- #1177
 
     -- OM-213 organic premium provenance ledger (farm-level; rides this file as the
     -- safety copy, the same one StateLedger's block mirrors).
@@ -8902,6 +8911,7 @@ function SoilFertilitySystem:loadFromXMLFile(xmlFile, key)
     -- [SF-73] The unknown-N/P/K marker, with one reader: the per-field baseline
     -- rule below (TargetApplication.applyLoadedBaseline).
     local sf73Marked = (getXMLInt(xmlFile, key .. "#sf73UnknownNPK") or 0) == 1
+    if self.frozenGround ~= nil then self.frozenGround:loadXML(xmlFile, key) end  -- #1177
 
     -- OM-213 organic premium provenance ledger (absent on older saves = empty).
     if g_SoilFertilityManager and g_SoilFertilityManager.organic then
@@ -9205,6 +9215,7 @@ function SoilFertilitySystem:getSoilStateTable()
     -- [SF-73] sf73UnknownNPK mirrors the XML root marker the same way.
     local out = { lastUpdateDay = self.lastUpdateDay or 0, f66ResistanceReset = 1, sf79PHSchema = 1,
                   sf73UnknownNPK = 1, fields = {} }
+    if self.frozenGround ~= nil then out.frozenGround = self.frozenGround:toTable() end  -- #1177
     if type(self.fieldData) ~= "table" then return out end
 
     for fieldId, field in pairs(self.fieldData) do
@@ -9331,9 +9342,11 @@ function SoilFertilitySystem:applySoilStateTable(data, xmlRootMarked)
 
     if type(data) ~= "table" then
         self.lastUpdateDay = _curDay
+        if self.frozenGround ~= nil then self.frozenGround:fromTable(nil) end  -- #1177
         return 0
     end
     self.lastUpdateDay = data.lastUpdateDay or _curDay
+    if self.frozenGround ~= nil then self.frozenGround:fromTable(data.frozenGround) end  -- #1177
     self:_beginF66ResistanceRelief((data.f66ResistanceReset or 0) == 1)
     -- [SF-79] The schema marker, with the same one reader as the XML load: the
     -- per-field seed freeze below. Two sources, either one marks:

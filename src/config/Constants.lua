@@ -461,6 +461,23 @@ SoilConstants.RAIN = {
     IRRIGATION_RATE_LEACH_REF  = 0.018,  -- irrigation rate (per-hour gain) that counts as full-intensity irrigation
 }
 
+-- ========================================
+-- FROZEN GROUND (#1177)
+-- ========================================
+-- Ice in the soil blocks water from soaking in, so rain and meltwater run off
+-- instead of carrying nutrients down. While the ground is frozen, applyRainEffects
+-- skips the leach and the rain acidification. Soil cools and warms far more slowly
+-- than air, so the state needs several days in a row on the same side of the line:
+-- one frosty night does not freeze the ground, one mild afternoon does not thaw it.
+-- Driven by WeatherGuard's temperature (FrozenGround.lua). No WeatherGuard, or no
+-- reading, means never frozen: the leach runs exactly as before.
+SoilConstants.FROZEN_GROUND = {
+    FREEZE_TEMP_C  = 0.0,  -- a day whose average is at or below this counts as cold
+    DAYS_TO_FREEZE = 2,    -- cold days in a row before the ground freezes
+    DAYS_TO_THAW   = 2,    -- warmer days in a row before frozen ground thaws
+    MIN_READINGS   = 12,   -- hourly readings a day needs to count (fewer: neither way)
+}
+
 -- Relative N leach rate by N source (1.0 = upstream behaviour).
 -- A field's blended multiplier (field.nLeachMult) moves toward the source of each N
 -- addition, weighted by N points added, and scales the N leach only. Sources not
