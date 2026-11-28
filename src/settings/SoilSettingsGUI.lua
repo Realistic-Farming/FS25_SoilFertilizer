@@ -59,7 +59,7 @@ function SoilSettingsGUI:registerConsoleCommands()
     addConsoleCommand("soilRecoverField", "Recover field to default values: soilRecoverField [fieldId]", "consoleCommandRecoverField", self)
     addConsoleCommand("SoilRerollFields", "Re-roll starting soil (N/P/K/pH/OM) for all fields with the new regional variation (#632)", "consoleCommandRerollFields", self)
     addConsoleCommand("SoilReliefCheck", "SF-20: run the relief acceptance checks on a field (direction/magnitude/conservation)", "consoleCommandReliefCheck", self)
-    addConsoleCommand("SoilRerollUnownedFields", "Re-roll starting soil only for fields you don't own (keeps your own farm's soil) (#632)", "consoleCommandRerollUnownedFields", self)
+    addConsoleCommand("SoilRerollUnownedFields", "Re-roll starting soil only for fields no farm owns (keeps every farm's soil) (#632)", "consoleCommandRerollUnownedFields", self)
     addConsoleCommand("SoilBlacklistField", "FieldSentry: sleep/wake a field's soil sim: SoilBlacklistField <fieldId> [true|false] (#651)", "consoleCommandBlacklistField", self)
     addConsoleCommand("SoilFieldSentry", "FieldSentry: show a field's sim status, or list all slept fields: SoilFieldSentry [fieldId] (#651)", "consoleCommandFieldSentry", self)
     addConsoleCommand("SoilMeadowField", "FieldSentry: flag/clear a field as meadow (grassland profile): SoilMeadowField <fieldId> [true|false] (#651)", "consoleCommandMeadowField", self)
@@ -533,7 +533,7 @@ function SoilSettingsGUI:consoleCommandHelp()
     print("SoilVmPaint <layer> <value> [radius] [x z] - REFINED: paint value map")
     print("SoilVmReseed - REFINED: force-reseed value maps from field data")
     print("SoilRerollFields - Re-roll starting soil for all fields (new regional variation)")
-    print("SoilRerollUnownedFields - Re-roll starting soil for fields you don't own (keeps your own)")
+    print("SoilRerollUnownedFields - Re-roll starting soil for fields no farm owns (keeps every farm's)")
     print("SoilBlacklistField <fieldId> [true|false] - FieldSentry: sleep/wake a field's soil sim (#651)")
     print("SoilFieldSentry [fieldId] - FieldSentry: show a field's sim status, or list slept fields (#651)")
     print("SoilMeadowField <fieldId> [true|false] - FieldSentry: flag/clear a field as meadow (#651)")
@@ -1907,12 +1907,25 @@ function SoilSettingsGUI:consoleCommandRerollUnownedFields()
         return "Re-roll must be run on the server/host (it owns the field data)."
     end
 
-    local rerolled, skipped = g_SoilFertilityManager.soilSystem:rerollUnownedFields()
+    local soilSystem = g_SoilFertilityManager.soilSystem
+    local rerolled, skipped, rerolledIds = soilSystem:rerollUnownedFields()
+    if rerolled == nil then
+        return string.format("Re-roll aborted, nothing changed: %s.", tostring(skipped))
+    end
     g_SoilFertilityManager:saveSoilData()
+    -- Joined clients mirror fieldData: send them the re-rolled fields now instead of
+    -- leaving them on the old values until they rejoin. Only those fields: a full
+    -- resync would also rebuild every OWNED field's client entry from scratch.
+    if SoilNetworkEvents_BroadcastFieldUpdate and type(rerolledIds) == "table" then
+        for _, fieldId in ipairs(rerolledIds) do
+            SoilNetworkEvents_BroadcastFieldUpdate(fieldId, soilSystem.fieldData[fieldId])
+        end
+    end
 
     return string.format(
-        "Re-rolled starting soil for %d field(s) you don't own and saved; " ..
-        "left your %d owned field(s) untouched. Reopen the soil map if it looks stale.",
+        "Re-rolled starting soil for %d field(s) no farm owns and saved; " ..
+        "left %d field(s) owned by a farm (or NPC-managed) untouched. Reopen the soil map if it looks stale. " ..
+        "Joined players get the new field values now; their soil map layer refreshes when they rejoin.",
         rerolled, skipped)
 end
 
