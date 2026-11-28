@@ -47,6 +47,7 @@ local function applyChange(key, value)
     local validated = SettingsSchema.validate(key, value)
     if validated == nil then return end
 
+    if type(mgr.settings.noteExplicitChange) == "function" then mgr.settings:noteExplicitChange(key) end
     mgr.settings[key] = validated
     mgr.settings:save()
 

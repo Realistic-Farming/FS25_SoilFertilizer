@@ -14,8 +14,10 @@ local function requestSettingChange(settingId, value)
     if SoilNetworkEvents_RequestSettingChange then
         SoilNetworkEvents_RequestSettingChange(settingId, value)
     else
-        g_SoilFertilityManager.settings[settingId] = value
-        g_SoilFertilityManager.settings:save()
+        local settings = g_SoilFertilityManager.settings
+        if type(settings.noteExplicitChange) == "function" then settings:noteExplicitChange(settingId) end
+        settings[settingId] = value
+        settings:save()
     end
 end
 

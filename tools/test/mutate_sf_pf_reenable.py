@@ -2,14 +2,17 @@
 # -*- coding: utf-8 -*-
 """Precision Farming turns Soil off for the session, not the save: does the bar catch the wrong fixes?
 
-Five mutants, each a plausible way to get the session-only rule wrong, and each must send
-SF-pf_reenable_spec_test.lua RED:
+Eight mutants, each a plausible way to get the session-only rule wrong, and each must
+send SF-pf_reenable_spec_test.lua RED:
 
   M1  saveSettings writes the live value again      the forced false reaches disk (the bug).
   M2  the PF branch assigns enabled = false         the old code path, skipping the helper.
-  M3  an explicit enable does not drop the force    SoilEnable during a PF session is lost.
-  M4  a second force re-remembers the choice        the remembered true becomes false.
-  M5  the remembered choice is always true          a player who had it off is turned on.
+  M3  the change event does not note the change     SoilEnable/SoilDisable during PF are lost.
+  M4  the host's direct apply does not note it      the same through the no-client branch.
+  M5  noteExplicitChange ignores `enabled`          every door loses the player's choice.
+  M6  a second force re-remembers the choice        the remembered true becomes false.
+  M7  the remembered choice is always true          a player who had it off is turned on.
+  M8  a reset leaves the mod on next to PF          reset during PF starts both mods.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -38,19 +41,29 @@ BAR = "SF-pf_reenable_spec_test.lua"
 SELECT = ["--loads", "src/settings/Settings.lua"]
 BAR_RE = re.compile(re.escape(BAR) + r"[^\n(]*\((\d+) passed, (\d+) failed")
 
+NET = os.path.join(ROOT, "src", "network", "NetworkEvents.lua")
+
 MUTATIONS = [
     ("M1 saveSettings writes the live value", MANAGER,
      [("                if hasPersisted then value = settingsObject:getPersistedValue(def.id) end\n", "", 1)]),
     ("M2 the PF branch assigns enabled = false", SFM,
      [("                self.settings:forceOffForSession(\"precisionFarming\")\n",
        "                self.settings.enabled = false\n", 1)]),
-    ("M3 an explicit enable does not drop the force", SETTINGS,
-     [("        if self.enabled ~= false then\n            self._forcedOffReason, self._enabledOnDisk = nil, nil\n            return self.enabled\n        end\n", "", 1)]),
-    ("M4 a second force re-remembers the choice", SETTINGS,
+    ("M3 the change event does not note it", NET,
+     [("        if type(settings.noteExplicitChange) == \"function\" then settings:noteExplicitChange(self.settingName) end\n", "", 1)]),
+    ("M4 the host direct apply does not note it", NET,
+     [("            if type(settings.noteExplicitChange) == \"function\" then settings:noteExplicitChange(settingName) end\n", "", 1)]),
+    ("M5 noteExplicitChange ignores enabled", SETTINGS,
+     [("    if id == \"enabled\" then\n        self._forcedOffReason, self._enabledOnDisk = nil, nil\n    end\n", "", 1)]),
+    ("M6 a second force re-remembers the choice", SETTINGS,
      [("    if self._forcedOffReason == nil then\n        self._enabledOnDisk = (self.enabled == true)\n    end\n",
        "    self._enabledOnDisk = (self.enabled == true)\n", 1)]),
-    ("M5 the remembered choice is always true", SETTINGS,
-     [("        self._enabledOnDisk = (self.enabled == true)\n", "        self._enabledOnDisk = true\n", 1)]),
+    ("M7 the remembered choice is always true", SETTINGS,
+     [("    if self._forcedOffReason == nil then\n        self._enabledOnDisk = (self.enabled == true)\n",
+       "    if self._forcedOffReason == nil then\n        self._enabledOnDisk = true\n", 1)]),
+    ("M8 a reset starts the mod next to PF", SETTINGS,
+     [("        self._enabledOnDisk = (self.enabled == true)\n        self.enabled = false\n    end\n",
+       "        self._enabledOnDisk = (self.enabled == true)\n    end\n", 1)]),
 ]
 
 
@@ -90,7 +103,7 @@ def apply(src, edits):
 
 
 def main():
-    files = [SETTINGS, MANAGER, SFM]
+    files = [SETTINGS, MANAGER, SFM, NET]
     base = {f: digest(f) for f in files}
     p, f, tail = run_bar()
     if p is None or f != 0 or p == 0:

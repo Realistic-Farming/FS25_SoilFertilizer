@@ -11,6 +11,10 @@
 -- choice on disk; SettingsManager:saveSettings writes Settings:getPersistedValue. If
 -- anything turns the mod back ON in the session, that explicit choice wins and is saved.
 --
+-- Explicit changes go through the REAL doors: SoilSettingChangeEvent:run (what SoilEnable,
+-- SoilDisable and the menus reach on SP and a listen host, via the loopback connection)
+-- and SoilNetworkEvents_RequestSettingChange's direct server branch (no g_client).
+--
 -- WHO POPULATES THE WORLD. The settings file is an in-memory XML store behind the real
 -- SettingsManager load/save (XMLFile.create/load, fileExists: the three engine calls it
 -- makes). The PF check is the real SoilFertilityManager:onMissionStarted on a stub
@@ -18,7 +22,7 @@
 -- not run (it is the whole sim). Each "load" is a NEW Settings + manager, exactly as a
 -- reload builds them, so nothing in memory can carry the flag across.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/settings/SettingsManager.lua, src/settings/Settings.lua, src/SoilFertilityManager.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/settings/SettingsManager.lua, src/settings/Settings.lua, src/SoilFertilityManager.lua, src/utils/SoilUtils.lua, src/network/NetworkEvents.lua
 
 SoilLogger.info = function() end
 SoilLogger.debug = function() end
@@ -63,7 +67,9 @@ getUserProfileAppPath = function() return "/profile/" end
 local savedCreateFolder = createFolder
 createFolder = function() end
 g_currentMission.missionInfo = { savegameDirectory = "/saves/savegame1" }
-g_server, g_client = true, true          -- singleplayer / listen host: both present
+local BROADCASTS = {}
+local SERVER = { broadcastEvent = function(_, ev) BROADCASTS[#BROADCASTS + 1] = ev end }
+g_server, g_client = SERVER, true        -- singleplayer / listen host: both present
 SoilVersionDialog, g_gameSettings = nil, nil
 
 local PATH = "/saves/savegame1/" .. SettingsManager.MOD_NAME .. ".xml"
@@ -82,7 +88,21 @@ local function loadGame(pfPresent)
     }, { __index = SoilFertilityManager })
     mgr.activateSoilSystem = function() activated = activated + 1 end
     mgr:onMissionStarted()
+    g_SoilFertilityManager = mgr
     return mgr, settings, function() return activated end
+end
+
+-- The doors a deliberate change takes. The loopback connection is the server's own
+-- (Connection:getIsServer() true), so the admin check is not the thing under test here.
+local LOOPBACK = { getIsServer = function() return true end }
+local function viaEvent(id, value)
+    SoilSettingChangeEvent.new(id, value):run(LOOPBACK)
+end
+local function viaHostDirect(id, value)
+    local c = g_client
+    g_client = nil
+    SoilNetworkEvents_RequestSettingChange(id, value)
+    g_client = c
 end
 -- The game's save: main.lua's FSCareerMissionInfo.saveToXMLFile hook calls settings:save().
 local function saveGame(settings) settings:save() end
@@ -132,24 +152,55 @@ group("P3", function()
     end
 end)
 
--- ── P4: an explicit enable during the PF session wins and is saved. ────────────
--- (SoilEnable, the settings menu, SettingsHub and a reset all assign enabled = true and
--- then call save(); a reset to defaults does exactly that through resetToDefaults.)
+-- ── P4: an explicit enable during the PF session wins and is saved; so does a later
+-- explicit disable. A reset to defaults does not start the mod next to PF. ───────
 group("P4", function()
     DISK = {}
     local _, s0 = loadGame(false); s0.enabled = false; saveGame(s0)
-    local _, s1 = loadGame(true)
-    s1.enabled = true            -- the player turned it on on purpose
+    local mgr1, s1 = loadGame(true)
+    mgr1.soilSystem.isInitialized = true    -- the event's re-init branch is not under test
+    viaEvent("enabled", true)               -- SoilEnable on SP / a listen host
+    T.eq("P4a the explicit enable is live", s1.enabled, true)
+    T.eq("P4b and reaches disk", onDisk(), true)
+    T.eq("P4c and the force is dropped", s1:getForcedOffReason(), nil)
+    viaEvent("enabled", false)              -- ...then SoilDisable, also on purpose
     saveGame(s1)
-    T.eq("P4a the explicit enable reaches disk", onDisk(), true)
-    T.eq("P4b and the force is dropped", s1:getForcedOffReason(), nil)
-    s1.enabled = false           -- ...and then off again, also on purpose
-    saveGame(s1)
-    T.eq("P4c a later explicit disable reaches disk too", onDisk(), false)
+    T.eq("P4d a later explicit disable reaches disk too", onDisk(), false)
 
+    DISK = {}
+    local _, s2a = loadGame(false); saveGame(s2a)  -- on, on disk
     local _, s2 = loadGame(true)
     s2:resetToDefaults(true)
-    T.eq("P4d a reset to defaults during a PF session saves the default", onDisk(), true)
+    T.eq("P4e a reset during a PF session keeps the mod off live", s2.enabled, false)
+    T.eq("P4f and saves the default as the player's choice", onDisk(), true)
+    T.eq("P4g and the force stays", s2:getForcedOffReason(), "precisionFarming")
+end)
+
+-- ── P7: the reviewer's case. On, PF active, the player types SoilDisable meaning to keep
+-- Soil off once PF is gone. The live value was already false; the choice must still land. ──
+group("P7", function()
+    for _, door in ipairs({ { "event", viaEvent }, { "host direct", viaHostDirect } }) do
+        DISK = {}
+        local _, s0 = loadGame(false); saveGame(s0)
+        T.eq("P7 [" .. door[1] .. "] precondition: on, on disk", onDisk(), true)
+        local _, s1 = loadGame(true)
+        door[2]("enabled", false)
+        saveGame(s1)
+        T.eq("P7a [" .. door[1] .. "] the explicit disable reaches disk", onDisk(), false)
+        local _, s2, act = loadGame(false)
+        T.eq("P7b [" .. door[1] .. "] and the mod stays off after PF is removed", tostring(s2.enabled) .. "/" .. act(), "false/0")
+    end
+end)
+
+-- ── P8: an unrelated admin change during a PF session does not end the force. ───
+group("P8", function()
+    DISK = {}
+    local _, s0 = loadGame(false); saveGame(s0)
+    local _, s1 = loadGame(true)
+    viaEvent("difficulty", 3)
+    T.eq("P8a the other setting is saved", DISK[PATH][SettingsManager.XMLTAG .. ".difficulty"], 3)
+    T.eq("P8b enabled still saves the player's true", onDisk(), true)
+    T.eq("P8c and the mod is still off live", s1.enabled, false)
 end)
 
 -- ── P5: forcing twice remembers the FIRST choice, and other settings save live. ──
@@ -177,7 +228,7 @@ group("P6", function()
     s:forceOffForSession("precisionFarming")
     s:save()
     T.eq("P6 a client's save writes nothing", onDisk(), nil)
-    g_server = true
+    g_server = SERVER
 end)
 
 T.eq("no onMissionStarted error was logged", table.concat(ERRS, " | "), "")
@@ -186,3 +237,4 @@ XMLFile, fileExists, g_server, g_client = saved.XMLFile, saved.fileExists, saved
 g_currentMission.missionInfo, getUserProfileAppPath = saved.missionInfo, saved.profile
 SoilVersionDialog, g_gameSettings = saved.SoilVersionDialog, saved.g_gameSettings
 createFolder = savedCreateFolder
+g_SoilFertilityManager = nil

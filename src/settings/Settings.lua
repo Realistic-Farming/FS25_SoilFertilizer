@@ -152,19 +152,25 @@ function Settings:getForcedOffReason()
     return self._forcedOffReason
 end
 
+--- Every door that applies a PLAYER'S OR ADMIN'S change to a server-shared setting calls
+--- this first (the setting-change event, the host's direct apply, SettingsHub, and the
+--- network-not-ready fallbacks). A deliberate change to `enabled`, on or off, ends a
+--- session force: from then on the live value is the player's choice and is what saves.
+--- Mirrors of the server's value (the setting/full sync on a client) do not call it.
+---@param id string
+function Settings:noteExplicitChange(id)
+    if id == "enabled" then
+        self._forcedOffReason, self._enabledOnDisk = nil, nil
+    end
+end
+
 --- The value SettingsManager:saveSettings writes for a server-shared setting. Only
 --- `enabled` while forced off differs from the live value: the player's remembered
---- choice is written instead of the forced `false`. If something turned the mod back ON
---- this session (SoilEnable, the settings menu, SettingsHub, a reset to defaults), that
---- explicit choice wins: the force is dropped and the live value is written.
+--- choice is written instead of the forced `false`. No side effects.
 ---@param id string
 ---@return any
 function Settings:getPersistedValue(id)
     if id == "enabled" and self._forcedOffReason ~= nil then
-        if self.enabled ~= false then
-            self._forcedOffReason, self._enabledOnDisk = nil, nil
-            return self.enabled
-        end
         return self._enabledOnDisk
     end
     return self[id]
@@ -177,6 +183,12 @@ function Settings:resetToDefaults(saveImmediately)
     -- Reset all settings from schema defaults
     for _, def in ipairs(SettingsSchema.definitions) do
         self[def.id] = def.default
+    end
+    -- While forced off for the session (Precision Farming), a reset must not start the
+    -- mod next to PF: it stays off live, and the default becomes the remembered choice.
+    if self._forcedOffReason ~= nil then
+        self._enabledOnDisk = (self.enabled == true)
+        self.enabled = false
     end
 
     if saveImmediately then
