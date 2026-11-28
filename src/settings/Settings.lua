@@ -164,6 +164,17 @@ function Settings:noteExplicitChange(id)
     end
 end
 
+--- A "reset to defaults" (SoilResetSettings, and the settings panel's admin Reset, which
+--- calls it) sends every setting's default through the change doors. While the mod is forced off
+--- for the session, `enabled`'s default (true) would look like a deliberate enable and
+--- start Soil next to Precision Farming, so the reset loops skip it. Every other setting
+--- still resets. PF detection runs on each peer, so a client knows its own force.
+---@param id string
+---@return boolean
+function Settings:isResetExempt(id)
+    return id == "enabled" and self._forcedOffReason ~= nil
+end
+
 --- The value SettingsManager:saveSettings writes for a server-shared setting. Only
 --- `enabled` while forced off differs from the live value: the player's remembered
 --- choice is written instead of the forced `false`. No side effects.
@@ -183,12 +194,6 @@ function Settings:resetToDefaults(saveImmediately)
     -- Reset all settings from schema defaults
     for _, def in ipairs(SettingsSchema.definitions) do
         self[def.id] = def.default
-    end
-    -- While forced off for the session (Precision Farming), a reset must not start the
-    -- mod next to PF: it stays off live, and the default becomes the remembered choice.
-    if self._forcedOffReason ~= nil then
-        self._enabledOnDisk = (self.enabled == true)
-        self.enabled = false
     end
 
     if saveImmediately then

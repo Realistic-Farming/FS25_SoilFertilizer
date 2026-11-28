@@ -22,7 +22,7 @@
 -- not run (it is the whole sim). Each "load" is a NEW Settings + manager, exactly as a
 -- reload builds them, so nothing in memory can carry the flag across.
 --
---!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/settings/SettingsManager.lua, src/settings/Settings.lua, src/SoilFertilityManager.lua, src/utils/SoilUtils.lua, src/network/NetworkEvents.lua
+--!load: src/utils/Logger.lua, src/config/Constants.lua, src/config/SettingsSchema.lua, src/settings/SettingsManager.lua, src/settings/Settings.lua, src/SoilFertilityManager.lua, src/utils/SoilUtils.lua, src/network/NetworkEvents.lua, src/settings/SoilSettingsGUI.lua
 
 SoilLogger.info = function() end
 SoilLogger.debug = function() end
@@ -69,7 +69,14 @@ createFolder = function() end
 g_currentMission.missionInfo = { savegameDirectory = "/saves/savegame1" }
 local BROADCASTS = {}
 local SERVER = { broadcastEvent = function(_, ev) BROADCASTS[#BROADCASTS + 1] = ev end }
-g_server, g_client = SERVER, true        -- singleplayer / listen host: both present
+-- The loopback connection is the server's own (Connection:getIsServer() true), so the
+-- admin check is not the thing under test here. On SP / a listen host, a change request
+-- goes out through g_client's server connection and comes back to the event's run.
+local LOOPBACK = { getIsServer = function() return true end }
+local CLIENT = { getServerConnection = function()
+    return { sendEvent = function(_, ev) ev:run(LOOPBACK) end }
+end }
+g_server, g_client = SERVER, CLIENT      -- singleplayer / listen host: both present
 SoilVersionDialog, g_gameSettings = nil, nil
 
 local PATH = "/saves/savegame1/" .. SettingsManager.MOD_NAME .. ".xml"
@@ -92,9 +99,7 @@ local function loadGame(pfPresent)
     return mgr, settings, function() return activated end
 end
 
--- The doors a deliberate change takes. The loopback connection is the server's own
--- (Connection:getIsServer() true), so the admin check is not the thing under test here.
-local LOOPBACK = { getIsServer = function() return true end }
+-- The doors a deliberate change takes.
 local function viaEvent(id, value)
     SoilSettingChangeEvent.new(id, value):run(LOOPBACK)
 end
@@ -167,13 +172,31 @@ group("P4", function()
     saveGame(s1)
     T.eq("P4d a later explicit disable reaches disk too", onDisk(), false)
 
+    -- The real reset door: SoilResetSettings (the panel's admin Reset calls the same).
     DISK = {}
-    local _, s2a = loadGame(false); saveGame(s2a)  -- on, on disk
-    local _, s2 = loadGame(true)
-    s2:resetToDefaults(true)
+    local _, s2a = loadGame(false); s2a.enabled = false; s2a.difficulty = 3; saveGame(s2a)
+    local mgr2, s2 = loadGame(true)
+    local inits = 0
+    mgr2.soilSystem.isInitialized = true
+    mgr2.soilSystem.initialize = function() inits = inits + 1 end
+    local gui = setmetatable({}, { __index = SoilSettingsGUI })
+    gui:consoleCommandResetSettings()
     T.eq("P4e a reset during a PF session keeps the mod off live", s2.enabled, false)
-    T.eq("P4f and saves the default as the player's choice", onDisk(), true)
-    T.eq("P4g and the force stays", s2:getForcedOffReason(), "precisionFarming")
+    T.eq("P4f and does not start the sim", inits, 0)
+    T.eq("P4g the force stays", s2:getForcedOffReason(), "precisionFarming")
+    T.eq("P4h every other setting did reset", s2.difficulty, SettingsSchema.byId.difficulty.default)
+    saveGame(s2)
+    T.eq("P4i the player's own choice (off) is still what is on disk", onDisk(), false)
+
+    -- Without PF, the same reset still resets enabled and re-initializes, as before.
+    DISK = {}
+    local _, s3a = loadGame(false); s3a.enabled = false; saveGame(s3a)
+    local mgr3, s3 = loadGame(false)
+    local inits3 = 0
+    mgr3.soilSystem.isInitialized = true
+    mgr3.soilSystem.initialize = function() inits3 = inits3 + 1 end
+    gui:consoleCommandResetSettings()
+    T.eq("P4j without PF a reset turns the mod on and re-initializes", tostring(s3.enabled) .. "/" .. inits3, "true/1")
 end)
 
 -- ── P7: the reviewer's case. On, PF active, the player types SoilDisable meaning to keep

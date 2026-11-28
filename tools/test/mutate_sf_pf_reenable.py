@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Precision Farming turns Soil off for the session, not the save: does the bar catch the wrong fixes?
 
-Eight mutants, each a plausible way to get the session-only rule wrong, and each must
+Nine mutants, each a plausible way to get the session-only rule wrong, and each must
 send SF-pf_reenable_spec_test.lua RED:
 
   M1  saveSettings writes the live value again      the forced false reaches disk (the bug).
@@ -12,7 +12,8 @@ send SF-pf_reenable_spec_test.lua RED:
   M5  noteExplicitChange ignores `enabled`          every door loses the player's choice.
   M6  a second force re-remembers the choice        the remembered true becomes false.
   M7  the remembered choice is always true          a player who had it off is turned on.
-  M8  a reset leaves the mod on next to PF          reset during PF starts both mods.
+  M8  a reset is not exempt for `enabled`           SoilResetSettings starts Soil next to PF.
+  M9  a reset re-initializes unconditionally        the sim starts though the mod stays off.
 
 Every edit asserts it LANDED by exact occurrence count. Restore is proved by sha256.
 A mutation that fails to apply aborts rather than reporting a survivor.
@@ -42,6 +43,7 @@ SELECT = ["--loads", "src/settings/Settings.lua"]
 BAR_RE = re.compile(re.escape(BAR) + r"[^\n(]*\((\d+) passed, (\d+) failed")
 
 NET = os.path.join(ROOT, "src", "network", "NetworkEvents.lua")
+GUI = os.path.join(ROOT, "src", "settings", "SoilSettingsGUI.lua")
 
 MUTATIONS = [
     ("M1 saveSettings writes the live value", MANAGER,
@@ -61,9 +63,11 @@ MUTATIONS = [
     ("M7 the remembered choice is always true", SETTINGS,
      [("    if self._forcedOffReason == nil then\n        self._enabledOnDisk = (self.enabled == true)\n",
        "    if self._forcedOffReason == nil then\n        self._enabledOnDisk = true\n", 1)]),
-    ("M8 a reset starts the mod next to PF", SETTINGS,
-     [("        self._enabledOnDisk = (self.enabled == true)\n        self.enabled = false\n    end\n",
-       "        self._enabledOnDisk = (self.enabled == true)\n    end\n", 1)]),
+    ("M8 a reset is not exempt for enabled", SETTINGS,
+     [("    return id == \"enabled\" and self._forcedOffReason ~= nil\n", "    return false\n", 1)]),
+    ("M9 a reset re-initializes unconditionally", GUI,
+     [("        if g_SoilFertilityManager.soilSystem and settings.enabled then\n",
+       "        if g_SoilFertilityManager.soilSystem then\n", 1)]),
 ]
 
 
@@ -103,7 +107,7 @@ def apply(src, edits):
 
 
 def main():
-    files = [SETTINGS, MANAGER, SFM, NET]
+    files = [SETTINGS, MANAGER, SFM, NET, GUI]
     base = {f: digest(f) for f in files}
     p, f, tail = run_bar()
     if p is None or f != 0 or p == 0:

@@ -1533,10 +1533,15 @@ function SoilSettingsGUI:consoleCommandResetSettings()
         -- per-category reset). Calling settings:resetToDefaults() directly only
         -- mutated local state on MP clients - the server never heard about it and
         -- the client desynced until the next full sync.
+        local settings = g_SoilFertilityManager.settings
         for _, def in ipairs(SettingsSchema.definitions) do
-            requestSettingChange(def.id, def.default)
+            local exempt = type(settings.isResetExempt) == "function" and settings:isResetExempt(def.id)
+            if not exempt then
+                requestSettingChange(def.id, def.default)
+            end
         end
-        if g_SoilFertilityManager.soilSystem then
+        -- Only a running mod re-initializes: a reset never starts the sim next to PF.
+        if g_SoilFertilityManager.soilSystem and settings.enabled then
             g_SoilFertilityManager.soilSystem:initialize()
         end
         if g_SoilFertilityManager.settingsUI then
